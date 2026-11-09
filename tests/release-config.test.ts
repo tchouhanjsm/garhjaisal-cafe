@@ -328,6 +328,20 @@ function run() {
   );
 
   const workflow = loadWorkflow('release.yml');
+  const releaseWorkflowSource = fs.readFileSync(
+    path.join(__dirname, '../.github/workflows/release.yml'),
+    'utf8',
+  );
+  assert.doesNotMatch(
+    releaseWorkflowSource,
+    /\\|\\s*head\\s+-1\\b/,
+    'release workflow must not resolve the npm HTTP HEAD client instead of a Unix head utility',
+  );
+  assert.equal(
+    (releaseWorkflowSource.match(/IFS= read -r first_line \\|\\| true/g) || []).length,
+    3,
+    'all release-list first-line selections must use the shell builtin read operation',
+  );
   const jobs = workflow.jobs;
   const triggers = workflow.on || workflow['true'];
   const masWorkflow = loadWorkflow('publish-mas.yml');
