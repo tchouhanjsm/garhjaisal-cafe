@@ -519,7 +519,7 @@ jobs:
           docs_changed="${{ needs.changes.outputs.docs }}"
 
           code_changed=false
-          if [ "$frontend_changed" = "true" ]             || [ "$backend_changed" = "true" ]             || [ "$kds_changed" = "true" ]             || [ "$db_changed" = "true" ]; then
+          if [ "$frontend_changed" = "true" ] || [ "$backend_changed" = "true" ] || [ "$kds_changed" = "true" ] || [ "$db_changed" = "true" ]; then
             code_changed=true
           fi
 
@@ -577,7 +577,7 @@ jobs:
             fi
           done
           runs_json="$RUNNER_TEMP/required-checks-runs.json"
-          if [ "$cancelled_only" = true ]             && gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=$CONCURRENCY_BRANCH&per_page=20" > "$runs_json"; then
+          if [ "$cancelled_only" = true ] && gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=$CONCURRENCY_BRANCH&per_page=20" > "$runs_json"; then
             newer_push="$(node - "$runs_json" "$GITHUB_RUN_ID" "$GITHUB_RUN_NUMBER" "$CONCURRENCY_BRANCH" <<'NODE'
           const fs = require('node:fs');
           const [, , file, runId, runNumber, branch] = process.argv;
