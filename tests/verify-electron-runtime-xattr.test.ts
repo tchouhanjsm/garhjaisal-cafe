@@ -4,8 +4,9 @@
  * quarantine check. Only the documented "attribute absent" result (exit 1
  * with "No such xattr") is an acceptable clean state.
  *
- * This exercises the pure classification function from the cross-platform
- * verifier, so it runs on every platform without needing `xattr`/`codesign`.
+ * Development runtime verification intentionally does not require a code
+ * signature. Production release artifacts are checked independently by the
+ * release workflow.
  */
 import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
@@ -17,7 +18,7 @@ const {
 } = require('../scripts/verify-electron-runtime.cjs');
 
 function run() {
-  console.log('Testing Electron runtime xattr classification and ABI resolution...');
+  console.log('Testing Electron development runtime quarantine and ABI verification...');
 
   const electronPkg = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../node_modules/electron/package.json'), 'utf8'),
@@ -71,7 +72,7 @@ function run() {
   const missingTool = classifyQuarantine(127, 'xattr: command not found', '');
   assert.equal(missingTool.state, 'error', 'exit 127 (missing tool) is "error", not clean');
 
-  console.log('✅ Electron runtime xattr classification checks passed');
+  console.log('✅ Electron runtime quarantine and ABI checks passed');
 }
 
 run();
