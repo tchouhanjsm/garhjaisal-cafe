@@ -1489,7 +1489,7 @@ exit 1
     html_url: 'https://github.com/FreeOpenSourcePOS/FloCafe/actions/runs/1003',
   };
   const fakeRunsGh = `#!/bin/sh
-if [ "${CI_TEST_GH_FAIL:-}" = "1" ]; then
+if [ "\${CI_TEST_GH_FAIL:-}" = "1" ]; then
   echo "gh: HTTP 403: Resource not accessible by integration" >&2
   exit 1
 fi
