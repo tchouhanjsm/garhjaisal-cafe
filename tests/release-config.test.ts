@@ -498,6 +498,17 @@ function run() {
   assertShellStep(macJob, 'Build macOS');
   assertShellStep(macJob, 'Verify macOS release assets');
   assertShellStep(macJob, 'Upload macOS assets to GitHub release');
+  const macSigningScript = findStep(macJob, 'Verify macOS release assets').run as string;
+  assert.match(macSigningScript, /codesign --verify --deep --strict/);
+  assert.match(macSigningScript, /spctl --assess/);
+  assert.match(macSigningScript, /xcrun stapler validate/);
+  const freshlyDownloadedMacSigningScript = findStep(
+    macJob,
+    'Verify freshly downloaded macOS release artifact',
+  ).run as string;
+  assert.match(freshlyDownloadedMacSigningScript, /codesign --verify --deep --strict/);
+  assert.match(freshlyDownloadedMacSigningScript, /spctl --assess/);
+  assert.match(freshlyDownloadedMacSigningScript, /xcrun stapler validate/);
 
   const macSigningStep = findStep(macJob, 'Verify macOS release assets');
   const macSigningScript = macSigningStep.run as string;
