@@ -332,13 +332,13 @@ function run() {
     path.join(__dirname, '../.github/workflows/release.yml'),
     'utf8',
   );
-  assert.doesNotMatch(
-    releaseWorkflowSource,
-    /\\|\\s*head\\s+-1\\b/,
+  assert.equal(
+    releaseWorkflowSource.includes('| head -1'),
+    false,
     'release workflow must not resolve the npm HTTP HEAD client instead of a Unix head utility',
   );
   assert.equal(
-    (releaseWorkflowSource.match(/IFS= read -r first_line \\|\\| true/g) || []).length,
+    releaseWorkflowSource.split('IFS= read -r first_line || true').length - 1,
     3,
     'all release-list first-line selections must use the shell builtin read operation',
   );
