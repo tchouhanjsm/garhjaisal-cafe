@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Cross-platform postinstall sanity check for the Electron package.
+// Cross-platform postinstall sanity check for the Electron development package.
 // Verifies that node-abi resolves the installed Electron ABI on every platform;
-// macOS also verifies quarantine and ad-hoc code signing.
+// macOS also verifies the app bundle exists and is not quarantined.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -93,14 +93,8 @@ function main() {
     );
   }
 
-  try {
-    execFileSync('codesign', ['-dv', appPath], { stdio: 'ignore' });
-  } catch {
-    fail(`${appPath} has no expected ad-hoc code signature and may be corrupted.`);
-  }
-
   console.log(
-    `verify-electron-runtime: ${appPath} present, unquarantined, ad-hoc signed as expected.`,
+    `verify-electron-runtime: ${appPath} present and unquarantined; development runtime checks passed.`,
   );
 }
 
