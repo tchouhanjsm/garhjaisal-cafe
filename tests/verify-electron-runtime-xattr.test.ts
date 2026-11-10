@@ -58,7 +58,6 @@ function createRuntimeOptions({
 function run() {
   console.log('Testing Electron runtime xattr classification and ABI resolution...');
 
-
   const electronPkg = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../node_modules/electron/package.json'), 'utf8'),
   );
