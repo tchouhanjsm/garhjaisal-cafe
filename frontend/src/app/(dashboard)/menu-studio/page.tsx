@@ -106,8 +106,7 @@ export default function MenuStudioPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const loadData = useCallback(async (quiet = false) => {
-    if (!quiet) setLoading(true);
-    else setRefreshing(true);
+    if (quiet) setRefreshing(true);
     try {
       const [productResponse, categoryResponse] = await Promise.all([
         api.get('/products?include_inactive_variants=true'),
@@ -645,7 +644,7 @@ export default function MenuStudioPage() {
               <div>
                 <h2 className="text-lg font-semibold">Bulk price change</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Preview every selected item's new base price before applying.
+                  Preview every selected item’s new base price before applying.
                 </p>
               </div>
               <button type="button" onClick={() => setBulkDialog(null)} aria-label="Close price preview">
