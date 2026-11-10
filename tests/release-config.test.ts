@@ -1251,6 +1251,13 @@ exit 1
   assert.equal(matrixUpload.with.name, 'flocafe-build-${{ matrix.name }}');
 
   const ciWorkflow = loadWorkflow('ci.yml');
+  const ciTriggers = ciWorkflow.on || ciWorkflow['true'];
+  assert.deepEqual(ciTriggers.push.branches, ['main']);
+  assert.deepEqual(ciTriggers.pull_request.branches, ['main', 'codex/*']);
+  assert.ok(
+    ciTriggers.workflow_dispatch !== undefined,
+    'CI must support manual runs to bootstrap and recover required checks',
+  );
   const requiredGateJob = ciWorkflow.jobs['required-checks-gate'];
   assert.deepEqual(requiredGateJob.needs, [
     'changes',
