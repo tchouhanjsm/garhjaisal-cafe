@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Download, Edit2, History, RefreshCw, Search, Upload, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Check,
+  Download,
+  Edit2,
+  History,
+  RefreshCw,
+  Search,
+  Upload,
+  X,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -448,7 +458,9 @@ export default function MenuStudioPage() {
       await loadData(true);
     } catch (error) {
       if (errorStatus(error) === 409) {
-        toast.error('The menu changed after this preview. No CSV changes were applied; export again.');
+        toast.error(
+          'The menu changed after this preview. No CSV changes were applied; export again.',
+        );
         setCsvPreview(null);
         await loadData(true);
       } else {
@@ -1080,7 +1092,8 @@ export default function MenuStudioPage() {
                 </p>
                 <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
                   Update-only import. Products are never created. SKU and export timestamp are
-                  checked for consistency; only name, category, base price and availability can change.
+                  checked for consistency; only name, category, base price and availability can
+                  change.
                 </p>
               </div>
               <button
@@ -1099,7 +1112,9 @@ export default function MenuStudioPage() {
               </div>
               <div className="rounded-lg bg-muted p-3">
                 <p className="text-xs text-muted-foreground">Unchanged</p>
-                <p className="mt-1 text-xl font-semibold tabular-nums">{csvPreview.unchanged_count}</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">
+                  {csvPreview.unchanged_count}
+                </p>
               </div>
               <div className="rounded-lg bg-muted p-3">
                 <p className="text-xs text-muted-foreground">Errors</p>
@@ -1124,12 +1139,24 @@ export default function MenuStudioPage() {
               <table className="w-full min-w-[760px] border-collapse text-sm">
                 <thead className="sticky top-0 bg-muted">
                   <tr>
-                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Row</th>
-                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Menu item</th>
-                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Name</th>
-                    <th className="p-3 text-end text-xs font-semibold uppercase text-muted-foreground">Base price</th>
-                    <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">Availability</th>
-                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Review</th>
+                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">
+                      Row
+                    </th>
+                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">
+                      Menu item
+                    </th>
+                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">
+                      Name
+                    </th>
+                    <th className="p-3 text-end text-xs font-semibold uppercase text-muted-foreground">
+                      Base price
+                    </th>
+                    <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">
+                      Availability
+                    </th>
+                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">
+                      Review
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -1138,39 +1165,54 @@ export default function MenuStudioPage() {
                       <td className="p-3 align-top tabular-nums">{row.row_number}</td>
                       <td className="p-3 align-top">
                         <p className="font-medium">{row.product_name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{row.product_id || 'No product ID'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {row.product_id || 'No product ID'}
+                        </p>
                       </td>
                       <td className="p-3 align-top">
-                        {row.before && row.after
-                          ? row.before.name + ' → ' + row.after.name
-                          : '—'}
+                        {row.before && row.after ? row.before.name + ' → ' + row.after.name : '—'}
                       </td>
                       <td className="p-3 text-end align-top tabular-nums">
                         {row.before && row.after
-                          ? formatCurrency(row.before.price) + ' → ' + formatCurrency(row.after.price)
+                          ? formatCurrency(row.before.price) +
+                            ' → ' +
+                            formatCurrency(row.after.price)
                           : '—'}
                       </td>
                       <td className="p-3 text-center align-top">
                         {row.before && row.after
-                          ? (row.before.is_active ? 'Available' : 'Unavailable') + ' → ' + (row.after.is_active ? 'Available' : 'Unavailable')
+                          ? (row.before.is_active ? 'Available' : 'Unavailable') +
+                            ' → ' +
+                            (row.after.is_active ? 'Available' : 'Unavailable')
                           : '—'}
                       </td>
                       <td className="p-3 align-top">
-                        <span className={
-                          row.status === 'ready'
-                            ? 'font-medium text-emerald-700'
+                        <span
+                          className={
+                            row.status === 'ready'
+                              ? 'font-medium text-emerald-700'
+                              : row.status === 'error'
+                                ? 'font-medium text-destructive'
+                                : 'text-muted-foreground'
+                          }
+                        >
+                          {row.status === 'ready'
+                            ? 'Ready'
                             : row.status === 'error'
-                              ? 'font-medium text-destructive'
-                              : 'text-muted-foreground'
-                        }>
-                          {row.status === 'ready' ? 'Ready' : row.status === 'error' ? 'Error' : 'Unchanged'}
+                              ? 'Error'
+                              : 'Unchanged'}
                         </span>
-                        {row.message && <p className="mt-1 text-xs text-muted-foreground">{row.message}</p>}
-                        {row.before && row.after && row.before.category_id !== row.after.category_id && (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Category: {row.before.category_id || 'Uncategorized'} → {row.after.category_id || 'Uncategorized'}
-                          </p>
+                        {row.message && (
+                          <p className="mt-1 text-xs text-muted-foreground">{row.message}</p>
                         )}
+                        {row.before &&
+                          row.after &&
+                          row.before.category_id !== row.after.category_id && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Category: {row.before.category_id || 'Uncategorized'} →{' '}
+                              {row.after.category_id || 'Uncategorized'}
+                            </p>
+                          )}
                       </td>
                     </tr>
                   ))}
@@ -1186,7 +1228,10 @@ export default function MenuStudioPage() {
                 <Button variant="outline" onClick={() => setCsvPreview(null)} disabled={csvSaving}>
                   Cancel
                 </Button>
-                <Button onClick={() => void applyCsvPreview()} disabled={!csvPreview.can_apply || csvSaving}>
+                <Button
+                  onClick={() => void applyCsvPreview()}
+                  disabled={!csvPreview.can_apply || csvSaving}
+                >
                   {csvSaving ? 'Applying…' : 'Apply ' + csvPreview.changes.length + ' changes'}
                 </Button>
               </div>
