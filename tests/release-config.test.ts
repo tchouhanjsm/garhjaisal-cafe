@@ -176,7 +176,7 @@ if [ "$#" -ne 1 ] || [ "$1" != "-1" ]; then
   exit 2
 fi
 IFS= read -r first_line || exit 0
-printf '%s\\n' "$first_line"
+printf '%s\n' "$first_line"
 `;
 
 const fakeGit = `#!/bin/sh
@@ -579,6 +579,7 @@ function run() {
     fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead },
   });
   assert.equal(betaVerify.status, 0, betaVerify.stderr);
+  assert.equal(betaVerify.outputs.candidate_manifest_asset_id, '42');
   assert.doesNotMatch(
     betaVerify.log,
     /--require-snap-evidence/,
@@ -607,6 +608,7 @@ function run() {
     fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead },
   });
   assert.equal(stableVerify.status, 0, stableVerify.stderr);
+  assert.equal(stableVerify.outputs.candidate_manifest_asset_id, '42');
   assert.match(
     stableVerify.log,
     /--require-snap-evidence/,
