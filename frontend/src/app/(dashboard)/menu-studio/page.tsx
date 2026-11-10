@@ -123,7 +123,14 @@ export default function MenuStudioPage() {
   }, []);
 
   useEffect(() => {
-    if (canManage) void loadData();
+    if (!canManage) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void loadData();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [canManage, loadData]);
 
   const visibleProducts = useMemo(() => {
