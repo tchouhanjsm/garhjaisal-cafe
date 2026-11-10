@@ -13,6 +13,7 @@ import * as path from 'node:path';
 
 const {
   classifyQuarantine,
+  readQuarantine,
   resolveElectronAbi,
   verifyElectronRuntime,
 } = require('../scripts/verify-electron-runtime.cjs');
@@ -109,6 +110,34 @@ function run() {
   // Missing tool (exit 127) → must NOT be clean.
   const missingTool = classifyQuarantine(127, 'xattr: command not found', '');
   assert.equal(missingTool.state, 'error', 'exit 127 (missing tool) is "error", not clean');
+  const xattrArgs = ['-p', 'com.apple.quarantine', '/path/Electron.app'];
+  const presentAttributeRead = readQuarantine('/path/Electron.app', (command, args, options) => {
+    assert.equal(command, 'xattr');
+    assert.deepEqual(args, xattrArgs);
+    assert.equal(options.encoding, 'utf8');
+    return '0083;1234567890;Electron';
+  });
+  assert.deepEqual(presentAttributeRead, {
+    state: 'present',
+    value: '0083;1234567890;Electron',
+  });
+
+  const absentAttributeRead = readQuarantine('/path/Electron.app', () => {
+    throw Object.assign(new Error('xattr returned no attribute'), {
+      status: 1,
+      stderr: Buffer.from('xattr: No such xattr: com.apple.quarantine'),
+    });
+  });
+  assert.deepEqual(absentAttributeRead, { state: 'absent' });
+
+  const permissionDeniedRead = readQuarantine('/path/Electron.app', () => {
+    throw Object.assign(new Error('xattr permission denied'), {
+      status: 1,
+      stderr: Buffer.from('xattr: Permission denied: /path/Electron.app'),
+    });
+  });
+  assert.equal(permissionDeniedRead.state, 'error');
+  assert.match(permissionDeniedRead.message, /Permission denied/);
   console.log('✅ Electron runtime xattr classification checks passed');
 
   const verifierSource = fs.readFileSync(
