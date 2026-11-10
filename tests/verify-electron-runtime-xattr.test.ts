@@ -51,7 +51,12 @@ function createRuntimeFixture({
     },
   };
 
-  return { cwd, electronDir, packagePath, distDir, fileSystem };
+  return { cwd, fileSystem };
+}
+
+function resolveFixtureAbi(version) {
+  assert.equal(version, '45.0.0');
+  return '140';
 }
 
 function verifyFixture(fixture, overrides = {}) {
@@ -59,14 +64,44 @@ function verifyFixture(fixture, overrides = {}) {
     cwd: fixture.cwd,
     platform: 'darwin',
     fileSystem: fixture.fileSystem,
-    resolveAbi: (version) => {
-      assert.equal(version, '45.0.0');
-      return '140';
-    },
+    resolveAbi: resolveFixtureAbi,
     readQuarantineAttribute: () => ({ state: 'absent' }),
     log: () => {},
     ...overrides,
   });
+}
+
+function assertRuntimeRejects(fixture, overrides, expectedMessage) {
+  assert.throws(
+    () => verifyFixture(fixture, overrides),
+    expectedMessage,
+  );
+}
+
+function returnPresentQuarantine() {
+  return { state: 'present', value: '0083;1234567890;Electron' };
+}
+
+function returnQuarantineError() {
+  return { state: 'error', message: 'Permission denied' };
+}
+
+function returnUnknownQuarantineState() {
+  return { state: 'unknown' };
+}
+
+function rejectUnsupportedAbi() {
+  throw new Error('unsupported Electron ABI');
+}
+
+function rejectMacQuarantineLookup() {
+  throw new Error('macOS quarantine lookup must not run on Linux');
+}
+
+function throwOnRead(error) {
+  return () => {
+    throw error;
+  };
 }
 
 function run() {
@@ -152,10 +187,9 @@ function run() {
     status: 1,
     stderr: 'xattr: No such xattr: com.apple.quarantine',
   });
+  const missingAttributeRead = readQuarantine(appPath, throwOnRead(missingAttribute));
   assert.equal(
-    readQuarantine(appPath, () => {
-      throw missingAttribute;
-    }).state,
+    missingAttributeRead.state,
     'absent',
     'the documented missing-attribute response is clean',
   );
@@ -164,10 +198,9 @@ function run() {
     status: 1,
     stderr: 'xattr: Permission denied',
   });
+  const failedAttributeRead = readQuarantine(appPath, throwOnRead(unexpectedAttributeError));
   assert.equal(
-    readQuarantine(appPath, () => {
-      throw unexpectedAttributeError;
-    }).state,
+    failedAttributeRead.state,
     'error',
     'permission failures must remain fail-closed',
   );
@@ -183,9 +216,7 @@ function run() {
   const nonMac = createRuntimeFixture({ distExists: false });
   const nonMacResult = verifyFixture(nonMac, {
     platform: 'linux',
-    readQuarantineAttribute: () => {
-      throw new Error('macOS quarantine lookup must not run on Linux');
-    },
+    readQuarantineAttribute: rejectMacQuarantineLookup,
   });
   assert.deepEqual(nonMacResult, {
     status: 'verified',
@@ -196,52 +227,33 @@ function run() {
 
   // macOS must fail when the Electron package has no app bundle.
   const missingBundle = createRuntimeFixture({ appEntries: [] });
-  assert.throws(
-    () => verifyFixture(missingBundle),
-    /no dist\/\*\.app bundle was found/,
-  );
+  assertRuntimeRejects(missingBundle, {}, /no dist\/\*\.app bundle was found/);
 
   // A present quarantine attribute blocks the development runtime.
   const quarantined = createRuntimeFixture();
-  assert.throws(
-    () =>
-      verifyFixture(quarantined, {
-        readQuarantineAttribute: () => ({
-          state: 'present',
-          value: '0083;1234567890;Electron',
-        }),
-      }),
+  assertRuntimeRejects(
+    quarantined,
+    { readQuarantineAttribute: returnPresentQuarantine },
     /marked com\.apple\.quarantine/,
   );
 
   // Unexpected lookup errors and unknown return states must fail closed.
   const failedQuarantine = createRuntimeFixture();
-  assert.throws(
-    () =>
-      verifyFixture(failedQuarantine, {
-        readQuarantineAttribute: () => ({
-          state: 'error',
-          message: 'Permission denied',
-        }),
-      }),
+  assertRuntimeRejects(
+    failedQuarantine,
+    { readQuarantineAttribute: returnQuarantineError },
     /could not read the quarantine attribute.*Permission denied/,
   );
-  assert.throws(
-    () =>
-      verifyFixture(failedQuarantine, {
-        readQuarantineAttribute: () => ({ state: 'unknown' }),
-      }),
+  assertRuntimeRejects(
+    failedQuarantine,
+    { readQuarantineAttribute: returnUnknownQuarantineState },
     /unexpected xattr failure/,
   );
 
   // ABI resolution failure is surfaced with the installed Electron version.
-  assert.throws(
-    () =>
-      verifyFixture(createRuntimeFixture(), {
-        resolveAbi: () => {
-          throw new Error('unsupported Electron ABI');
-        },
-      }),
+  assertRuntimeRejects(
+    createRuntimeFixture(),
+    { resolveAbi: rejectUnsupportedAbi },
     /node-abi cannot resolve ABI for Electron 45\.0\.0: unsupported Electron ABI/,
   );
 
