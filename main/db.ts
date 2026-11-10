@@ -10343,6 +10343,28 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       }
     },
   },
+  {
+    version: 126,
+    name: 'add_menu_studio_audit_log',
+    up: () => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS menu_studio_audit_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          batch_id TEXT NOT NULL,
+          product_id TEXT NOT NULL,
+          actor_user_id TEXT NOT NULL REFERENCES users(id),
+          action TEXT NOT NULL CHECK (action IN ('item_updated', 'price_updated', 'availability_updated')),
+          before_json TEXT NOT NULL,
+          after_json TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_menu_studio_audit_batch
+          ON menu_studio_audit_log(batch_id, id);
+        CREATE INDEX IF NOT EXISTS idx_menu_studio_audit_product
+          ON menu_studio_audit_log(product_id, id);
+      `);
+    },
+  },
 ];
 
 export function backfillWhatsAppMessageAttempts(
