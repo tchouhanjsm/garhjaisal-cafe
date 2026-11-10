@@ -124,14 +124,33 @@ export default function MenuStudioPage() {
 
   useEffect(() => {
     if (!canManage) return;
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) void loadData();
-    });
+    let active = true;
+    const controller = new AbortController();
+    void Promise.all([
+      api.get('/products?include_inactive_variants=true', { signal: controller.signal }),
+      api.get('/categories', { signal: controller.signal }),
+    ])
+      .then(([productResponse, categoryResponse]) => {
+        if (!active) return;
+        setProducts((productResponse.data.products as Product[]) || []);
+        setCategories((categoryResponse.data.categories as Category[]) || []);
+      })
+      .catch((error: unknown) => {
+        if (
+          active &&
+          !(error instanceof Error && (error.name === 'CanceledError' || error.name === 'AbortError'))
+        ) {
+          toast.error(errorMessage(error) || 'Could not load the menu catalog');
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
     return () => {
-      cancelled = true;
+      active = false;
+      controller.abort();
     };
-  }, [canManage, loadData]);
+  }, [canManage]);
 
   const visibleProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
