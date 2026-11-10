@@ -1138,9 +1138,16 @@ export default function ProductsPage() {
       <div className="mb-6 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-foreground">{t('title')}</h1>
         {activeTab === 'products' && (
-          <Button onClick={openCreate}>
-            <Plus size={16} className="me-1" /> {t('addProduct')}
-          </Button>
+          <div className="flex items-center gap-2">
+            {isOwnerOrManager && (
+              <Button variant="outline" onClick={() => router.push('/menu-studio')}>
+                Menu Studio
+              </Button>
+            )}
+            <Button onClick={openCreate}>
+              <Plus size={16} className="me-1" /> {t('addProduct')}
+            </Button>
+          </div>
         )}
         {activeTab === 'categories' && (
           <Button
