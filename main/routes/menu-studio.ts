@@ -198,15 +198,16 @@ router.post('/updates', requirePermission('catalog.manage'), (req: Request, res:
             { statusCode: 409, code: 'stale_write', product_id: current.id },
           );
         }
-        if (
-          change.patch.category_id &&
-          (!selectCategory.get(change.patch.category_id) ||
-            Number((selectCategory.get(change.patch.category_id) as { is_active: number }).is_active) !== 1)
-        ) {
-          throw Object.assign(new Error('Choose an active category'), {
-            statusCode: 400,
-            code: 'category_unavailable',
-          });
+        if (change.patch.category_id) {
+          const category = selectCategory.get(change.patch.category_id) as
+            | { id: string; is_active: number }
+            | undefined;
+          if (!category || Number(category.is_active) !== 1) {
+            throw Object.assign(new Error('Choose an active category'), {
+              statusCode: 400,
+              code: 'category_unavailable',
+            });
+          }
         }
         loaded.push({ change, current });
       }
