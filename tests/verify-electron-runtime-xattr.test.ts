@@ -34,6 +34,16 @@ function run() {
     'resolveElectronAbi must throw when node-abi lacks a mapping for an unknown Electron version',
   );
 
+  const verifierSource = fs.readFileSync(
+    path.join(__dirname, '../scripts/verify-electron-runtime.cjs'),
+    'utf8',
+  );
+  assert.doesNotMatch(
+    verifierSource,
+    /\bcodesign\s+-dv\b/,
+    'the development runtime verifier must not require code-signature metadata',
+  );
+
   // Present attribute (exit 0, value on stdout) → must fail as quarantined.
   const present = classifyQuarantine(0, '', '0083;1234567890;Electron');
   assert.equal(present.state, 'present', 'exit 0 with stdout is "present"');
