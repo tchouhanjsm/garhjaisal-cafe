@@ -524,7 +524,7 @@ export default function MenuStudioPage() {
                     />
                   </td>
                   <td className="p-3 align-middle">
-                    {isEditing ? (
+                    {rowDraft ? (
                       <div className="min-w-48">
                         <input
                           value={rowDraft.name}
@@ -547,7 +547,7 @@ export default function MenuStudioPage() {
                     )}
                   </td>
                   <td className="p-3 align-middle">
-                    {isEditing ? (
+                    {rowDraft ? (
                       <select
                         value={rowDraft.category_id}
                         onChange={(event) => setDraft({ ...rowDraft, category_id: event.target.value })}
@@ -564,7 +564,7 @@ export default function MenuStudioPage() {
                     )}
                   </td>
                   <td className="p-3 text-end align-middle">
-                    {isEditing ? (
+                    {rowDraft ? (
                       <input
                         type="number"
                         min="0"
@@ -584,7 +584,7 @@ export default function MenuStudioPage() {
                     )}
                   </td>
                   <td className="p-3 text-center align-middle">
-                    {isEditing ? (
+                    {rowDraft ? (
                       <select
                         value={rowDraft.is_active ? 'available' : 'unavailable'}
                         onChange={(event) => setDraft({ ...rowDraft, is_active: event.target.value === 'available' })}
@@ -605,7 +605,7 @@ export default function MenuStudioPage() {
                     <div>{product.addon_groups?.length || 0} add-on groups</div>
                   </td>
                   <td className="p-3 text-end align-middle">
-                    {isEditing ? (
+                    {rowDraft ? (
                       <div className="inline-flex items-center gap-1">
                         <Button size="sm" onClick={() => void saveEdit(product)} disabled={savingId === product.id}>
                           <Check className="me-1 size-3.5" /> {savingId === product.id ? 'Saving' : 'Save'}
