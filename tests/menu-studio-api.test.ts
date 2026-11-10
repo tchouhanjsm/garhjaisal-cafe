@@ -375,8 +375,6 @@ async function main() {
       'stale CSV cannot overwrite a newer edit',
     );
 
-
-
     const results = getResults();
     console.log(`\nMenu Studio API: ${results.passed}/${results.total} checks passed.`);
     if (results.failed > 0) process.exitCode = 1;

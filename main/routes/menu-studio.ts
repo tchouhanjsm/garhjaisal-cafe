@@ -320,7 +320,7 @@ router.get('/csv/export', requirePermission('catalog.manage'), (_req: Request, r
       .prepare(
         `SELECT id, sku, name, category_id, price, is_active, updated_at
          FROM products WHERE deleted_at IS NULL
-         ORDER BY name COLLATE NOCASE, id`
+         ORDER BY name COLLATE NOCASE, id`,
       )
       .all() as {
       id: string;
