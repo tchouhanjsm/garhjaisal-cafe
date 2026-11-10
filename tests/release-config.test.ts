@@ -170,6 +170,15 @@ const captureNodeArgs = `#!/bin/sh
 printf 'node %s\\n' "$*" >> "$RELEASE_TEST_LOG"
 `;
 
+const fakeHead = `#!/bin/sh
+if [ "$#" -ne 1 ] || [ "$1" != "-1" ]; then
+  echo "fake head only supports -1" >&2
+  exit 2
+fi
+IFS= read -r first_line || exit 0
+printf '%s\\n' "$first_line"
+`;
+
 const fakeGit = `#!/bin/sh
 if [ "$1" = "tag" ]; then
   printf '2.8.0\\n3.2.0\\n3.2.3\\n3.3.0\\ntax-pack-1.0.0\\n'
@@ -567,7 +576,7 @@ function run() {
       'needs.create-release.outputs.manifest_prefix': 'beta',
       'github.sha': 'a'.repeat(40),
     },
-    fakeCommands: { gh: fakeGh, node: captureNodeArgs },
+    fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead },
   });
   assert.equal(betaVerify.status, 0, betaVerify.stderr);
   assert.doesNotMatch(
@@ -595,7 +604,7 @@ function run() {
       'needs.create-release.outputs.manifest_prefix': 'latest',
       'github.sha': 'b'.repeat(40),
     },
-    fakeCommands: { gh: fakeGh, node: captureNodeArgs },
+    fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead },
   });
   assert.equal(stableVerify.status, 0, stableVerify.stderr);
   assert.match(
@@ -613,7 +622,7 @@ function run() {
       'needs.create-release.outputs.manifest_prefix': 'latest',
       'github.sha': 'b'.repeat(40),
     },
-    fakeCommands: { gh: '#!/bin/sh\nexit 0\n' },
+    fakeCommands: { gh: '#!/bin/sh\nexit 0\n', head: fakeHead },
   });
   assert.notEqual(missingCandidateManifestId.status, 0);
   assert.match(missingCandidateManifestId.stdout, /candidate-manifest\.json asset ID is missing/);
