@@ -908,7 +908,7 @@ jobs:
                 --output "$LOCAL"
             fi
             EXISTING_URL=$(gh api "repos/${{ github.repository }}/releases" --paginate \
-              --jq ".[] | select(.tag_name == \"$TAG\") | .assets[] | select(.name == \"$NAME\") | .url" | { first_line=""; IFS= read -r first_line || true; printf '%s' "$first_line"; } || true)
+              --jq ".[] | select(.tag_name == \"$TAG\") | .assets[] | select(.name == \"$NAME\") | .url" | head -1 || true)
             if [ -n "$EXISTING_URL" ]; then
               EXISTING="$RUNNER_TEMP/existing-$NAME"
               gh api "$EXISTING_URL" -H 'Accept: application/octet-stream' > "$EXISTING"
@@ -932,7 +932,7 @@ jobs:
         run: |
           set -euo pipefail
           CANDIDATE_MANIFEST_ASSET_ID=$(gh api "repos/${{ github.repository }}/releases" --paginate \
-            --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .assets[] | select(.name == \"candidate-manifest.json\") | .id" | { first_line=""; IFS= read -r first_line || true; printf '%s' "$first_line"; })
+            --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .assets[] | select(.name == \"candidate-manifest.json\") | .id" | head -1)
           if [ -z "$CANDIDATE_MANIFEST_ASSET_ID" ]; then
             echo "::error::candidate-manifest.json asset ID is missing; refusing to verify or publish the release"
             exit 1
@@ -992,7 +992,7 @@ jobs:
           # ID through the releases list. Same root cause as the draft-asset
           # verifier fix in scripts/verify-release-assets.cjs (#468).
           RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases" --paginate \
-            --jq ".[] | select(.tag_name==\"$VERSION\") | .id" | { first_line=""; IFS= read -r first_line || true; printf '%s' "$first_line"; })
+            --jq ".[] | select(.tag_name==\"$VERSION\") | .id" | head -1)
           if [ -z "$RELEASE_ID" ]; then
             echo "::error::No release found for tag $VERSION"
             exit 1

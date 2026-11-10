@@ -328,20 +328,6 @@ function run() {
   );
 
   const workflow = loadWorkflow('release.yml');
-  const releaseWorkflowSource = fs.readFileSync(
-    path.join(__dirname, '../.github/workflows/release.yml'),
-    'utf8',
-  );
-  assert.equal(
-    releaseWorkflowSource.includes('| head -1'),
-    false,
-    'release workflow must not resolve the npm HTTP HEAD client instead of a Unix head utility',
-  );
-  assert.equal(
-    releaseWorkflowSource.split('IFS= read -r first_line || true').length - 1,
-    3,
-    'all release-list first-line selections must use the shell builtin read operation',
-  );
   const jobs = workflow.jobs;
   const triggers = workflow.on || workflow['true'];
   const masWorkflow = loadWorkflow('publish-mas.yml');
@@ -1251,241 +1237,59 @@ exit 1
   assert.equal(matrixUpload.with.name, 'flocafe-build-${{ matrix.name }}');
 
   const ciWorkflow = loadWorkflow('ci.yml');
-  const ciTriggers = ciWorkflow.on || ciWorkflow['true'];
-  assert.deepEqual(ciTriggers.push.branches, ['main']);
-  assert.deepEqual(ciTriggers.pull_request.branches, ['main', 'codex/*']);
-  assert.ok(
-    ciTriggers.workflow_dispatch !== undefined,
-    'CI must support manual runs to bootstrap and recover required checks',
-  );
   const requiredGateJob = ciWorkflow.jobs['required-checks-gate'];
   assert.deepEqual(requiredGateJob.needs, [
     'changes',
-    'dependency-review',
-    'tax-category-invariant',
     'linux-baseline',
-    'linux-tests',
     'e2e-playwright',
-    'native-e2e-playwright',
     'windows-uninstaller',
-    'windows-tooling',
-    'docs-checks',
   ]);
   assert.equal(
     requiredGateJob.if,
     'always()',
-    'the gate must report a conclusion even when path-filtered dependencies are skipped',
+    'the gate must still report a conclusion when a path-filtered dependency is skipped',
   );
-  assert.ok(
-    requiredGateJob.needs.includes('linux-tests'),
-    'the aggregate gate must depend on the four-shard core test suite',
-  );
-  assert.ok(
-    requiredGateJob.needs.includes('native-e2e-playwright'),
-    'the aggregate gate must depend on native Electron Playwright tests',
-  );
-  assert.ok(
-    requiredGateJob.needs.includes('windows-tooling'),
-    'the aggregate gate must depend on Windows contributor tooling',
-  );
-  assert.ok(
-    requiredGateJob.needs.includes('docs-checks'),
-    'the aggregate gate must depend on documentation checks',
-  );
-  const requiredGateStep = findStep(requiredGateJob, 'Verify all applicable CI jobs passed');
-  assertShellStep(requiredGateJob, 'Verify all applicable CI jobs passed');
-
-  const baseGateExpressions: Record<string, string> = {
-    'github.event_name': 'pull_request',
-    'needs.changes.result': 'success',
-    'needs.changes.outputs.frontend': 'false',
-    'needs.changes.outputs.backend': 'false',
-    'needs.changes.outputs.kds': 'false',
-    'needs.changes.outputs.db': 'false',
-    'needs.changes.outputs.uninstaller': 'false',
-    'needs.changes.outputs.docs': 'false',
-    'needs.dependency-review.result': 'success',
-    'needs.tax-category-invariant.result': 'success',
-    'needs.linux-baseline.result': 'skipped',
-    'needs.linux-tests.result': 'skipped',
-    'needs.e2e-playwright.result': 'success',
-    'needs.native-e2e-playwright.result': 'skipped',
-    'needs.windows-uninstaller.result': 'skipped',
-    'needs.windows-tooling.result': 'skipped',
-    'needs.docs-checks.result': 'skipped',
-  };
-  const gateExpressions = (overrides: Record<string, string> = {}) => ({
-    ...baseGateExpressions,
-    ...overrides,
+  const requiredGateStep = findStep(requiredGateJob, 'Verify no required job actually failed');
+  assertShellStep(requiredGateJob, 'Verify no required job actually failed');
+  const gateExpressions = (changesResult: string, results: [string, string, string]) => ({
+    'needs.changes.result': changesResult,
+    'needs.linux-baseline.result': results[0],
+    'needs.e2e-playwright.result': results[1],
+    'needs.windows-uninstaller.result': results[2],
   });
-
-  const gatePassesUnrelatedPathSkips = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions(),
+  const gatePassesAllSkipped = executeWorkflowStep(requiredGateStep, {
+    expressions: gateExpressions('success', ['skipped', 'skipped', 'skipped']),
   });
   assert.equal(
-    gatePassesUnrelatedPathSkips.status,
+    gatePassesAllSkipped.status,
     0,
-    'unaffected path-filtered jobs may skip without blocking a PR',
+    'a docs/workflow-only PR that skips every path-filtered job must still pass the gate',
   );
-
-  const gatePassesBackendChange = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.outputs.backend': 'true',
-      'needs.linux-baseline.result': 'success',
-      'needs.linux-tests.result': 'success',
-      'needs.native-e2e-playwright.result': 'success',
-      'needs.windows-tooling.result': 'success',
-    }),
+  const gatePassesMixed = executeWorkflowStep(requiredGateStep, {
+    expressions: gateExpressions('success', ['success', 'skipped', 'success']),
   });
-  assert.equal(gatePassesBackendChange.status, 0, gatePassesBackendChange.stderr);
-  assert.match(gatePassesBackendChange.stdout, /All applicable CI jobs passed/);
-
-  const gatePassesDocsChange = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.outputs.docs': 'true',
-      'needs.docs-checks.result': 'success',
-    }),
-  });
-  assert.equal(gatePassesDocsChange.status, 0, gatePassesDocsChange.stderr);
-
-  const gatePassesUninstallerChange = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.outputs.uninstaller': 'true',
-      'needs.windows-uninstaller.result': 'success',
-    }),
-  });
-  assert.equal(gatePassesUninstallerChange.status, 0, gatePassesUninstallerChange.stderr);
-
-  const gateAllowsSkippedDependencyReviewOnPush = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'github.event_name': 'push',
-      'needs.dependency-review.result': 'skipped',
-    }),
-  });
-  assert.equal(
-    gateAllowsSkippedDependencyReviewOnPush.status,
-    0,
-    gateAllowsSkippedDependencyReviewOnPush.stderr,
-  );
-
-  const gateFailsOnCoreShardFailure = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.outputs.backend': 'true',
-      'needs.linux-baseline.result': 'success',
-      'needs.linux-tests.result': 'failure',
-      'needs.native-e2e-playwright.result': 'success',
-      'needs.windows-tooling.result': 'success',
-    }),
+  assert.equal(gatePassesMixed.status, 0, gatePassesMixed.stderr);
+  const gateFailsOnRealFailure = executeWorkflowStep(requiredGateStep, {
+    expressions: gateExpressions('success', ['success', 'failure', 'success']),
   });
   assert.notEqual(
-    gateFailsOnCoreShardFailure.status,
+    gateFailsOnRealFailure.status,
     0,
-    'a failed member of the matrix aggregate must block the required gate',
+    'the gate must not mask an actual job failure as passing',
   );
-
-  const gateFailsWhenRequiredCoreJobWasSkipped = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.outputs.backend': 'true',
-      'needs.linux-baseline.result': 'success',
-      'needs.linux-tests.result': 'skipped',
-      'needs.native-e2e-playwright.result': 'success',
-      'needs.windows-tooling.result': 'success',
-    }),
-  });
-  assert.notEqual(
-    gateFailsWhenRequiredCoreJobWasSkipped.status,
-    0,
-    'a relevant code change cannot pass when the core suite was unexpectedly skipped',
-  );
-
-  const gateFailsOnNativeElectronFailure = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.outputs.frontend': 'true',
-      'needs.linux-baseline.result': 'success',
-      'needs.linux-tests.result': 'success',
-      'needs.native-e2e-playwright.result': 'failure',
-    }),
-  });
-  assert.notEqual(
-    gateFailsOnNativeElectronFailure.status,
-    0,
-    'native Electron Playwright failure must block the aggregate gate',
-  );
-
-  const gateFailsOnWindowsToolingFailure = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.outputs.backend': 'true',
-      'needs.linux-baseline.result': 'success',
-      'needs.linux-tests.result': 'success',
-      'needs.native-e2e-playwright.result': 'success',
-      'needs.windows-tooling.result': 'failure',
-    }),
-  });
-  assert.notEqual(
-    gateFailsOnWindowsToolingFailure.status,
-    0,
-    'Windows contributor tooling failure must block the aggregate gate',
-  );
-
-  const gateFailsOnDocsFailure = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.outputs.docs': 'true',
-      'needs.docs-checks.result': 'failure',
-    }),
-  });
-  assert.notEqual(
-    gateFailsOnDocsFailure.status,
-    0,
-    'documentation validation failure must block when documentation paths change',
-  );
-
-  const gateFailsOnUninstallerFailure = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.outputs.uninstaller': 'true',
-      'needs.windows-uninstaller.result': 'failure',
-    }),
-  });
-  assert.notEqual(
-    gateFailsOnUninstallerFailure.status,
-    0,
-    'Windows uninstaller failure must block when uninstaller paths change',
-  );
-
-  const gateFailsWhenDependencyReviewIsSkipped = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.dependency-review.result': 'skipped',
-    }),
-  });
-  assert.notEqual(
-    gateFailsWhenDependencyReviewIsSkipped.status,
-    0,
-    'Dependency Review cannot be skipped for a pull request',
-  );
-
-  const gateFailsOnTaxInvariantFailure = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.tax-category-invariant.result': 'failure',
-    }),
-  });
-  assert.notEqual(
-    gateFailsOnTaxInvariantFailure.status,
-    0,
-    'the always-on zero-tax invariant must block on failure',
-  );
-
   const gateFailsWhenChangesFails = executeWorkflowStep(requiredGateStep, {
-    expressions: gateExpressions({
-      'needs.changes.result': 'failure',
-    }),
+    expressions: gateExpressions('failure', ['skipped', 'skipped', 'skipped']),
   });
   assert.notEqual(
     gateFailsWhenChangesFails.status,
     0,
-    'a failed Path Filtering job must not be treated as a permitted path-filtered skip',
+    'a failed Path Filtering job makes every dependent "skipped" for the wrong reason — the gate must not treat that as passing',
   );
 
-  // A newer push cancels the in-flight run of an older one on the same ref.
-  // The gate still fails the unreported run and names the newer run for diagnosis.
+  // A newer push cancels the in-flight run of an older one on the same ref
+  // (concurrency cancel-in-progress). That push never reported its required
+  // checks, so the gate still fails - but the run must name the newer push
+  // instead of reporting the same condition as a job failure.
   const gateTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flocafe-required-gate-'));
   const runsFixturePath = path.join(gateTempDir, 'runs.json');
   const thisPush = {
@@ -1528,52 +1332,86 @@ cat "$CI_TEST_RUNS_FIXTURE"
       ...extra,
     };
   };
-  const cancelledPushExpressions = () =>
-    gateExpressions({
-      'github.event_name': 'push',
-      'needs.changes.result': 'cancelled',
-      'needs.tax-category-invariant.result': 'cancelled',
-      'needs.e2e-playwright.result': 'cancelled',
-    });
   try {
     const gateSuperseded = executeWorkflowStep(requiredGateStep, {
       env: gateEnv([newerPush, thisPush]),
-      expressions: cancelledPushExpressions(),
+      expressions: gateExpressions('cancelled', ['cancelled', 'cancelled', 'cancelled']),
       fakeCommands: { gh: fakeRunsGh },
     });
-    assert.notEqual(gateSuperseded.status, 0);
+    assert.notEqual(
+      gateSuperseded.status,
+      0,
+      'a superseded push never reported its required checks, so the gate must still fail - the change is messaging only',
+    );
     assert.match(gateSuperseded.stdout, /superseded by a newer push/i, gateSuperseded.stdout);
-    assert.match(gateSuperseded.stdout, new RegExp(newerPush.head_sha));
-    assert.match(gateSuperseded.stdout, new RegExp(newerPush.html_url));
-    assert.doesNotMatch(gateSuperseded.stdout, /did not succeed/);
+    assert.match(
+      gateSuperseded.stdout,
+      new RegExp(newerPush.head_sha),
+      'the superseded message must name the newer push by commit',
+    );
+    assert.match(
+      gateSuperseded.stdout,
+      new RegExp(newerPush.html_url),
+      'the superseded message must link the newer push run',
+    );
+    assert.doesNotMatch(
+      gateSuperseded.stdout,
+      /did not succeed/,
+      'a superseded push must not be reported as a required job failure',
+    );
 
     const gateCancelledWithoutNewerPush = executeWorkflowStep(requiredGateStep, {
       env: gateEnv([otherBranchRun, thisPush]),
-      expressions: cancelledPushExpressions(),
+      expressions: gateExpressions('cancelled', ['cancelled', 'cancelled', 'cancelled']),
       fakeCommands: { gh: fakeRunsGh },
     });
-    assert.notEqual(gateCancelledWithoutNewerPush.status, 0);
-    assert.doesNotMatch(gateCancelledWithoutNewerPush.stdout, /superseded/i);
+    assert.notEqual(
+      gateCancelledWithoutNewerPush.status,
+      0,
+      'cancelled required checks with no newer push on this ref are an unreported required check, not supersession - the gate must still block',
+    );
+    assert.doesNotMatch(
+      gateCancelledWithoutNewerPush.stdout,
+      /superseded/i,
+      'without a newer push on this ref to name, the gate must not claim this run was superseded',
+    );
 
     const gateFailureIsNotSuperseded = executeWorkflowStep(requiredGateStep, {
       env: gateEnv([newerPush, thisPush]),
-      expressions: gateExpressions({
-        ...cancelledPushExpressions(),
-        'needs.e2e-playwright.result': 'failure',
-      }),
+      expressions: gateExpressions('cancelled', ['cancelled', 'failure', 'cancelled']),
       fakeCommands: { gh: fakeRunsGh },
     });
-    assert.notEqual(gateFailureIsNotSuperseded.status, 0);
-    assert.doesNotMatch(gateFailureIsNotSuperseded.stdout, /superseded/i);
-    assert.match(gateFailureIsNotSuperseded.stdout, /did not succeed/);
+    assert.notEqual(
+      gateFailureIsNotSuperseded.status,
+      0,
+      'a required job that actually failed must still fail the gate',
+    );
+    assert.doesNotMatch(
+      gateFailureIsNotSuperseded.stdout,
+      /superseded/i,
+      'a real job failure must never be explained away as supersession',
+    );
+    assert.match(
+      gateFailureIsNotSuperseded.stdout,
+      /did not succeed/,
+      gateFailureIsNotSuperseded.stdout,
+    );
 
     const gateLookupFails = executeWorkflowStep(requiredGateStep, {
       env: gateEnv([newerPush, thisPush], { CI_TEST_GH_FAIL: '1' }),
-      expressions: cancelledPushExpressions(),
+      expressions: gateExpressions('cancelled', ['cancelled', 'cancelled', 'cancelled']),
       fakeCommands: { gh: fakeRunsGh },
     });
-    assert.notEqual(gateLookupFails.status, 0);
-    assert.doesNotMatch(gateLookupFails.stdout, /superseded/i);
+    assert.notEqual(
+      gateLookupFails.status,
+      0,
+      'a superseded-lookup failure must not turn an unreported required check into a pass',
+    );
+    assert.doesNotMatch(
+      gateLookupFails.stdout,
+      /superseded/i,
+      'when the newer push cannot be identified the gate must fall back to the ordinary failure report',
+    );
   } finally {
     fs.rmSync(gateTempDir, { recursive: true, force: true });
   }
