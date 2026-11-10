@@ -2433,7 +2433,9 @@ async function main() {
         assert(s1Close.status === 200, '#1339 (setting off): User A closes shift (200)');
       });
       db.prepare(
-        `DELETE FROM cash_drawer_movements WHERE business_date = '${s11BusinessDate}' AND movement_type = 'opening_float'`,
+        `DELETE FROM cash_drawer_movements
+         WHERE business_date = '${s11BusinessDate}'
+           AND movement_type = 'opening_float'`,
       ).run();
       db.prepare(`DELETE FROM cash_sessions WHERE opened_at LIKE '${s11BusinessDate}%'`).run();
       db.prepare(`DELETE FROM cash_closures WHERE business_date = '${s11BusinessDate}'`).run();
@@ -2503,7 +2505,9 @@ async function main() {
       const dayFloatRow = db
         .prepare(
           `SELECT amount_cents FROM cash_drawer_movements
-           WHERE business_date = '${s11BusinessDate}' AND movement_type = 'opening_float' AND voided_at IS NULL`,
+           WHERE business_date = '${s11BusinessDate}'
+             AND movement_type = 'opening_float'
+             AND voided_at IS NULL`,
         )
         .get() as { amount_cents: number } | undefined;
       assert(
