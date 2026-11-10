@@ -317,25 +317,79 @@ router.get(
   '/csv/export',
   requirePermission('catalog.manage'),
   (_req: Request, res: Response) => {
-  try {
-    const db = getDatabase();
-    const products = db
-      .prepare(
-        `SELECT id, sku, name, category_id, price, is_active, updated_at
-         FROM products WHERE deleted_at IS NULL
-         ORDER BY name COLLATE NOCASE, id`,
-      )
-      .all() as {
-      id: string;
-      sku: string | null;
-      name: string;
-      category_id: string | null;
-      price: number;
-      is_active: number | null;
-      updated_at: string;
-    }[];
-    const lines = [
-      [
+    try {
+      const db = getDatabase();
+      const products = db
+        .prepare(
+          `SELECT id, sku, name, category_id, price, is_active, updated_at
+           FROM products WHERE deleted_at IS NULL
+           ORDER BY name COLLATE NOCASE, id`,
+        )
+        .all() as {
+        id: string;
+        sku: string | null;
+        name: string;
+        category_id: string | null;
+        price: number;
+        is_active: number | null;
+        updated_at: string;
+      }[];
+      const lines = [
+        [
+          'id',
+          'sku',
+          'name',
+          'category_id',
+          'price',
+          'is_active',
+          'updated_at',
+          FLO_CSV_ENCODING_COLUMN,
+        ].join(','),
+      ];
+      for (const product of products) {
+        lines.push(
+          toQuoteV1CsvRow([
+            product.id,
+            product.sku,
+            product.name,
+            product.category_id,
+            Number(product.price),
+            Number(product.is_active ?? 1) === 1 ? 'yes' : 'no',
+            product.updated_at,
+            FLO_CSV_ENCODING_QUOTE_V1,
+          ]),
+        );
+      }
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="menu-studio-export.csv"');
+      res.send(lines.join('\r\n'));
+    } catch (error: any) {
+      res.locals.postHogError = error;
+      console.error('[Menu Studio] CSV export failed:', error);
+      res.status(500).json({ error: 'Could not export the menu catalog' });
+    }
+  },
+);
+
+router.post(
+  '/csv/preview',
+  requirePermission('catalog.manage'),
+  (req: Request, res: Response) => {
+    try {
+      const rawCsv = req.body?.csv;
+      if (typeof rawCsv !== 'string' || !rawCsv.trim()) {
+        return res.status(400).json({ error: 'Choose a non-empty Menu Studio CSV file' });
+      }
+
+      const parsed = parseCSV(rawCsv.replace(/^\uFEFF/, ''));
+      if (parsed.length < 2) {
+        return res.status(400).json({
+          error: 'CSV must include a header and at least one product row',
+        });
+      }
+
+      const headers = parsed[0].map((header) => header.trim().toLowerCase());
+      const allowedHeaders = new Set([
         'id',
         'sku',
         'name',
@@ -344,266 +398,212 @@ router.get(
         'is_active',
         'updated_at',
         FLO_CSV_ENCODING_COLUMN,
-      ].join(','),
-    ];
-    for (const product of products) {
-      lines.push(
-        toQuoteV1CsvRow([
-          product.id,
-          product.sku,
-          product.name,
-          product.category_id,
-          Number(product.price),
-          Number(product.is_active ?? 1) === 1 ? 'yes' : 'no',
-          product.updated_at,
-          FLO_CSV_ENCODING_QUOTE_V1,
-        ]),
-      );
-    }
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="menu-studio-export.csv"');
-    res.send(lines.join('\r\n'));
-  } catch (error: any) {
-    res.locals.postHogError = error;
-    console.error('[Menu Studio] CSV export failed:', error);
-    res.status(500).json({ error: 'Could not export the menu catalog' });
-  }
-  },
-);
-
-router.post(
-  '/csv/preview',
-  requirePermission('catalog.manage'),
-  (req: Request, res: Response) => {
-  try {
-    const rawCsv = req.body?.csv;
-    if (typeof rawCsv !== 'string' || !rawCsv.trim()) {
-      return res.status(400).json({ error: 'Choose a non-empty Menu Studio CSV file' });
-    }
-
-    const parsed = parseCSV(rawCsv.replace(/^\uFEFF/, ''));
-    if (parsed.length < 2) {
-      return res.status(400).json({
-        error: 'CSV must include a header and at least one product row',
-      });
-    }
-
-    const headers = parsed[0].map((header) => header.trim().toLowerCase());
-    const allowedHeaders = new Set([
-      'id',
-      'sku',
-      'name',
-      'category_id',
-      'price',
-      'is_active',
-      'updated_at',
-      FLO_CSV_ENCODING_COLUMN,
-    ]);
-    const duplicateHeaders = headers.filter((header, index) => headers.indexOf(header) !== index);
-    const missingHeaders = [...allowedHeaders].filter((header) => !headers.includes(header));
-    const unsupportedHeaders = headers.filter((header) => !allowedHeaders.has(header));
-    if (duplicateHeaders.length || missingHeaders.length || unsupportedHeaders.length) {
-      return res.status(400).json({
-        error:
-          'Use the CSV exported by Menu Studio. Required columns: id, sku, name, category_id, price, is_active, updated_at and flo_csv_encoding.',
-        code: 'invalid_csv_headers',
-        missing_headers: missingHeaders,
-        unsupported_headers: [...new Set(unsupportedHeaders)],
-        duplicate_headers: [...new Set(duplicateHeaders)],
-      });
-    }
-
-    const rows = toObjects(parsed);
-    if (rows.length < 1 || rows.length > 250) {
-      return res.status(400).json({
-        error: 'Menu Studio CSV import supports between 1 and 250 product rows per batch',
-        code: 'invalid_csv_row_count',
-      });
-    }
-
-    const db = getDatabase();
-    const selectProduct = db.prepare(
-      `SELECT id, sku, name, category_id, price, is_active, updated_at, deleted_at
-       FROM products WHERE id = ?`,
-    );
-    const selectCategory = db.prepare(
-      'SELECT id, is_active FROM categories WHERE id = ? AND deleted_at IS NULL',
-    );
-    const seenIds = new Set<string>();
-    const changes: MenuStudioChange[] = [];
-    const previewRows: {
-      row_number: number;
-      product_id: string | null;
-      product_name: string;
-      status: 'ready' | 'unchanged' | 'error';
-      message: string | null;
-      before: EditableSnapshot | null;
-      after: EditableSnapshot | null;
-    }[] = [];
-    const errors: string[] = [];
-    let unchangedCount = 0;
-    let readyCount = 0;
-
-    rows.forEach((row, index) => {
-      const rowNumber = index + 2;
-      const encoding = resolveCsvRowEncoding(row);
-      const decode = (value: string | undefined): string =>
-        encoding.ok && encoding.mode === 'quote-v1'
-          ? decodeQuoteV1Field(value ?? '')
-          : (value ?? '');
-      const id = decode(row.id).trim();
-      const name = decode(row.name).trim();
-      const fail = (message: string, before: EditableSnapshot | null = null) => {
-        errors.push('Row ' + rowNumber + ': ' + message);
-        previewRows.push({
-          row_number: rowNumber,
-          product_id: id || null,
-          product_name: name || before?.name || id || 'Unknown item',
-          status: 'error',
-          message,
-          before,
-          after: null,
+      ]);
+      const duplicateHeaders = headers.filter((header, index) => headers.indexOf(header) !== index);
+      const missingHeaders = [...allowedHeaders].filter((header) => !headers.includes(header));
+      const unsupportedHeaders = headers.filter((header) => !allowedHeaders.has(header));
+      if (duplicateHeaders.length || missingHeaders.length || unsupportedHeaders.length) {
+        return res.status(400).json({
+          error:
+            'Use the CSV exported by Menu Studio. Required columns: id, sku, name, category_id, price, is_active, updated_at and flo_csv_encoding.',
+          code: 'invalid_csv_headers',
+          missing_headers: missingHeaders,
+          unsupported_headers: [...new Set(unsupportedHeaders)],
+          duplicate_headers: [...new Set(duplicateHeaders)],
         });
-      };
-
-      if (!encoding.ok) {
-        fail(encoding.error);
-        return;
-      }
-      if (!id) {
-        fail('product id is required');
-        return;
-      }
-      if (seenIds.has(id)) {
-        fail('duplicate product id in this CSV');
-        return;
-      }
-      seenIds.add(id);
-
-      const current = selectProduct.get(id) as
-        | (ProductRow & { sku: string | null })
-        | undefined;
-      if (!current || current.deleted_at) {
-        fail('product id does not exist in the current catalog');
-        return;
-      }
-      const before = snapshotProduct(current);
-      const suppliedUpdatedAt = decode(row.updated_at).trim();
-      if (!suppliedUpdatedAt || suppliedUpdatedAt !== current.updated_at) {
-        fail(
-          'product changed after this CSV was exported; export the latest menu and retry',
-          before,
-        );
-        return;
-      }
-      const suppliedSku = decode(row.sku).trim() || null;
-      const currentSku = current.sku?.trim() || null;
-      if (suppliedSku !== currentSku) {
-        fail('SKU is a reference field and must match the exported product', before);
-        return;
       }
 
-      if (!name || name.length > 120) {
-        fail('item name must contain 1 to 120 characters', before);
-        return;
+      const rows = toObjects(parsed);
+      if (rows.length < 1 || rows.length > 250) {
+        return res.status(400).json({
+          error: 'Menu Studio CSV import supports between 1 and 250 product rows per batch',
+          code: 'invalid_csv_row_count',
+        });
       }
-      const categoryValue = decode(row.category_id).trim();
-      const categoryId = categoryValue || null;
-      if (categoryId) {
-        const category = selectCategory.get(categoryId) as
-          | { id: string; is_active: number }
-          | undefined;
-        if (!category || Number(category.is_active) !== 1) {
-          fail('category id must refer to an active category', before);
+
+      const db = getDatabase();
+      const selectProduct = db.prepare(
+        `SELECT id, sku, name, category_id, price, is_active, updated_at, deleted_at
+         FROM products WHERE id = ?`,
+      );
+      const selectCategory = db.prepare(
+        'SELECT id, is_active FROM categories WHERE id = ? AND deleted_at IS NULL',
+      );
+      const seenIds = new Set<string>();
+      const changes: MenuStudioChange[] = [];
+      const previewRows: {
+        row_number: number;
+        product_id: string | null;
+        product_name: string;
+        status: 'ready' | 'unchanged' | 'error';
+        message: string | null;
+        before: EditableSnapshot | null;
+        after: EditableSnapshot | null;
+      }[] = [];
+      const errors: string[] = [];
+      let unchangedCount = 0;
+      let readyCount = 0;
+
+      rows.forEach((row, index) => {
+        const rowNumber = index + 2;
+        const encoding = resolveCsvRowEncoding(row);
+        const decode = (value: string | undefined): string =>
+          encoding.ok && encoding.mode === 'quote-v1'
+            ? decodeQuoteV1Field(value ?? '')
+            : (value ?? '');
+        const id = decode(row.id).trim();
+        const name = decode(row.name).trim();
+        const fail = (message: string, before: EditableSnapshot | null = null) => {
+          errors.push('Row ' + rowNumber + ': ' + message);
+          previewRows.push({
+            row_number: rowNumber,
+            product_id: id || null,
+            product_name: name || before?.name || id || 'Unknown item',
+            status: 'error',
+            message,
+            before,
+            after: null,
+          });
+        };
+
+        if (!encoding.ok) {
+          fail(encoding.error);
           return;
         }
-      }
+        if (!id) {
+          fail('product id is required');
+          return;
+        }
+        if (seenIds.has(id)) {
+          fail('duplicate product id in this CSV');
+          return;
+        }
+        seenIds.add(id);
 
-      const priceValue = (row.price ?? '').trim();
-      if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(priceValue)) {
-        fail('price must be a non-negative number', before);
-        return;
-      }
-      const price = Number(priceValue);
-      if (!Number.isFinite(price) || price > 1_000_000_000) {
-        fail('price must be a finite value no greater than 1,000,000,000', before);
-        return;
-      }
+        const current = selectProduct.get(id) as
+          | (ProductRow & { sku: string | null })
+          | undefined;
+        if (!current || current.deleted_at) {
+          fail('product id does not exist in the current catalog');
+          return;
+        }
+        const before = snapshotProduct(current);
+        const suppliedUpdatedAt = decode(row.updated_at).trim();
+        if (!suppliedUpdatedAt || suppliedUpdatedAt !== current.updated_at) {
+          fail(
+            'product changed after this CSV was exported; export the latest menu and retry',
+            before,
+          );
+          return;
+        }
+        const suppliedSku = decode(row.sku).trim() || null;
+        const currentSku = current.sku?.trim() || null;
+        if (suppliedSku !== currentSku) {
+          fail('SKU is a reference field and must match the exported product', before);
+          return;
+        }
 
-      const activeValue = (row.is_active ?? '').trim().toLowerCase();
-      const activeValues: Record<string, boolean> = {
-        yes: true,
-        true: true,
-        '1': true,
-        no: false,
-        false: false,
-        '0': false,
-      };
-      if (!Object.prototype.hasOwnProperty.call(activeValues, activeValue)) {
-        fail('availability must be yes/no, true/false or 1/0', before);
-        return;
-      }
+        if (!name || name.length > 120) {
+          fail('item name must contain 1 to 120 characters', before);
+          return;
+        }
+        const categoryValue = decode(row.category_id).trim();
+        const categoryId = categoryValue || null;
+        if (categoryId) {
+          const category = selectCategory.get(categoryId) as
+            | { id: string; is_active: number }
+            | undefined;
+          if (!category || Number(category.is_active) !== 1) {
+            fail('category id must refer to an active category', before);
+            return;
+          }
+        }
 
-      const patch: MenuStudioPatch = {};
-      if (name !== before.name) patch.name = name;
-      if (categoryId !== before.category_id) patch.category_id = categoryId;
-      if (price !== before.price) patch.price = price;
-      if (activeValues[activeValue] !== before.is_active) {
-        patch.is_active = activeValues[activeValue];
-      }
-      const after: EditableSnapshot = { ...before, ...patch };
-      if (Object.keys(patch).length) {
-        changes.push({
-          id,
-          expected_updated_at: current.updated_at,
-          expected: before,
-          patch,
-        });
-        readyCount++;
-        previewRows.push({
-          row_number: rowNumber,
-          product_id: id,
-          product_name: current.name,
-          status: 'ready',
-          message: null,
-          before,
-          after,
-        });
-      } else {
-        unchangedCount++;
-        previewRows.push({
-          row_number: rowNumber,
-          product_id: id,
-          product_name: current.name,
-          status: 'unchanged',
-          message: 'No catalog changes detected',
-          before,
-          after,
-        });
-      }
-    });
+        const priceValue = (row.price ?? '').trim();
+        if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(priceValue)) {
+          fail('price must be a non-negative number', before);
+          return;
+        }
+        const price = Number(priceValue);
+        if (!Number.isFinite(price) || price > 1_000_000_000) {
+          fail('price must be a finite value no greater than 1,000,000,000', before);
+          return;
+        }
 
-    res.json({
-      row_count: rows.length,
-      ready_count: readyCount,
-      unchanged_count: unchangedCount,
-      error_count: errors.length,
-      can_apply: errors.length === 0 && changes.length > 0,
-      changes,
-      rows: previewRows,
-      errors,
-    });
-  } catch (error: any) {
-    const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
-    if (statusCode >= 500) {
-      res.locals.postHogError = error;
-      console.error('[Menu Studio] CSV preview failed:', error);
+        const activeValue = (row.is_active ?? '').trim().toLowerCase();
+        const activeValues: Record<string, boolean> = {
+          yes: true,
+          true: true,
+          '1': true,
+          no: false,
+          false: false,
+          '0': false,
+        };
+        if (!Object.prototype.hasOwnProperty.call(activeValues, activeValue)) {
+          fail('availability must be yes/no, true/false or 1/0', before);
+          return;
+        }
+
+        const patch: MenuStudioPatch = {};
+        if (name !== before.name) patch.name = name;
+        if (categoryId !== before.category_id) patch.category_id = categoryId;
+        if (price !== before.price) patch.price = price;
+        if (activeValues[activeValue] !== before.is_active) {
+          patch.is_active = activeValues[activeValue];
+        }
+        const after: EditableSnapshot = { ...before, ...patch };
+        if (Object.keys(patch).length) {
+          changes.push({
+            id,
+            expected_updated_at: current.updated_at,
+            expected: before,
+            patch,
+          });
+          readyCount++;
+          previewRows.push({
+            row_number: rowNumber,
+            product_id: id,
+            product_name: current.name,
+            status: 'ready',
+            message: null,
+            before,
+            after,
+          });
+        } else {
+          unchangedCount++;
+          previewRows.push({
+            row_number: rowNumber,
+            product_id: id,
+            product_name: current.name,
+            status: 'unchanged',
+            message: 'No catalog changes detected',
+            before,
+            after,
+          });
+        }
+      });
+
+      res.json({
+        row_count: rows.length,
+        ready_count: readyCount,
+        unchanged_count: unchangedCount,
+        error_count: errors.length,
+        can_apply: errors.length === 0 && changes.length > 0,
+        changes,
+        rows: previewRows,
+        errors,
+      });
+    } catch (error: any) {
+      const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
+      if (statusCode >= 500) {
+        res.locals.postHogError = error;
+        console.error('[Menu Studio] CSV preview failed:', error);
+      }
+      res.status(statusCode).json({
+        error: statusCode >= 500 ? 'Could not preview the menu CSV' : error.message,
+        ...(error?.code ? { code: error.code } : {}),
+      });
     }
-    res.status(statusCode).json({
-      error: statusCode >= 500 ? 'Could not preview the menu CSV' : error.message,
-      ...(error?.code ? { code: error.code } : {}),
-    });
-  }
   },
 );
 
