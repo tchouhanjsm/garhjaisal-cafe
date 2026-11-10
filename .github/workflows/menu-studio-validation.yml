@@ -30,6 +30,10 @@ jobs:
         run: npm run test:menu-studio
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
+      - name: Apply repository Oxfmt formatting to changed files
+        run: npx oxfmt --write 'frontend/src/app/(dashboard)/menu-studio/page.tsx' main/routes/menu-studio.ts tests/menu-studio-api.test.ts
+      - name: Show exact formatter diff
+        run: git --no-pager diff -- 'frontend/src/app/(dashboard)/menu-studio/page.tsx' main/routes/menu-studio.ts tests/menu-studio-api.test.ts
       - name: Frontend lint and formatting
         run: npm --prefix frontend run lint && npx oxfmt --check 'frontend/src/app/(dashboard)/menu-studio/page.tsx' 'frontend/src/app/(dashboard)/products/page.tsx' main/db.ts main/routes/index.ts main/routes/menu-studio.ts tests/menu-studio-api.test.ts package.json
       - name: Frontend production build
