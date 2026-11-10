@@ -32,10 +32,10 @@ function classifyQuarantine(status, stderr, stdout) {
   return { state: 'error', message: String(stderr || '').trim() };
 }
 
-function readQuarantine(appPath) {
+function readQuarantine(appPath, runCommand = execFileSync) {
   let stdout = '';
   try {
-    stdout = execFileSync('xattr', ['-p', 'com.apple.quarantine', appPath], {
+    stdout = runCommand('xattr', ['-p', 'com.apple.quarantine', appPath], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -43,6 +43,68 @@ function readQuarantine(appPath) {
   } catch (error) {
     return classifyQuarantine(error && error.status, error && error.stderr, '');
   }
+}
+
+function verifyElectronRuntime({
+  cwd = process.cwd(),
+  platform = process.platform,
+  fileSystem = fs,
+  resolveAbi = resolveElectronAbi,
+  readQuarantineAttribute = readQuarantine,
+  log = console.log,
+} = {}) {
+  const electronDir = path.join(cwd, 'node_modules', 'electron');
+  if (!fileSystem.existsSync(electronDir)) {
+    return { status: 'skipped', reason: 'Electron package is not installed' };
+  }
+
+  const electronPkgPath = path.join(electronDir, 'package.json');
+  let electronVersion = null;
+  let abi = null;
+  if (fileSystem.existsSync(electronPkgPath)) {
+    ({ version: electronVersion } = JSON.parse(fileSystem.readFileSync(electronPkgPath, 'utf8')));
+    try {
+      abi = resolveAbi(electronVersion);
+    } catch (error) {
+      throw new Error(
+        `node-abi cannot resolve ABI for Electron ${electronVersion}: ${error && error.message ? error.message : String(error)}`,
+      );
+    }
+    log(
+      `verify-electron-runtime: Electron ${electronVersion} resolves to ABI ${abi} via node-abi.`,
+    );
+  }
+
+  if (platform !== 'darwin') {
+    return { status: 'verified', platform, version: electronVersion, abi };
+  }
+
+  const distDir = path.join(electronDir, 'dist');
+  const app = fileSystem.existsSync(distDir)
+    ? fileSystem
+        .readdirSync(distDir, { withFileTypes: true })
+        .find((entry) => entry.isDirectory() && entry.name.endsWith('.app'))
+    : null;
+
+  if (!app) {
+    throw new Error('node_modules/electron is installed but no dist/*.app bundle was found.');
+  }
+
+  const appPath = path.join(distDir, app.name);
+  const quarantine = readQuarantineAttribute(appPath);
+  if (quarantine && quarantine.state === 'present') {
+    throw new Error(`${appPath} is marked com.apple.quarantine (${quarantine.value.trim()}).`);
+  }
+  if (!quarantine || quarantine.state !== 'absent') {
+    throw new Error(
+      `could not read the quarantine attribute of ${appPath}: ${quarantine && quarantine.message ? quarantine.message : 'unexpected xattr failure'}`,
+    );
+  }
+
+  log(
+    `verify-electron-runtime: ${appPath} present and unquarantined; development runtime checks passed.`,
+  );
+  return { status: 'verified', platform, version: electronVersion, abi, appPath };
 }
 
 function fail(message) {
@@ -53,53 +115,20 @@ function fail(message) {
 }
 
 function main() {
-  const electronDir = path.join(process.cwd(), 'node_modules', 'electron');
-  if (!fs.existsSync(electronDir)) process.exit(0);
-
-  const electronPkgPath = path.join(electronDir, 'package.json');
-  if (fs.existsSync(electronPkgPath)) {
-    const { version: electronVersion } = JSON.parse(fs.readFileSync(electronPkgPath, 'utf8'));
-    try {
-      const abi = resolveElectronAbi(electronVersion);
-      console.log(
-        `verify-electron-runtime: Electron ${electronVersion} resolves to ABI ${abi} via node-abi.`,
-      );
-    } catch (error) {
-      fail(
-        `node-abi cannot resolve ABI for Electron ${electronVersion}: ${error && error.message ? error.message : String(error)}`,
-      );
-    }
+  try {
+    verifyElectronRuntime();
+  } catch (error) {
+    fail(error && error.message ? error.message : String(error));
   }
-
-  if (process.platform !== 'darwin') process.exit(0);
-
-  const distDir = path.join(electronDir, 'dist');
-  const app = fs.existsSync(distDir)
-    ? fs
-        .readdirSync(distDir, { withFileTypes: true })
-        .find((entry) => entry.isDirectory() && entry.name.endsWith('.app'))
-    : null;
-
-  if (!app) fail('node_modules/electron is installed but no dist/*.app bundle was found.');
-
-  const appPath = path.join(distDir, app.name);
-  const quarantine = readQuarantine(appPath);
-  if (quarantine.state === 'present') {
-    fail(`${appPath} is marked com.apple.quarantine (${quarantine.value.trim()}).`);
-  }
-  if (quarantine.state === 'error') {
-    fail(
-      `could not read the quarantine attribute of ${appPath}: ${quarantine.message || 'unexpected xattr failure'}`,
-    );
-  }
-
-  console.log(
-    `verify-electron-runtime: ${appPath} present and unquarantined; development runtime checks passed.`,
-  );
 }
 
 if (require.main === module) {
   main();
 }
 
-module.exports = { classifyQuarantine, readQuarantine, resolveElectronAbi };
+module.exports = {
+  classifyQuarantine,
+  readQuarantine,
+  resolveElectronAbi,
+  verifyElectronRuntime,
+};

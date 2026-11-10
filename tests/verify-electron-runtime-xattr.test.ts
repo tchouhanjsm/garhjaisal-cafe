@@ -14,8 +14,60 @@ import * as path from 'node:path';
 
 const {
   classifyQuarantine,
+  readQuarantine,
   resolveElectronAbi,
+  verifyElectronRuntime,
 } = require('../scripts/verify-electron-runtime.cjs');
+
+function createRuntimeFixture({
+  electronInstalled = true,
+  packageInstalled = true,
+  distExists = true,
+  appEntries = [{ name: 'Electron.app', isDirectory: () => true }],
+} = {}) {
+  const cwd = '/fixture/project';
+  const electronDir = path.join(cwd, 'node_modules', 'electron');
+  const packagePath = path.join(electronDir, 'package.json');
+  const distDir = path.join(electronDir, 'dist');
+  const existingPaths = new Set();
+
+  if (electronInstalled) existingPaths.add(electronDir);
+  if (packageInstalled) existingPaths.add(packagePath);
+  if (distExists) existingPaths.add(distDir);
+
+  const fileSystem = {
+    existsSync(candidate) {
+      return existingPaths.has(candidate);
+    },
+    readFileSync(candidate, encoding) {
+      assert.equal(candidate, packagePath);
+      assert.equal(encoding, 'utf8');
+      return JSON.stringify({ version: '45.0.0' });
+    },
+    readdirSync(candidate, options) {
+      assert.equal(candidate, distDir);
+      assert.deepEqual(options, { withFileTypes: true });
+      return appEntries;
+    },
+  };
+
+  return { cwd, electronDir, packagePath, distDir, fileSystem };
+}
+
+function verifyFixture(fixture, overrides = {}) {
+  return verifyElectronRuntime({
+    cwd: fixture.cwd,
+    platform: 'darwin',
+    fileSystem: fixture.fileSystem,
+    resolveAbi: (version) => {
+      assert.equal(version, '45.0.0');
+      return '140';
+    },
+    readQuarantineAttribute: () => ({ state: 'absent' }),
+    log: () => {},
+    ...overrides,
+  });
+}
 
 function run() {
   console.log('Testing Electron development runtime quarantine and ABI verification...');
@@ -82,7 +134,118 @@ function run() {
   const missingTool = classifyQuarantine(127, 'xattr: command not found', '');
   assert.equal(missingTool.state, 'error', 'exit 127 (missing tool) is "error", not clean');
 
-  console.log('✅ Electron runtime quarantine and ABI checks passed');
+  // The command wrapper must check the Electron app's quarantine attribute specifically.
+  const appPath = '/fixture/Electron.app';
+  let invocation;
+  const presentRead = readQuarantine(appPath, (command, args, options) => {
+    invocation = { command, args, options };
+    return '0083;1234567890;Electron';
+  });
+  assert.equal(presentRead.state, 'present');
+  assert.deepEqual(invocation, {
+    command: 'xattr',
+    args: ['-p', 'com.apple.quarantine', appPath],
+    options: { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  });
+
+  const missingAttribute = Object.assign(new Error('attribute absent'), {
+    status: 1,
+    stderr: 'xattr: No such xattr: com.apple.quarantine',
+  });
+  assert.equal(
+    readQuarantine(appPath, () => {
+      throw missingAttribute;
+    }).state,
+    'absent',
+    'the documented missing-attribute response is clean',
+  );
+
+  const unexpectedAttributeError = Object.assign(new Error('permission denied'), {
+    status: 1,
+    stderr: 'xattr: Permission denied',
+  });
+  assert.equal(
+    readQuarantine(appPath, () => {
+      throw unexpectedAttributeError;
+    }).state,
+    'error',
+    'permission failures must remain fail-closed',
+  );
+
+  // No Electron package is a supported no-op during source-only installs.
+  const missingPackage = createRuntimeFixture({ electronInstalled: false });
+  assert.deepEqual(verifyFixture(missingPackage), {
+    status: 'skipped',
+    reason: 'Electron package is not installed',
+  });
+
+  // Non-macOS installs still validate ABI, but must not inspect macOS bundles.
+  const nonMac = createRuntimeFixture({ distExists: false });
+  const nonMacResult = verifyFixture(nonMac, {
+    platform: 'linux',
+    readQuarantineAttribute: () => {
+      throw new Error('macOS quarantine lookup must not run on Linux');
+    },
+  });
+  assert.deepEqual(nonMacResult, {
+    status: 'verified',
+    platform: 'linux',
+    version: '45.0.0',
+    abi: '140',
+  });
+
+  // macOS must fail when the Electron package has no app bundle.
+  const missingBundle = createRuntimeFixture({ appEntries: [] });
+  assert.throws(
+    () => verifyFixture(missingBundle),
+    /no dist\/\*\.app bundle was found/,
+  );
+
+  // A present quarantine attribute blocks the development runtime.
+  const quarantined = createRuntimeFixture();
+  assert.throws(
+    () =>
+      verifyFixture(quarantined, {
+        readQuarantineAttribute: () => ({
+          state: 'present',
+          value: '0083;1234567890;Electron',
+        }),
+      }),
+    /marked com\.apple\.quarantine/,
+  );
+
+  // Unexpected lookup errors and unknown return states must fail closed.
+  const failedQuarantine = createRuntimeFixture();
+  assert.throws(
+    () =>
+      verifyFixture(failedQuarantine, {
+        readQuarantineAttribute: () => ({
+          state: 'error',
+          message: 'Permission denied',
+        }),
+      }),
+    /could not read the quarantine attribute.*Permission denied/,
+  );
+  assert.throws(
+    () =>
+      verifyFixture(failedQuarantine, {
+        readQuarantineAttribute: () => ({ state: 'unknown' }),
+      }),
+    /unexpected xattr failure/,
+  );
+
+  // ABI resolution failure is surfaced with the installed Electron version.
+  assert.throws(
+    () =>
+      verifyFixture(createRuntimeFixture(), {
+        resolveAbi: () => {
+          throw new Error('unsupported Electron ABI');
+        },
+      }),
+    /node-abi cannot resolve ABI for Electron 45\.0\.0: unsupported Electron ABI/,
+  );
+
+  console.log('✅ Electron runtime quarantine, ABI, and full decision-path checks passed');
 }
 
 run();
