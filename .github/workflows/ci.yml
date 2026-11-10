@@ -125,6 +125,14 @@ jobs:
 
       # Authoritative formatting gate: the whole touched file, against the pull request base
       # (or the pushed range), so legacy formatting debt outside the change stays out of scope.
+      # TEMPORARY: collect the canonical Oxfmt rewrite for the Electron runtime regression test.
+      - name: TEMP formatter diagnostic
+        run: |
+          cp tests/verify-electron-runtime-xattr.test.ts "$RUNNER_TEMP/runtime-test-before-format.ts"
+          npx oxfmt --write -- tests/verify-electron-runtime-xattr.test.ts
+          git diff --no-ext-diff --no-color -- tests/verify-electron-runtime-xattr.test.ts
+          cp "$RUNNER_TEMP/runtime-test-before-format.ts" tests/verify-electron-runtime-xattr.test.ts
+
       - name: Frontend lint, formatting, and lint warning budget
         run: |
           (cd frontend && npm run lint) &
