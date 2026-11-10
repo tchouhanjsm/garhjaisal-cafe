@@ -13,8 +13,48 @@ import * as path from 'node:path';
 
 const {
   classifyQuarantine,
+  readQuarantine,
   resolveElectronAbi,
+  verifyElectronRuntime,
 } = require('../scripts/verify-electron-runtime.cjs');
+
+function createRuntimeOptions({
+  appEntries = [{ name: 'Electron.app', isDirectory: () => true }],
+  quarantine = { state: 'absent' },
+} = {}) {
+  const cwd = '/project';
+  const electronDir = path.join(cwd, 'node_modules', 'electron');
+  const packagePath = path.join(electronDir, 'package.json');
+  const distDir = path.join(electronDir, 'dist');
+  const appPath = path.join(distDir, 'Electron.app');
+
+  return {
+    cwd,
+    platform: 'darwin',
+    fileSystem: {
+      existsSync(candidate) {
+        return [electronDir, packagePath, distDir].includes(candidate);
+      },
+      readFileSync(candidate) {
+        assert.equal(candidate, packagePath);
+        return JSON.stringify({ version: '45.2.1' });
+      },
+      readdirSync(candidate) {
+        assert.equal(candidate, distDir);
+        return appEntries;
+      },
+    },
+    resolveAbi(version) {
+      assert.equal(version, '45.2.1');
+      return '145';
+    },
+    readQuarantineAttribute(candidate) {
+      assert.equal(candidate, appPath);
+      return quarantine;
+    },
+    log() {},
+  };
+}
 
 function run() {
   console.log('Testing Electron runtime xattr classification and ABI resolution...');
@@ -70,8 +110,82 @@ function run() {
   // Missing tool (exit 127) → must NOT be clean.
   const missingTool = classifyQuarantine(127, 'xattr: command not found', '');
   assert.equal(missingTool.state, 'error', 'exit 127 (missing tool) is "error", not clean');
+  const xattrArgs = ['-p', 'com.apple.quarantine', '/path/Electron.app'];
+  const presentAttributeRead = readQuarantine('/path/Electron.app', (command, args, options) => {
+    assert.equal(command, 'xattr');
+    assert.deepEqual(args, xattrArgs);
+    assert.equal(options.encoding, 'utf8');
+    return '0083;1234567890;Electron';
+  });
+  assert.deepEqual(presentAttributeRead, {
+    state: 'present',
+    value: '0083;1234567890;Electron',
+  });
 
+  const absentAttributeRead = readQuarantine('/path/Electron.app', () => {
+    throw Object.assign(new Error('xattr returned no attribute'), {
+      status: 1,
+      stderr: Buffer.from('xattr: No such xattr: com.apple.quarantine'),
+    });
+  });
+  assert.deepEqual(absentAttributeRead, { state: 'absent' });
+
+  const permissionDeniedRead = readQuarantine('/path/Electron.app', () => {
+    throw Object.assign(new Error('xattr permission denied'), {
+      status: 1,
+      stderr: Buffer.from('xattr: Permission denied: /path/Electron.app'),
+    });
+  });
+  assert.equal(permissionDeniedRead.state, 'error');
+  assert.match(permissionDeniedRead.message, /Permission denied/);
   console.log('✅ Electron runtime xattr classification checks passed');
+
+  const verifierSource = fs.readFileSync(
+    path.join(__dirname, '../scripts/verify-electron-runtime.cjs'),
+    'utf8',
+  );
+  assert.doesNotMatch(
+    verifierSource,
+    /execFileSync\(\s*['"]codesign['"]\s*,\s*\[\s*['"]-dv['"]/,
+    'development runtime verification must not require codesign -dv metadata',
+  );
+
+  const cleanMacRuntime = verifyElectronRuntime(createRuntimeOptions());
+  assert.equal(cleanMacRuntime.status, 'verified');
+  assert.equal(cleanMacRuntime.platform, 'darwin');
+  assert.equal(cleanMacRuntime.abi, '145');
+  assert.equal(
+    cleanMacRuntime.appPath,
+    path.join('/project', 'node_modules', 'electron', 'dist', 'Electron.app'),
+  );
+
+  assert.throws(
+    () =>
+      verifyElectronRuntime(
+        createRuntimeOptions({
+          quarantine: { state: 'present', value: '0083;1234567890;Electron' },
+        }),
+      ),
+    /marked com\.apple\.quarantine/,
+    'a quarantined development bundle must fail verification',
+  );
+  assert.throws(
+    () =>
+      verifyElectronRuntime(
+        createRuntimeOptions({
+          quarantine: { state: 'error', message: 'Permission denied' },
+        }),
+      ),
+    /could not read the quarantine attribute.*Permission denied/i,
+    'an unexpected xattr failure must remain fail-closed',
+  );
+  assert.throws(
+    () => verifyElectronRuntime(createRuntimeOptions({ appEntries: [] })),
+    /no dist\/\*\.app bundle was found/,
+    'a missing Electron app bundle must fail verification',
+  );
+
+  console.log('✅ Electron runtime verifier integration checks passed');
 }
 
 run();

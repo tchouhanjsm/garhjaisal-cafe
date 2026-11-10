@@ -153,7 +153,7 @@ if [ "$1" = "api" ] && [ "\${2:-}" = "repos/FreeOpenSourcePOS/FloCafe/releases/l
   printf 'HTTP/2.0 %s Error\\n' "$RELEASE_TEST_LATEST_FAILURE"
   exit 1
 fi
-if [ "$1" = "api" ] && [ "\${3:-}" = "--jq" ]; then printf '42\\n'; exit 0; fi
+if [ "$1" = "api" ] && { [ "\${3:-}" = "--jq" ] || [ "\${4:-}" = "--jq" ]; }; then printf '42\\n'; exit 0; fi
 if [ "$1" = "api" ] && [ "\${2:-}" != "--method" ]; then printf '{"draft":false,"prerelease":false,"id":42}\\n'; fi
 `;
 
@@ -168,6 +168,20 @@ esac
 
 const captureNodeArgs = `#!/bin/sh
 printf 'node %s\\n' "$*" >> "$RELEASE_TEST_LOG"
+`;
+
+const fakeHead = `#!/bin/sh
+if [ "$#" -ne 1 ] || [ "$1" != "-1" ]; then
+  echo "fake head only supports -1" >&2
+  exit 2
+fi
+IFS= read -r first_line || exit 0
+printf '%s\n' "$first_line"
+`;
+
+const fakeSha256sum = `#!/bin/sh
+cat >/dev/null
+printf '%s  -\\n' '${'a'.repeat(64)}'
 `;
 
 const fakeGit = `#!/bin/sh
@@ -498,6 +512,17 @@ function run() {
   assertShellStep(macJob, 'Build macOS');
   assertShellStep(macJob, 'Verify macOS release assets');
   assertShellStep(macJob, 'Upload macOS assets to GitHub release');
+  const macSigningScript = findStep(macJob, 'Verify macOS release assets').run as string;
+  assert.match(macSigningScript, /codesign --verify --deep --strict/);
+  assert.match(macSigningScript, /spctl --assess/);
+  assert.match(macSigningScript, /xcrun stapler validate/);
+  const freshlyDownloadedMacSigningScript = findStep(
+    macJob,
+    'Verify freshly downloaded macOS release artifact',
+  ).run as string;
+  assert.match(freshlyDownloadedMacSigningScript, /codesign --verify --deep --strict/);
+  assert.match(freshlyDownloadedMacSigningScript, /spctl --assess/);
+  assert.match(freshlyDownloadedMacSigningScript, /xcrun stapler validate/);
 
   const winJob = jobs['release-windows'];
   assertShellStep(winJob, 'Build Windows');
@@ -556,9 +581,10 @@ function run() {
       'needs.create-release.outputs.manifest_prefix': 'beta',
       'github.sha': 'a'.repeat(40),
     },
-    fakeCommands: { gh: fakeGh, node: captureNodeArgs },
+    fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead, sha256sum: fakeSha256sum },
   });
   assert.equal(betaVerify.status, 0, betaVerify.stderr);
+  assert.equal(betaVerify.outputs.candidate_manifest_asset_id, '42');
   assert.doesNotMatch(
     betaVerify.log,
     /--require-snap-evidence/,
@@ -574,6 +600,7 @@ function run() {
     /^[0-9a-f]{64}$/,
     'candidate manifest SHA-256 output must be a full hex digest',
   );
+  assert.equal(betaVerify.outputs.candidate_manifest_sha256, 'a'.repeat(64));
   const stableVerify = executeWorkflowStep(verifyAssetsStep, {
     env: {
       RELEASE_TAG: '3.3.0',
@@ -584,9 +611,10 @@ function run() {
       'needs.create-release.outputs.manifest_prefix': 'latest',
       'github.sha': 'b'.repeat(40),
     },
-    fakeCommands: { gh: fakeGh, node: captureNodeArgs },
+    fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead, sha256sum: fakeSha256sum },
   });
   assert.equal(stableVerify.status, 0, stableVerify.stderr);
+  assert.equal(stableVerify.outputs.candidate_manifest_asset_id, '42');
   assert.match(
     stableVerify.log,
     /--require-snap-evidence/,
@@ -602,7 +630,7 @@ function run() {
       'needs.create-release.outputs.manifest_prefix': 'latest',
       'github.sha': 'b'.repeat(40),
     },
-    fakeCommands: { gh: '#!/bin/sh\nexit 0\n' },
+    fakeCommands: { gh: '#!/bin/sh\nexit 0\n', head: fakeHead },
   });
   assert.notEqual(missingCandidateManifestId.status, 0);
   assert.match(missingCandidateManifestId.stdout, /candidate-manifest\.json asset ID is missing/);
