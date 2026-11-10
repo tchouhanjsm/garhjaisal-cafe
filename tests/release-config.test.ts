@@ -153,7 +153,7 @@ if [ "$1" = "api" ] && [ "\${2:-}" = "repos/FreeOpenSourcePOS/FloCafe/releases/l
   printf 'HTTP/2.0 %s Error\\n' "$RELEASE_TEST_LATEST_FAILURE"
   exit 1
 fi
-if [ "$1" = "api" ] && [ "\${3:-}" = "--jq" ]; then printf '42\\n'; exit 0; fi
+if [ "$1" = "api" ] && { [ "\${3:-}" = "--jq" ] || [ "\${4:-}" = "--jq" ]; }; then printf '42\\n'; exit 0; fi
 if [ "$1" = "api" ] && [ "\${2:-}" != "--method" ]; then printf '{"draft":false,"prerelease":false,"id":42}\\n'; fi
 `;
 
