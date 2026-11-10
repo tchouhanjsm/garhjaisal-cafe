@@ -1,0 +1,36 @@
+name: Temporary Menu Studio validation
+
+on:
+  push:
+    branches:
+      - feature/menu-studio-core
+
+permissions:
+  contents: read
+
+jobs:
+  menu-studio:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate test script coverage
+        run: npm run test:script-coverage
+      - name: Backend lint and TypeScript build
+        run: npm run lint:backend && npm run build
+      - name: Migration registry
+        run: npm run test:migration-registry
+      - name: Menu Studio API regression
+        run: npm run test:menu-studio
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+      - name: Frontend lint and formatting
+        run: npm --prefix frontend run lint && npx oxfmt --check 'frontend/src/app/(dashboard)/menu-studio/page.tsx' 'frontend/src/app/(dashboard)/products/page.tsx' main/db.ts main/routes/index.ts main/routes/menu-studio.ts tests/menu-studio-api.test.ts package.json
+      - name: Frontend production build
+        run: npm run build:frontend
