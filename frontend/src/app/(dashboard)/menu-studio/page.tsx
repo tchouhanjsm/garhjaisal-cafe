@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Clock3, Edit2, History, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeft, Check, Edit2, History, RefreshCw, Search, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -509,7 +509,8 @@ export default function MenuStudioPage() {
           </thead>
           <tbody className="divide-y divide-border">
             {visibleProducts.map((product) => {
-              const isEditing = editingId === product.id && draft !== null;
+              const rowDraft = editingId === product.id ? draft : null;
+              const isEditing = rowDraft !== null;
               const selected = selectedIds.includes(product.id);
               return (
                 <tr key={product.id} className={selected ? 'bg-muted/50' : 'hover:bg-muted/30'}>
@@ -526,8 +527,8 @@ export default function MenuStudioPage() {
                     {isEditing ? (
                       <div className="min-w-48">
                         <input
-                          value={draft.name}
-                          onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                          value={rowDraft.name}
+                          onChange={(event) => setDraft({ ...rowDraft, name: event.target.value })}
                           aria-label={`Name for ${product.name}`}
                           className={inputClass}
                           maxLength={120}
@@ -548,8 +549,8 @@ export default function MenuStudioPage() {
                   <td className="p-3 align-middle">
                     {isEditing ? (
                       <select
-                        value={draft.category_id}
-                        onChange={(event) => setDraft({ ...draft, category_id: event.target.value })}
+                        value={rowDraft.category_id}
+                        onChange={(event) => setDraft({ ...rowDraft, category_id: event.target.value })}
                         aria-label={`Category for ${product.name}`}
                         className={inputClass}
                       >
@@ -568,8 +569,8 @@ export default function MenuStudioPage() {
                         type="number"
                         min="0"
                         step={10 ** -amountFormat.currencyFractionDigits}
-                        value={draft.price}
-                        onChange={(event) => setDraft({ ...draft, price: event.target.value })}
+                        value={rowDraft.price}
+                        onChange={(event) => setDraft({ ...rowDraft, price: event.target.value })}
                         aria-label={`Price for ${product.name}`}
                         className={inputClass + ' min-w-28 text-end'}
                       />
@@ -585,8 +586,8 @@ export default function MenuStudioPage() {
                   <td className="p-3 text-center align-middle">
                     {isEditing ? (
                       <select
-                        value={draft.is_active ? 'available' : 'unavailable'}
-                        onChange={(event) => setDraft({ ...draft, is_active: event.target.value === 'available' })}
+                        value={rowDraft.is_active ? 'available' : 'unavailable'}
+                        onChange={(event) => setDraft({ ...rowDraft, is_active: event.target.value === 'available' })}
                         aria-label={`Availability for ${product.name}`}
                         className={inputClass}
                       >
