@@ -56,6 +56,8 @@ type AuditEntry = {
   created_at: string;
 };
 
+const MAX_BULK_SELECTION = 250;
+
 const inputClass =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand';
 
@@ -219,19 +221,27 @@ export default function MenuStudioPage() {
     visibleProducts.every((product) => selectedIds.includes(product.id));
 
   const toggleSelected = (id: string) => {
+    if (!selectedIds.includes(id) && selectedIds.length >= MAX_BULK_SELECTION) {
+      toast.error(`Bulk updates support up to ${MAX_BULK_SELECTION} items at a time`);
+      return;
+    }
     setSelectedIds((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     );
   };
 
   const toggleAllVisible = () => {
-    setSelectedIds((current) => {
-      if (allVisibleSelected) {
-        const visibleIds = new Set(visibleProducts.map((product) => product.id));
-        return current.filter((id) => !visibleIds.has(id));
-      }
-      return [...new Set([...current, ...visibleProducts.map((product) => product.id)])];
-    });
+    if (allVisibleSelected) {
+      const visibleIds = new Set(visibleProducts.map((product) => product.id));
+      setSelectedIds((current) => current.filter((id) => !visibleIds.has(id)));
+      return;
+    }
+    const next = [...new Set([...selectedIds, ...visibleProducts.map((product) => product.id)])];
+    if (next.length > MAX_BULK_SELECTION) {
+      toast.error(`Select no more than ${MAX_BULK_SELECTION} items for one bulk update`);
+      return;
+    }
+    setSelectedIds(next);
   };
 
   const beginEdit = (product: Product) => {
@@ -495,7 +505,7 @@ export default function MenuStudioPage() {
 
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <span className="me-auto text-sm text-muted-foreground">
-          {visibleProducts.length} of {products.length} items
+          {visibleProducts.length} of {products.length} items · select up to {MAX_BULK_SELECTION} per bulk update
         </span>
         <Button
           size="sm"
