@@ -179,6 +179,11 @@ IFS= read -r first_line || exit 0
 printf '%s\n' "$first_line"
 `;
 
+const fakeSha256sum = `#!/bin/sh
+cat >/dev/null
+printf '%s  -\\n' '${'a'.repeat(64)}'
+`;
+
 const fakeGit = `#!/bin/sh
 if [ "$1" = "tag" ]; then
   printf '2.8.0\\n3.2.0\\n3.2.3\\n3.3.0\\ntax-pack-1.0.0\\n'
@@ -576,7 +581,7 @@ function run() {
       'needs.create-release.outputs.manifest_prefix': 'beta',
       'github.sha': 'a'.repeat(40),
     },
-    fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead },
+    fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead, sha256sum: fakeSha256sum },
   });
   assert.equal(betaVerify.status, 0, betaVerify.stderr);
   assert.equal(betaVerify.outputs.candidate_manifest_asset_id, '42');
@@ -595,6 +600,7 @@ function run() {
     /^[0-9a-f]{64}$/,
     'candidate manifest SHA-256 output must be a full hex digest',
   );
+  assert.equal(betaVerify.outputs.candidate_manifest_sha256, 'a'.repeat(64));
   const stableVerify = executeWorkflowStep(verifyAssetsStep, {
     env: {
       RELEASE_TAG: '3.3.0',
@@ -605,7 +611,7 @@ function run() {
       'needs.create-release.outputs.manifest_prefix': 'latest',
       'github.sha': 'b'.repeat(40),
     },
-    fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead },
+    fakeCommands: { gh: fakeGh, node: captureNodeArgs, head: fakeHead, sha256sum: fakeSha256sum },
   });
   assert.equal(stableVerify.status, 0, stableVerify.stderr);
   assert.equal(stableVerify.outputs.candidate_manifest_asset_id, '42');
