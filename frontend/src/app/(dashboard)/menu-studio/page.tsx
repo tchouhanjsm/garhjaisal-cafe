@@ -48,6 +48,7 @@ type AuditEntry = {
   id: number;
   batch_id: string;
   product_id: string;
+  actor_user_id: string;
   actor_name?: string | null;
   action: string;
   before: EditableSnapshot | null;
