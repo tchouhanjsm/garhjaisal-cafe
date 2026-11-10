@@ -2396,7 +2396,7 @@ async function main() {
         getSettingValue('one_shift_per_staff') === 'false',
         '#1339: one_shift_per_staff is off before per-staff test',
       );
-      await withFixedClock('2026-11-10T09:00:00.000Z', async () => {
+      await withFixedClock('2038-11-10T09:00:00.000Z', async () => {
         const s1 = await request(app)
           .post('/api/cash-sessions/open')
           .set('Authorization', `Bearer ${s11CashierAToken}`)
@@ -2419,10 +2419,10 @@ async function main() {
         assert(s1Close.status === 200, '#1339 (setting off): User A closes shift (200)');
       });
       db.prepare(
-        `DELETE FROM cash_drawer_movements WHERE business_date = '2026-11-10' AND movement_type = 'opening_float'`,
+        `DELETE FROM cash_drawer_movements WHERE business_date = '2038-11-10' AND movement_type = 'opening_float'`,
       ).run();
-      db.prepare(`DELETE FROM cash_sessions WHERE opened_at LIKE '2026-11-10%'`).run();
-      db.prepare(`DELETE FROM cash_closures WHERE business_date = '2026-11-10'`).run();
+      db.prepare(`DELETE FROM cash_sessions WHERE opened_at LIKE '2038-11-10%'`).run();
+      db.prepare(`DELETE FROM cash_closures WHERE business_date = '2038-11-10'`).run();
 
       // 2) Settings validation & toggle permissions
       const unauthPerStaff = await request(app)
@@ -2452,10 +2452,10 @@ async function main() {
         '#1339: owner enables one_shift_per_staff (200)',
       );
 
-      // 3) Concurrent shifts for User A and User B on 2026-11-10
+      // 3) Concurrent shifts for User A and User B on 2038-11-10
       let shiftAId = 0;
       let shiftBId = 0;
-      await withFixedClock('2026-11-10T10:00:00.000Z', async () => {
+      await withFixedClock('2038-11-10T10:00:00.000Z', async () => {
         const openA = await request(app)
           .post('/api/cash-sessions/open')
           .set('Authorization', `Bearer ${s11CashierAToken}`)
@@ -2489,7 +2489,7 @@ async function main() {
       const dayFloatRow = db
         .prepare(
           `SELECT amount_cents FROM cash_drawer_movements
-           WHERE business_date = '2026-11-10' AND movement_type = 'opening_float' AND voided_at IS NULL`,
+           WHERE business_date = '2038-11-10' AND movement_type = 'opening_float' AND voided_at IS NULL`,
         )
         .get() as { amount_cents: number } | undefined;
       assert(
@@ -2524,9 +2524,9 @@ async function main() {
         ).run(permId, now());
       }
 
-      await withFixedClock('2026-11-10T11:00:00.000Z', async () => {
+      await withFixedClock('2038-11-10T11:00:00.000Z', async () => {
         // User A takes 40.00 (4000c) cash payment
-        const billAId = seedBillOnDate('A', '2026-11-10T11:00:00.000Z', 40);
+        const billAId = seedBillOnDate('A', '2038-11-10T11:00:00.000Z', 40);
         const payA = await request(app)
           .post(`/api/bills/${billAId}/payment`)
           .set('Authorization', `Bearer ${s11CashierAToken}`)
@@ -2542,7 +2542,7 @@ async function main() {
         );
 
         // User B takes 60.00 (6000c) cash payment
-        const billBId = seedBillOnDate('B', '2026-11-10T11:00:00.000Z', 60);
+        const billBId = seedBillOnDate('B', '2038-11-10T11:00:00.000Z', 60);
         const payB = await request(app)
           .post(`/api/bills/${billBId}/payment`)
           .set('Authorization', `Bearer ${s11CashierBToken}`)
@@ -2562,7 +2562,7 @@ async function main() {
           .post('/api/cash-closures/movements')
           .set('Authorization', `Bearer ${s11CashierAToken}`)
           .send({
-            business_date: '2026-11-10',
+            business_date: '2038-11-10',
             movement_type: 'pay_in',
             amount_cents: 1000,
             reason: 'User A change',
@@ -2577,7 +2577,7 @@ async function main() {
           .post('/api/cash-closures/movements')
           .set('Authorization', `Bearer ${s11CashierBToken}`)
           .send({
-            business_date: '2026-11-10',
+            business_date: '2038-11-10',
             movement_type: 'pay_out',
             amount_cents: 500,
             reason: 'User B supplies',
@@ -2624,7 +2624,7 @@ async function main() {
             category_id: catId,
             description: 'Milk run',
             amount_minor: 1500,
-            incurred_on: '2026-11-10',
+            incurred_on: '2038-11-10',
           });
         assert(expRes.status === 201, '#1339: expense created (201)');
         const expId = expRes.body?.expense?.id;
@@ -2678,7 +2678,7 @@ async function main() {
         // When require_open_shift is off -> NO_CASH_SESSION_ID (0)
         // When require_open_shift is on -> 409 cash_session_required
         db.prepare(`UPDATE settings SET value = 'true' WHERE key = 'require_open_shift'`).run();
-        const billMgrId = seedBillOnDate('MGR', '2026-11-10T11:00:00.000Z', 25);
+        const billMgrId = seedBillOnDate('MGR', '2038-11-10T11:00:00.000Z', 25);
         const payMgrBlocked = await request(app)
           .post(`/api/bills/${billMgrId}/payment`)
           .set('Authorization', `Bearer ${s11ManagerToken}`)
@@ -2732,7 +2732,7 @@ async function main() {
 
       // Expected cash for Shift A: 5000 float + 4000 sale + 1000 pay_in - 1000 refund = 9000
       // Expected cash for Shift B: 3000 float + 6000 sale - 500 pay_out - 1500 expense pay_out = 7000
-      await withFixedClock('2026-11-10T12:00:00.000Z', async () => {
+      await withFixedClock('2038-11-10T12:00:00.000Z', async () => {
         const curA = await request(app)
           .get('/api/cash-sessions/current')
           .set('Authorization', `Bearer ${s11CashierAToken}`);
@@ -2777,7 +2777,7 @@ async function main() {
 
         // 6) X Report: all open shifts vs single shift (?session_id=)
         const xAll = await request(app)
-          .get('/api/reports/x-report?date=2026-11-10')
+          .get('/api/reports/x-report?date=2038-11-10')
           .set('Authorization', `Bearer ${s11ManagerToken}`);
         const xAllRep = xAll.body?.xReport;
         assert(
@@ -2793,7 +2793,7 @@ async function main() {
         );
 
         const xShiftA = await request(app)
-          .get(`/api/reports/x-report?date=2026-11-10&session_id=${shiftAId}`)
+          .get(`/api/reports/x-report?date=2038-11-10&session_id=${shiftAId}`)
           .set('Authorization', `Bearer ${s11ManagerToken}`);
         const xShiftARep = xShiftA.body?.xReport;
         assert(
@@ -2813,7 +2813,7 @@ async function main() {
         );
 
         const xShiftB = await request(app)
-          .get(`/api/reports/x-report?date=2026-11-10&session_id=${shiftBId}`)
+          .get(`/api/reports/x-report?date=2038-11-10&session_id=${shiftBId}`)
           .set('Authorization', `Bearer ${s11ManagerToken}`);
         const xShiftBRep = xShiftB.body?.xReport;
         assert(
@@ -2840,14 +2840,14 @@ async function main() {
            ON CONFLICT(user_id, permission_id) DO UPDATE SET effect = 'allow', updated_at = excluded.updated_at`,
         ).run(now());
         const xOwnCashier = await request(app)
-          .get(`/api/reports/x-report?date=2026-11-10&session_id=${shiftAId}`)
+          .get(`/api/reports/x-report?date=2038-11-10&session_id=${shiftAId}`)
           .set('Authorization', `Bearer ${s11CashierAToken}`);
         assert(
           xOwnCashier.status === 200 && Number(xOwnCashier.body?.xReport?.session?.id) === shiftAId,
           '#1339: Cashier A with reports.view can view own shift X report (200)',
         );
         const xOtherCashier = await request(app)
-          .get(`/api/reports/x-report?date=2026-11-10&session_id=${shiftBId}`)
+          .get(`/api/reports/x-report?date=2038-11-10&session_id=${shiftBId}`)
           .set('Authorization', `Bearer ${s11CashierAToken}`);
         assert(
           xOtherCashier.status === 403 && xOtherCashier.body?.code === 'shift_access_forbidden',
@@ -2881,7 +2881,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-10',
+            business_date: '2038-11-10',
             opening_float_cents: 8000,
             counted_cash_cents: 16000,
           });
@@ -2918,12 +2918,12 @@ async function main() {
           `#1339: Shift A session Z report opening_float movement reflects Shift A float (5000), not day aggregate (got ${shiftAFloatMov?.amount_cents})`,
         );
         const xShiftAClosed = await request(app)
-          .get(`/api/reports/x-report?date=2026-11-09&session_id=${shiftAId}`)
+          .get(`/api/reports/x-report?date=2038-11-09&session_id=${shiftAId}`)
           .set('Authorization', `Bearer ${s11ManagerToken}`);
         const xShiftAClosedRep = xShiftAClosed.body?.xReport;
         assert(
           xShiftAClosed.status === 200 &&
-            xShiftAClosedRep?.businessDate === '2026-11-10' &&
+            xShiftAClosedRep?.businessDate === '2038-11-10' &&
             xShiftAClosedRep?.alreadyClosed === true &&
             xShiftAClosedRep?.zNumber === shiftAClosureRow?.z_number &&
             xShiftAClosedRep?.session?.status === 'closed' &&
@@ -2940,7 +2940,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-10',
+            business_date: '2038-11-10',
             opening_float_cents: 8000,
             counted_cash_cents: 16000,
           });
@@ -3043,7 +3043,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-10',
+            business_date: '2038-11-10',
             opening_float_cents: 8000,
             counted_cash_cents: 16000,
           });
@@ -3068,7 +3068,7 @@ async function main() {
           `#1339: day Z report totals equal Shift A + Shift B (expected_cash=${dayZ?.expected_cash_cents}, net=${dayZ?.net_collected_cents})`,
         );
         const xShiftAAfterDayClose = await request(app)
-          .get(`/api/reports/x-report?date=2026-11-10&session_id=${shiftAId}`)
+          .get(`/api/reports/x-report?date=2038-11-10&session_id=${shiftAId}`)
           .set('Authorization', `Bearer ${s11ManagerToken}`);
         const xShiftAAfterDayCloseRep = xShiftAAfterDayClose.body?.xReport;
         assert(
