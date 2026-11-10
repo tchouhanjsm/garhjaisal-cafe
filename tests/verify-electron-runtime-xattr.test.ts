@@ -17,9 +17,6 @@ const {
   verifyElectronRuntime,
 } = require('../scripts/verify-electron-runtime.cjs');
 
-function run() {
-  console.log('Testing Electron runtime xattr classification and ABI resolution...');
-
 function createRuntimeOptions({
   appEntries = [{ name: 'Electron.app', isDirectory: () => true }],
   quarantine = { state: 'absent' },
@@ -57,6 +54,10 @@ function createRuntimeOptions({
     log() {},
   };
 }
+
+function run() {
+  console.log('Testing Electron runtime xattr classification and ABI resolution...');
+
 
   const electronPkg = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../node_modules/electron/package.json'), 'utf8'),
@@ -109,7 +110,7 @@ function createRuntimeOptions({
   // Missing tool (exit 127) → must NOT be clean.
   const missingTool = classifyQuarantine(127, 'xattr: command not found', '');
   assert.equal(missingTool.state, 'error', 'exit 127 (missing tool) is "error", not clean');
-
+  console.log('✅ Electron runtime xattr classification checks passed');
 
   const verifierSource = fs.readFileSync(
     path.join(__dirname, '../scripts/verify-electron-runtime.cjs'),
