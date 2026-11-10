@@ -6,7 +6,7 @@ on:
       - feature/menu-studio-core
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   menu-studio:
@@ -34,6 +34,15 @@ jobs:
         run: npx oxfmt --write 'frontend/src/app/(dashboard)/menu-studio/page.tsx' main/routes/menu-studio.ts tests/menu-studio-api.test.ts
       - name: Show exact formatter diff
         run: git --no-pager diff -- 'frontend/src/app/(dashboard)/menu-studio/page.tsx' main/routes/menu-studio.ts tests/menu-studio-api.test.ts
+      - name: Commit formatter output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'frontend/src/app/(dashboard)/menu-studio/page.tsx' main/routes/menu-studio.ts tests/menu-studio-api.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "style: apply Oxfmt to Menu Studio files"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
       - name: Frontend lint and formatting
         run: npm --prefix frontend run lint && npx oxfmt --check 'frontend/src/app/(dashboard)/menu-studio/page.tsx' 'frontend/src/app/(dashboard)/products/page.tsx' main/db.ts main/routes/index.ts main/routes/menu-studio.ts tests/menu-studio-api.test.ts package.json
       - name: Frontend production build
