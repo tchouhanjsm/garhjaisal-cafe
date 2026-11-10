@@ -238,9 +238,7 @@ async function main() {
     seedProduct(db, formulaProductId, 'cat-menu-studio-food', '+CSV Formula Item', 35);
     const exportResponse = await (globalThis as any).fetch(
       baseUrl + '/api/menu-studio/csv/export',
-      {
-        headers: owner.authHeader,
-      },
+      { headers: owner.authHeader },
     );
     assertEqual(
       exportResponse.status,

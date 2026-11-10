@@ -313,7 +313,10 @@ router.post('/updates', requirePermission('catalog.manage'), (req: Request, res:
 });
 
 
-router.get('/csv/export', requirePermission('catalog.manage'), (_req: Request, res: Response) => {
+router.get(
+  '/csv/export',
+  requirePermission('catalog.manage'),
+  (_req: Request, res: Response) => {
   try {
     const db = getDatabase();
     const products = db
@@ -365,9 +368,13 @@ router.get('/csv/export', requirePermission('catalog.manage'), (_req: Request, r
     console.error('[Menu Studio] CSV export failed:', error);
     res.status(500).json({ error: 'Could not export the menu catalog' });
   }
-});
+  },
+);
 
-router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, res: Response) => {
+router.post(
+  '/csv/preview',
+  requirePermission('catalog.manage'),
+  (req: Request, res: Response) => {
   try {
     const rawCsv = req.body?.csv;
     if (typeof rawCsv !== 'string' || !rawCsv.trim()) {
@@ -597,7 +604,8 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
       ...(error?.code ? { code: error.code } : {}),
     });
   }
-});
+  },
+);
 
 router.get('/audit', requirePermission('catalog.view'), (req: Request, res: Response) => {
   try {
