@@ -468,7 +468,8 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
         return;
       }
       const suppliedSku = decode(row.sku).trim() || null;
-      if (suppliedSku !== current.sku) {
+      const currentSku = current.sku?.trim() || null;
+      if (suppliedSku !== currentSku) {
         fail('SKU is a reference field and must match the exported product', before);
         return;
       }

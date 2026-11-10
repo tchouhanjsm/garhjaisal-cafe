@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Edit2, History, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeft, Check, Download, Edit2, History, RefreshCw, Search, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,28 @@ type AuditEntry = {
   created_at: string;
 };
 
+type MenuStudioCsvPreviewRow = {
+  row_number: number;
+  product_id: string | null;
+  product_name: string;
+  status: 'ready' | 'unchanged' | 'error';
+  message: string | null;
+  before: EditableSnapshot | null;
+  after: EditableSnapshot | null;
+};
+
+type MenuStudioCsvPreview = {
+  file_name: string;
+  row_count: number;
+  ready_count: number;
+  unchanged_count: number;
+  error_count: number;
+  can_apply: boolean;
+  changes: MenuStudioChange[];
+  rows: MenuStudioCsvPreviewRow[];
+  errors: string[];
+};
+
 const MAX_BULK_SELECTION = 250;
 
 const inputClass =
@@ -107,6 +129,11 @@ export default function MenuStudioPage() {
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
   const [historyEntries, setHistoryEntries] = useState<AuditEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [csvPreview, setCsvPreview] = useState<MenuStudioCsvPreview | null>(null);
+  const [csvPreviewLoading, setCsvPreviewLoading] = useState(false);
+  const [csvSaving, setCsvSaving] = useState(false);
 
   const loadData = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
@@ -372,6 +399,66 @@ export default function MenuStudioPage() {
     }
   };
 
+  const downloadMenuCsv = async () => {
+    try {
+      const response = await api.get('/menu-studio/csv/export', { responseType: 'blob' });
+      const url = URL.createObjectURL(response.data as Blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'menu-studio-export.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Menu CSV exported');
+    } catch (error) {
+      toast.error(errorMessage(error) || 'Could not export the menu CSV');
+    }
+  };
+
+  const handleCsvFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+    setCsvPreviewLoading(true);
+    try {
+      const csv = await file.text();
+      const response = await api.post('/menu-studio/csv/preview', { csv });
+      setCsvPreview({
+        ...(response.data as Omit<MenuStudioCsvPreview, 'file_name'>),
+        file_name: file.name,
+      });
+    } catch (error) {
+      toast.error(errorMessage(error) || 'Could not preview this CSV. Use a Menu Studio export.');
+    } finally {
+      setCsvPreviewLoading(false);
+    }
+  };
+
+  const applyCsvPreview = async () => {
+    if (!csvPreview?.can_apply || csvPreview.changes.length === 0) return;
+    setCsvSaving(true);
+    try {
+      const response = await api.post('/menu-studio/updates', {
+        changes: csvPreview.changes,
+      });
+      toast.success('Imported ' + response.data.updated_count + ' menu item changes');
+      setCsvPreview(null);
+      setSelectedIds([]);
+      await loadData(true);
+    } catch (error) {
+      if (errorStatus(error) === 409) {
+        toast.error('The menu changed after this preview. No CSV changes were applied; export again.');
+        setCsvPreview(null);
+        await loadData(true);
+      } else {
+        toast.error(errorMessage(error) || 'Could not apply the CSV changes');
+      }
+    } finally {
+      setCsvSaving(false);
+    }
+  };
+
   const openHistory = async (product: Product) => {
     setHistoryProduct(product);
     setHistoryEntries([]);
@@ -427,10 +514,33 @@ export default function MenuStudioPage() {
             snapshots.
           </p>
         </div>
-        <Button variant="outline" onClick={() => void loadData(true)} disabled={refreshing}>
-          <RefreshCw className={`me-2 size-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            aria-label="Choose a Menu Studio CSV file"
+            onChange={(event) => void handleCsvFileChange(event)}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => csvInputRef.current?.click()}
+            disabled={csvPreviewLoading}
+          >
+            <Upload className="me-2 size-4" />
+            {csvPreviewLoading ? 'Reading CSV…' : 'Import CSV'}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void downloadMenuCsv()}>
+            <Download className="me-2 size-4" />
+            Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => void loadData(true)} disabled={refreshing}>
+            <RefreshCw className={'me-2 size-4 ' + (refreshing ? 'animate-spin' : '')} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4">
@@ -955,6 +1065,131 @@ export default function MenuStudioPage() {
               <Button variant="outline" onClick={() => setHistoryProduct(null)}>
                 Close
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {csvPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="flex max-h-[92vh] w-full max-w-5xl flex-col rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-5">
+              <div>
+                <h2 className="text-lg font-semibold">Review CSV import</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {csvPreview.file_name} · {csvPreview.row_count} rows
+                </p>
+                <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
+                  Update-only import. Products are never created. SKU and export timestamp are
+                  checked for consistency; only name, category, base price and availability can change.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCsvPreview(null)}
+                aria-label="Close CSV preview"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="grid shrink-0 grid-cols-3 gap-2 border-b border-border p-4">
+              <div className="rounded-lg bg-muted p-3">
+                <p className="text-xs text-muted-foreground">Ready to update</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{csvPreview.ready_count}</p>
+              </div>
+              <div className="rounded-lg bg-muted p-3">
+                <p className="text-xs text-muted-foreground">Unchanged</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{csvPreview.unchanged_count}</p>
+              </div>
+              <div className="rounded-lg bg-muted p-3">
+                <p className="text-xs text-muted-foreground">Errors</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{csvPreview.error_count}</p>
+              </div>
+            </div>
+
+            {csvPreview.error_count > 0 && (
+              <div className="shrink-0 border-b border-destructive/30 bg-destructive/5 px-4 py-3">
+                <p className="text-sm font-medium text-destructive">
+                  Fix every validation error before applying this file. No rows will be saved.
+                </p>
+                <ul className="mt-2 max-h-24 space-y-1 overflow-auto text-xs text-muted-foreground">
+                  {csvPreview.errors.map((error, index) => (
+                    <li key={String(index) + '-' + error}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="min-h-0 flex-1 overflow-auto">
+              <table className="w-full min-w-[760px] border-collapse text-sm">
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
+                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Row</th>
+                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Menu item</th>
+                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Name</th>
+                    <th className="p-3 text-end text-xs font-semibold uppercase text-muted-foreground">Base price</th>
+                    <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">Availability</th>
+                    <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Review</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {csvPreview.rows.map((row) => (
+                    <tr key={row.row_number + '-' + (row.product_id || 'unknown')}>
+                      <td className="p-3 align-top tabular-nums">{row.row_number}</td>
+                      <td className="p-3 align-top">
+                        <p className="font-medium">{row.product_name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{row.product_id || 'No product ID'}</p>
+                      </td>
+                      <td className="p-3 align-top">
+                        {row.before && row.after
+                          ? row.before.name + ' → ' + row.after.name
+                          : '—'}
+                      </td>
+                      <td className="p-3 text-end align-top tabular-nums">
+                        {row.before && row.after
+                          ? formatCurrency(row.before.price) + ' → ' + formatCurrency(row.after.price)
+                          : '—'}
+                      </td>
+                      <td className="p-3 text-center align-top">
+                        {row.before && row.after
+                          ? (row.before.is_active ? 'Available' : 'Unavailable') + ' → ' + (row.after.is_active ? 'Available' : 'Unavailable')
+                          : '—'}
+                      </td>
+                      <td className="p-3 align-top">
+                        <span className={
+                          row.status === 'ready'
+                            ? 'font-medium text-emerald-700'
+                            : row.status === 'error'
+                              ? 'font-medium text-destructive'
+                              : 'text-muted-foreground'
+                        }>
+                          {row.status === 'ready' ? 'Ready' : row.status === 'error' ? 'Error' : 'Unchanged'}
+                        </span>
+                        {row.message && <p className="mt-1 text-xs text-muted-foreground">{row.message}</p>}
+                        {row.before && row.after && row.before.category_id !== row.after.category_id && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Category: {row.before.category_id || 'Uncategorized'} → {row.after.category_id || 'Uncategorized'}
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4">
+              <p className="text-xs text-muted-foreground">
+                Confirmed changes are applied together and recorded in Menu Studio history.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setCsvPreview(null)} disabled={csvSaving}>
+                  Cancel
+                </Button>
+                <Button onClick={() => void applyCsvPreview()} disabled={!csvPreview.can_apply || csvSaving}>
+                  {csvSaving ? 'Applying…' : 'Apply ' + csvPreview.changes.length + ' changes'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
