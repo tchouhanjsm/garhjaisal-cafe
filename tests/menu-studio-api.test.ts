@@ -247,9 +247,7 @@ async function main() {
     );
     const exportedCsv = await exportResponse.text();
     assert(
-      exportedCsv.startsWith(
-        'id,sku,name,category_id,price,is_active,updated_at,flo_csv_encoding',
-      ),
+      exportedCsv.startsWith('id,sku,name,category_id,price,is_active,updated_at,flo_csv_encoding'),
       'Menu Studio CSV export includes stable identity and stale-write columns',
     );
     assert(
@@ -261,9 +259,11 @@ async function main() {
       'CSV export carries the reversible formula-safety marker',
     );
 
-    const formulaProduct = db.prepare(
-      'SELECT id, sku, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
-    ).get(formulaProductId) as any;
+    const formulaProduct = db
+      .prepare(
+        'SELECT id, sku, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
+      )
+      .get(formulaProductId) as any;
     const { toQuoteV1CsvRow, FLO_CSV_ENCODING_QUOTE_V1 } = require('../main/lib/csv');
     const importHeader = 'id,sku,name,category_id,price,is_active,updated_at,flo_csv_encoding';
     const previewCsv = [
@@ -315,9 +315,11 @@ async function main() {
       'CSV apply preserves the original formula-leading product name',
     );
 
-    const currentFormulaProduct = db.prepare(
-      'SELECT id, sku, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
-    ).get(formulaProductId) as any;
+    const currentFormulaProduct = db
+      .prepare(
+        'SELECT id, sku, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
+      )
+      .get(formulaProductId) as any;
     const duplicateRow = toQuoteV1CsvRow([
       currentFormulaProduct.id,
       currentFormulaProduct.sku,
