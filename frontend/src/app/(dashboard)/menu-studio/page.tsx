@@ -138,7 +138,10 @@ export default function MenuStudioPage() {
       .catch((error: unknown) => {
         if (
           active &&
-          !(error instanceof Error && (error.name === 'CanceledError' || error.name === 'AbortError'))
+          !(
+            error instanceof Error &&
+            (error.name === 'CanceledError' || error.name === 'AbortError')
+          )
         ) {
           toast.error(errorMessage(error) || 'Could not load the menu catalog');
         }
@@ -205,10 +208,7 @@ export default function MenuStudioPage() {
       return {
         product,
         before: currentPrice,
-        after: roundCurrencyValue(
-          Math.max(0, nextPrice),
-          amountFormat.currencyFractionDigits,
-        ),
+        after: roundCurrencyValue(Math.max(0, nextPrice), amountFormat.currencyFractionDigits),
       };
     });
   }, [selectedProducts, bulkPriceMode, amountValue, amountFormat.currencyFractionDigits]);
@@ -288,7 +288,9 @@ export default function MenuStudioPage() {
       await loadData(true);
     } catch (error) {
       if (errorStatus(error) === 409) {
-        toast.error('This item changed elsewhere. The menu has been refreshed; review it and try again.');
+        toast.error(
+          'This item changed elsewhere. The menu has been refreshed; review it and try again.',
+        );
         cancelEdit();
         await loadData(true);
       } else {
@@ -316,7 +318,9 @@ export default function MenuStudioPage() {
       await loadData(true);
     } catch (error) {
       if (errorStatus(error) === 409) {
-        toast.error('Some selected items changed after the preview. No prices were changed; reload and review again.');
+        toast.error(
+          'Some selected items changed after the preview. No prices were changed; reload and review again.',
+        );
         await loadData(true);
       } else {
         toast.error(errorMessage(error) || 'Could not apply the price changes');
@@ -345,7 +349,9 @@ export default function MenuStudioPage() {
       await loadData(true);
     } catch (error) {
       if (errorStatus(error) === 409) {
-        toast.error('Some selected items changed. No availability changes were applied; reload and review again.');
+        toast.error(
+          'Some selected items changed. No availability changes were applied; reload and review again.',
+        );
         await loadData(true);
       } else {
         toast.error(errorMessage(error) || 'Could not update availability');
@@ -406,7 +412,8 @@ export default function MenuStudioPage() {
           </button>
           <h1 className="text-2xl font-bold text-foreground">Menu Studio</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Update the live menu safely. Existing order bills keep their original item and price snapshots.
+            Update the live menu safely. Existing order bills keep their original item and price
+            snapshots.
           </p>
         </div>
         <Button variant="outline" onClick={() => void loadData(true)} disabled={refreshing}>
@@ -458,7 +465,9 @@ export default function MenuStudioPage() {
           <option value="all">All categories</option>
           <option value="uncategorized">Uncategorized</option>
           {categories.map((category) => (
-            <option key={category.id} value={category.id}>{category.name}</option>
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
           ))}
         </select>
         <select
@@ -524,12 +533,24 @@ export default function MenuStudioPage() {
                   aria-label="Select all visible menu items"
                 />
               </th>
-              <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Item</th>
-              <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">Category</th>
-              <th className="p-3 text-end text-xs font-semibold uppercase text-muted-foreground">Base price</th>
-              <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">Availability</th>
-              <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">Variants / add-ons</th>
-              <th className="p-3 text-end text-xs font-semibold uppercase text-muted-foreground">Actions</th>
+              <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">
+                Item
+              </th>
+              <th className="p-3 text-start text-xs font-semibold uppercase text-muted-foreground">
+                Category
+              </th>
+              <th className="p-3 text-end text-xs font-semibold uppercase text-muted-foreground">
+                Base price
+              </th>
+              <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">
+                Availability
+              </th>
+              <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">
+                Variants / add-ons
+              </th>
+              <th className="p-3 text-end text-xs font-semibold uppercase text-muted-foreground">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -566,7 +587,11 @@ export default function MenuStudioPage() {
                       <div>
                         <p className="font-medium text-foreground">{product.name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          {product.sku ? `SKU: ${product.sku}` : product.barcode ? `Barcode: ${product.barcode}` : 'No SKU'}
+                          {product.sku
+                            ? `SKU: ${product.sku}`
+                            : product.barcode
+                              ? `Barcode: ${product.barcode}`
+                              : 'No SKU'}
                         </p>
                       </div>
                     )}
@@ -575,17 +600,27 @@ export default function MenuStudioPage() {
                     {rowDraft ? (
                       <select
                         value={rowDraft.category_id}
-                        onChange={(event) => setDraft({ ...rowDraft, category_id: event.target.value })}
+                        onChange={(event) =>
+                          setDraft({ ...rowDraft, category_id: event.target.value })
+                        }
                         aria-label={`Category for ${product.name}`}
                         className={inputClass}
                       >
                         <option value="">Uncategorized</option>
-                        {categories.filter((category) => category.is_active || category.id === product.category_id).map((category) => (
-                          <option key={category.id} value={category.id}>{category.name}</option>
-                        ))}
+                        {categories
+                          .filter(
+                            (category) => category.is_active || category.id === product.category_id,
+                          )
+                          .map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
                       </select>
                     ) : (
-                      <span className="text-muted-foreground">{product.category?.name || 'Uncategorized'}</span>
+                      <span className="text-muted-foreground">
+                        {product.category?.name || 'Uncategorized'}
+                      </span>
                     )}
                   </td>
                   <td className="p-3 text-end align-middle">
@@ -601,9 +636,13 @@ export default function MenuStudioPage() {
                       />
                     ) : (
                       <div>
-                        <p className="font-semibold tabular-nums">{formatCurrency(Number(product.price))}</p>
+                        <p className="font-semibold tabular-nums">
+                          {formatCurrency(Number(product.price))}
+                        </p>
                         {(product.variants?.length || 0) > 0 && (
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">Variant prices are separate</p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            Variant prices are separate
+                          </p>
                         )}
                       </div>
                     )}
@@ -612,7 +651,9 @@ export default function MenuStudioPage() {
                     {rowDraft ? (
                       <select
                         value={rowDraft.is_active ? 'available' : 'unavailable'}
-                        onChange={(event) => setDraft({ ...rowDraft, is_active: event.target.value === 'available' })}
+                        onChange={(event) =>
+                          setDraft({ ...rowDraft, is_active: event.target.value === 'available' })
+                        }
                         aria-label={`Availability for ${product.name}`}
                         className={inputClass}
                       >
@@ -620,7 +661,9 @@ export default function MenuStudioPage() {
                         <option value="unavailable">Unavailable</option>
                       </select>
                     ) : (
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${product.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${product.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}
+                      >
                         {product.is_active ? 'Available' : 'Unavailable'}
                       </span>
                     )}
@@ -632,19 +675,39 @@ export default function MenuStudioPage() {
                   <td className="p-3 text-end align-middle">
                     {rowDraft ? (
                       <div className="inline-flex items-center gap-1">
-                        <Button size="sm" onClick={() => void saveEdit(product)} disabled={savingId === product.id}>
-                          <Check className="me-1 size-3.5" /> {savingId === product.id ? 'Saving' : 'Save'}
+                        <Button
+                          size="sm"
+                          onClick={() => void saveEdit(product)}
+                          disabled={savingId === product.id}
+                        >
+                          <Check className="me-1 size-3.5" />{' '}
+                          {savingId === product.id ? 'Saving' : 'Save'}
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={cancelEdit} disabled={savingId === product.id}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={cancelEdit}
+                          disabled={savingId === product.id}
+                        >
                           <X className="size-4" />
                         </Button>
                       </div>
                     ) : (
                       <div className="inline-flex items-center gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => beginEdit(product)} aria-label={`Edit ${product.name}`}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => beginEdit(product)}
+                          aria-label={`Edit ${product.name}`}
+                        >
                           <Edit2 className="me-1 size-3.5" /> Edit
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => void openHistory(product)} aria-label={`History for ${product.name}`}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void openHistory(product)}
+                          aria-label={`History for ${product.name}`}
+                        >
                           <History className="size-3.5" />
                         </Button>
                       </div>
@@ -658,7 +721,9 @@ export default function MenuStudioPage() {
         {visibleProducts.length === 0 && (
           <div className="px-6 py-16 text-center">
             <p className="font-medium">No menu items match these filters</p>
-            <p className="mt-1 text-sm text-muted-foreground">Try another search or clear a filter.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Try another search or clear a filter.
+            </p>
           </div>
         )}
       </div>
@@ -673,7 +738,11 @@ export default function MenuStudioPage() {
                   Preview every selected item’s new base price before applying.
                 </p>
               </div>
-              <button type="button" onClick={() => setBulkDialog(null)} aria-label="Close price preview">
+              <button
+                type="button"
+                onClick={() => setBulkDialog(null)}
+                aria-label="Close price preview"
+              >
                 <X className="size-5" />
               </button>
             </div>
@@ -697,7 +766,11 @@ export default function MenuStudioPage() {
                 <input
                   type="number"
                   min="0"
-                  step={bulkPriceMode.includes('percent') ? '0.1' : String(10 ** -amountFormat.currencyFractionDigits)}
+                  step={
+                    bulkPriceMode.includes('percent')
+                      ? '0.1'
+                      : String(10 ** -amountFormat.currencyFractionDigits)
+                  }
                   value={bulkAmount}
                   onChange={(event) => setBulkAmount(event.target.value)}
                   className={inputClass + ' mt-1'}
@@ -722,13 +795,17 @@ export default function MenuStudioPage() {
                     <tr key={product.id}>
                       <td className="p-2">{product.name}</td>
                       <td className="p-2 text-end tabular-nums">{formatCurrency(before)}</td>
-                      <td className="p-2 text-end font-semibold tabular-nums">{formatCurrency(after)}</td>
+                      <td className="p-2 text-end font-semibold tabular-nums">
+                        {formatCurrency(after)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {pricePreview.length !== selectedProducts.length && (
-                <p className="py-4 text-sm text-destructive">Enter a valid amount to preview the changes.</p>
+                <p className="py-4 text-sm text-destructive">
+                  Enter a valid amount to preview the changes.
+                </p>
               )}
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-5">
@@ -736,8 +813,17 @@ export default function MenuStudioPage() {
                 Only base product prices change. Variant and add-on prices remain unchanged.
               </p>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setBulkDialog(null)} disabled={bulkSaving}>Cancel</Button>
-                <Button onClick={() => void confirmBulkPrice()} disabled={bulkSaving || pricePreview.length === 0 || pricePreview.length !== selectedProducts.length}>
+                <Button variant="outline" onClick={() => setBulkDialog(null)} disabled={bulkSaving}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => void confirmBulkPrice()}
+                  disabled={
+                    bulkSaving ||
+                    pricePreview.length === 0 ||
+                    pricePreview.length !== selectedProducts.length
+                  }
+                >
                   {bulkSaving ? 'Applying…' : `Confirm ${pricePreview.length} changes`}
                 </Button>
               </div>
@@ -757,17 +843,40 @@ export default function MenuStudioPage() {
             </div>
             <div className="space-y-3 p-5">
               <label className="flex items-center gap-3 rounded-lg border border-border p-3">
-                <input type="radio" checked={bulkAvailability} onChange={() => setBulkAvailability(true)} />
-                <span><strong className="block text-sm">Available</strong><span className="text-xs text-muted-foreground">Visible for new POS orders, subject to category availability.</span></span>
+                <input
+                  type="radio"
+                  checked={bulkAvailability}
+                  onChange={() => setBulkAvailability(true)}
+                />
+                <span>
+                  <strong className="block text-sm">Available</strong>
+                  <span className="text-xs text-muted-foreground">
+                    Visible for new POS orders, subject to category availability.
+                  </span>
+                </span>
               </label>
               <label className="flex items-center gap-3 rounded-lg border border-border p-3">
-                <input type="radio" checked={!bulkAvailability} onChange={() => setBulkAvailability(false)} />
-                <span><strong className="block text-sm">Unavailable</strong><span className="text-xs text-muted-foreground">Hidden from new POS item selection.</span></span>
+                <input
+                  type="radio"
+                  checked={!bulkAvailability}
+                  onChange={() => setBulkAvailability(false)}
+                />
+                <span>
+                  <strong className="block text-sm">Unavailable</strong>
+                  <span className="text-xs text-muted-foreground">
+                    Hidden from new POS item selection.
+                  </span>
+                </span>
               </label>
             </div>
             <div className="flex justify-end gap-2 border-t border-border p-5">
-              <Button variant="outline" onClick={() => setBulkDialog(null)} disabled={bulkSaving}>Cancel</Button>
-              <Button onClick={() => void confirmBulkAvailability()} disabled={bulkSaving || selectedProducts.length === 0}>
+              <Button variant="outline" onClick={() => setBulkDialog(null)} disabled={bulkSaving}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void confirmBulkAvailability()}
+                disabled={bulkSaving || selectedProducts.length === 0}
+              >
                 {bulkSaving ? 'Saving…' : 'Confirm availability'}
               </Button>
             </div>
@@ -783,7 +892,11 @@ export default function MenuStudioPage() {
                 <h2 className="text-lg font-semibold">Edit history</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{historyProduct.name}</p>
               </div>
-              <button type="button" onClick={() => setHistoryProduct(null)} aria-label="Close edit history">
+              <button
+                type="button"
+                onClick={() => setHistoryProduct(null)}
+                aria-label="Close edit history"
+              >
                 <X className="size-5" />
               </button>
             </div>
@@ -791,33 +904,45 @@ export default function MenuStudioPage() {
               {historyLoading ? (
                 <p className="text-sm text-muted-foreground">Loading history…</p>
               ) : historyEntries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No Menu Studio changes recorded for this item.</p>
-              ) : historyEntries.map((entry) => (
-                <div key={entry.id} className="rounded-xl border border-border p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-semibold">{entry.action.replaceAll('_', ' ')}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(entry.created_at.replace(' ', 'T') + 'Z').toLocaleString()}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">By {entry.actor_name || entry.actor_user_id}</p>
-                  <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-                    <div className="rounded-lg bg-muted p-2">
-                      <p className="mb-1 font-semibold">Before</p>
-                      <p>{entry.before?.name || '—'}</p>
-                      <p>{entry.before ? formatCurrency(entry.before.price) : '—'}</p>
-                      <p>{entry.before?.is_active ? 'Available' : 'Unavailable'}</p>
+                <p className="text-sm text-muted-foreground">
+                  No Menu Studio changes recorded for this item.
+                </p>
+              ) : (
+                historyEntries.map((entry) => (
+                  <div key={entry.id} className="rounded-xl border border-border p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-sm font-semibold">
+                        {entry.action.replaceAll('_', ' ')}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(entry.created_at.replace(' ', 'T') + 'Z').toLocaleString()}
+                      </span>
                     </div>
-                    <div className="rounded-lg bg-muted p-2">
-                      <p className="mb-1 font-semibold">After</p>
-                      <p>{entry.after?.name || '—'}</p>
-                      <p>{entry.after ? formatCurrency(entry.after.price) : '—'}</p>
-                      <p>{entry.after?.is_active ? 'Available' : 'Unavailable'}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      By {entry.actor_name || entry.actor_user_id}
+                    </p>
+                    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="mb-1 font-semibold">Before</p>
+                        <p>{entry.before?.name || '—'}</p>
+                        <p>{entry.before ? formatCurrency(entry.before.price) : '—'}</p>
+                        <p>{entry.before?.is_active ? 'Available' : 'Unavailable'}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="mb-1 font-semibold">After</p>
+                        <p>{entry.after?.name || '—'}</p>
+                        <p>{entry.after ? formatCurrency(entry.after.price) : '—'}</p>
+                        <p>{entry.after?.is_active ? 'Available' : 'Unavailable'}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
             <div className="flex justify-end border-t border-border p-4">
-              <Button variant="outline" onClick={() => setHistoryProduct(null)}>Close</Button>
+              <Button variant="outline" onClick={() => setHistoryProduct(null)}>
+                Close
+              </Button>
             </div>
           </div>
         </div>

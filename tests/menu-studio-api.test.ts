@@ -38,7 +38,9 @@ const { menuStudioRoutes } = require('../main/routes/menu-studio');
 
 function readProduct(db: any, id: string) {
   return db
-    .prepare('SELECT id, name, category_id, price, is_active, updated_at FROM products WHERE id = ?')
+    .prepare(
+      'SELECT id, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
+    )
     .get(id) as any;
 }
 
@@ -111,10 +113,26 @@ async function main() {
       .prepare('SELECT * FROM menu_studio_audit_log WHERE batch_id = ? ORDER BY id')
       .all(response.data.batch_id) as any[];
     assertEqual(firstBatchAudit.length, 2, 'one audit entry is written for each changed product');
-    assertEqual(firstBatchAudit[0].actor_user_id, owner.userId, 'audit entries retain the acting user');
-    assertEqual(JSON.parse(firstBatchAudit[0].before_json).price, 220, 'audit stores the previous price');
-    assertEqual(JSON.parse(firstBatchAudit[0].after_json).price, 240, 'audit stores the resulting price');
-    assertEqual(firstBatchAudit[0].action, 'price_updated', 'price changes are classified in the audit');
+    assertEqual(
+      firstBatchAudit[0].actor_user_id,
+      owner.userId,
+      'audit entries retain the acting user',
+    );
+    assertEqual(
+      JSON.parse(firstBatchAudit[0].before_json).price,
+      220,
+      'audit stores the previous price',
+    );
+    assertEqual(
+      JSON.parse(firstBatchAudit[0].after_json).price,
+      240,
+      'audit stores the resulting price',
+    );
+    assertEqual(
+      firstBatchAudit[0].action,
+      'price_updated',
+      'price changes are classified in the audit',
+    );
 
     const staleFirst = readProduct(db, initialA.id);
     const staleSecond = readProduct(db, initialB.id);
@@ -145,8 +163,16 @@ async function main() {
     });
     assertEqual(response.status, 409, 'a stale edit is rejected');
     assertEqual(response.data.code, 'stale_write', 'the stale conflict has a stable machine code');
-    assertEqual(readProduct(db, staleFirst.id).price, 245, 'the newer concurrent price is preserved');
-    assertEqual(readProduct(db, staleSecond.id).name, staleSecond.name, 'the rest of a stale batch is rolled back');
+    assertEqual(
+      readProduct(db, staleFirst.id).price,
+      245,
+      'the newer concurrent price is preserved',
+    );
+    assertEqual(
+      readProduct(db, staleSecond.id).name,
+      staleSecond.name,
+      'the rest of a stale batch is rolled back',
+    );
     assertEqual(
       (db.prepare('SELECT COUNT(*) AS count FROM menu_studio_audit_log').get() as any).count,
       auditCountBeforeStale,
@@ -167,7 +193,11 @@ async function main() {
         ],
       },
     });
-    assertEqual(response.status, 400, 'unsupported catalog fields cannot enter through Menu Studio');
+    assertEqual(
+      response.status,
+      400,
+      'unsupported catalog fields cannot enter through Menu Studio',
+    );
     assertEqual(
       readProduct(db, staleSecond.id).name,
       staleSecond.name,
@@ -190,7 +220,9 @@ async function main() {
       'the product audit filter returns its edits',
     );
     assert(
-      response.data.entries.some((entry: any) => entry.before?.price === 220 && entry.after?.price === 240),
+      response.data.entries.some(
+        (entry: any) => entry.before?.price === 220 && entry.after?.price === 240,
+      ),
       'audit API returns parsed before and after snapshots',
     );
 
@@ -202,9 +234,7 @@ async function main() {
     assertEqual(response.status, 400, 'empty edit batches are rejected');
 
     const results = getResults();
-    console.log(
-      `\nMenu Studio API: ${results.passed}/${results.total} checks passed.`,
-    );
+    console.log(`\nMenu Studio API: ${results.passed}/${results.total} checks passed.`);
     if (results.failed > 0) process.exitCode = 1;
   } finally {
     server.close();

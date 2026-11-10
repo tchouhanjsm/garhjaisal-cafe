@@ -194,7 +194,9 @@ router.post('/updates', requirePermission('catalog.manage'), (req: Request, res:
           !sameSnapshot(snapshotProduct(current), change.expected)
         ) {
           throw Object.assign(
-            new Error(`${current.name} changed after this Menu Studio view was loaded. Reload and try again.`),
+            new Error(
+              `${current.name} changed after this Menu Studio view was loaded. Reload and try again.`,
+            ),
             { statusCode: 409, code: 'stale_write', product_id: current.id },
           );
         }
