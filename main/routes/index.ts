@@ -46,26 +46,14 @@ import { getDatabase, getSettingValue, getCachedPairingCode, setCachedPairingCod
 import { getActiveCountryPack } from '../services/tax';
 import { cloudSync } from '../services/cloud-sync';
 import { isOperationReference, serializeOperationFailure } from '../lib/operation-failure';
+import {
+  mobilePairingErrorMessage,
+  mobilePairingErrorStatus,
+} from '../lib/mobile-pairing-error';
 import { parsePhoneE164, stripPhoneDigits } from '../lib/phone';
 import QRCode from 'qrcode';
 import { asyncHandler } from '../middleware/async-handler';
 import expressRateLimit from 'express-rate-limit';
-
-// Distinguish unregistered store error from cloud connectivity failure.
-function isUnregisteredCloudError(error: any): boolean {
-  return typeof error?.message === 'string' && error.message.includes('is not registered');
-}
-
-function mobilePairingErrorStatus(error: any): number {
-  return isUnregisteredCloudError(error) ? 409 : 502;
-}
-
-function mobilePairingErrorMessage(error: any): string {
-  if (isUnregisteredCloudError(error)) {
-    return 'This POS hasn’t been claimed in FloAdmin yet. Complete registration in FloAdmin, then try generating a pairing code again.';
-  }
-  return error?.message || 'Could not reach FloAdmin';
-}
 
 const inlineCustomerLookupRateLimit = expressRateLimit({
   windowMs: 60 * 1000,

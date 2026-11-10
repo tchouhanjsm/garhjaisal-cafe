@@ -497,13 +497,12 @@ key immediately, so **there is no claim step, no pending state, and no human app
 `cloud_registration_status` values in use are `unregistered`, `registered`, `registration_failed`,
 `deletion_pending`, and `deleted`.
 
-**One stale claim message survives.** `mobilePairingErrorMessage()` in
-[`main/routes/index.ts`](../../main/routes/index.ts) still tells a merchant that the POS "hasn't
-been claimed in FloAdmin yet" and to complete registration there, returned with HTTP 409 when the
-backend reports the store is not registered. That message contradicts the zero-touch behaviour
-above: the merchant has nothing to claim. The message is reachable from the mobile pairing
-endpoint, so this is shipped behaviour, not dead text. Treat it as a product-copy bug to raise
-separately, not as a description of how registration works.
+**Mobile pairing before registration completes.** `GET /api/mobile/pairing-code` returns
+`409` when the signed cloud request has no registered POS API key. The response explains that
+registration is automatic, asks the merchant to check internet connectivity and confirm Cloud
+Services are enabled, and invites them to retry. There is no manual claim step. The response is
+built by `mobilePairingErrorMessage()` in
+[`main/lib/mobile-pairing-error.ts`](../../main/lib/mobile-pairing-error.ts).
 
 **Payment outcomes stay local-authoritative.** Payment routes capture typed diagnostics only after
 the operation's outcome is known. A rollback is recorded as not applied; a notification failure
