@@ -43,6 +43,7 @@ import {
   beginDatabaseReplacementJournal,
   abortDatabaseReplacementJournal,
   getCurrentSchemaVersion,
+  MIGRATIONS,
   getDatabase,
   getDbPath,
   initDatabase,
@@ -1268,10 +1269,11 @@ async function run() {
     fs.writeFileSync(liveDbPath, 'corrupted data from interrupted write');
 
     initDatabase();
+    const latestRegisteredSchemaVersion = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;
     assert.equal(
       getCurrentSchemaVersion(),
-      125,
-      'interrupted v114 replacement recovered and migrated to v125',
+      latestRegisteredSchemaVersion,
+      'interrupted historical replacement recovers to the latest registered schema version',
     );
     assert.equal(
       fs.existsSync(journalPath),

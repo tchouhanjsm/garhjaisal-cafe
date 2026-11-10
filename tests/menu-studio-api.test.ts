@@ -233,6 +233,120 @@ async function main() {
     });
     assertEqual(response.status, 400, 'empty edit batches are rejected');
 
+    console.log('\n─── Menu Studio CSV export, preview and transactional apply ───');
+    const formulaProductId = 'prod-menu-studio-csv-formula';
+    seedProduct(db, formulaProductId, 'cat-menu-studio-food', '+CSV Formula Item', 35);
+    const exportResponse = await (globalThis as any).fetch(baseUrl + '/api/menu-studio/csv/export', {
+      headers: owner.authHeader,
+    });
+    assertEqual(exportResponse.status, 200, 'Menu Studio CSV export is available to catalog managers');
+    const exportedCsv = await exportResponse.text();
+    assert(exportedCsv.startsWith('id,sku,name,category_id,price,is_active,updated_at,flo_csv_encoding'), 'Menu Studio CSV export includes stable identity and stale-write columns');
+    assert(exportedCsv.includes("'+CSV Formula Item"), 'CSV export neutralizes spreadsheet formula-leading product names');
+    assert(exportedCsv.includes('quote-v1'), 'CSV export carries the reversible formula-safety marker');
+
+    const formulaProduct = db.prepare(
+      'SELECT id, sku, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
+    ).get(formulaProductId) as any;
+    const { toQuoteV1CsvRow, FLO_CSV_ENCODING_QUOTE_V1 } = require('../main/lib/csv');
+    const importHeader = 'id,sku,name,category_id,price,is_active,updated_at,flo_csv_encoding';
+    const previewCsv = [
+      importHeader,
+      toQuoteV1CsvRow([
+        formulaProduct.id,
+        formulaProduct.sku,
+        formulaProduct.name,
+        formulaProduct.category_id,
+        39,
+        'yes',
+        formulaProduct.updated_at,
+        FLO_CSV_ENCODING_QUOTE_V1,
+      ]),
+    ].join('\n');
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: previewCsv },
+    });
+    assertEqual(response.status, 200, 'a valid Menu Studio CSV can be previewed');
+    assertEqual(response.data.ready_count, 1, 'preview identifies one valid product change');
+    assertEqual(response.data.error_count, 0, 'valid CSV preview has no row errors');
+    assertEqual(
+      readProduct(db, formulaProductId).price,
+      35,
+      'preview never mutates catalog values',
+    );
+    assertEqual(
+      response.data.rows[0].before.name,
+      '+CSV Formula Item',
+      'quote-v1 preview restores formula-leading names without changing the item identity',
+    );
+
+    const csvApply = await api(baseUrl, '/api/menu-studio/updates', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { changes: response.data.changes },
+    });
+    assertEqual(csvApply.status, 200, 'previewed CSV updates use the transactional Menu Studio API');
+    assertEqual(readProduct(db, formulaProductId).price, 39, 'confirmed CSV price is saved');
+    assertEqual(
+      readProduct(db, formulaProductId).name,
+      '+CSV Formula Item',
+      'CSV apply preserves the original formula-leading product name',
+    );
+
+    const currentFormulaProduct = db.prepare(
+      'SELECT id, sku, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
+    ).get(formulaProductId) as any;
+    const duplicateRow = toQuoteV1CsvRow([
+      currentFormulaProduct.id,
+      currentFormulaProduct.sku,
+      currentFormulaProduct.name,
+      currentFormulaProduct.category_id,
+      40,
+      'yes',
+      currentFormulaProduct.updated_at,
+      FLO_CSV_ENCODING_QUOTE_V1,
+    ]);
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: [importHeader, duplicateRow, duplicateRow].join('\n') },
+    });
+    assertEqual(response.status, 200, 'duplicate CSV rows return a reviewable preview');
+    assertEqual(response.data.error_count, 1, 'duplicate product IDs are detected');
+    assertEqual(response.data.can_apply, false, 'a CSV with any invalid row cannot be applied');
+    assertEqual(readProduct(db, formulaProductId).price, 39, 'duplicate preview leaves catalog unchanged');
+
+    const staleCsv = [
+      importHeader,
+      toQuoteV1CsvRow([
+        currentFormulaProduct.id,
+        currentFormulaProduct.sku,
+        currentFormulaProduct.name,
+        currentFormulaProduct.category_id,
+        41,
+        'yes',
+        currentFormulaProduct.updated_at,
+        FLO_CSV_ENCODING_QUOTE_V1,
+      ]),
+    ].join('\n');
+    db.prepare('UPDATE products SET price = ?, updated_at = ? WHERE id = ?').run(
+      42,
+      '2026-11-10 17:30:00',
+      formulaProductId,
+    );
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: staleCsv },
+    });
+    assertEqual(response.data.error_count, 1, 'stale CSV rows are rejected during preview');
+    assertEqual(response.data.can_apply, false, 'stale CSV preview cannot be applied');
+    assertEqual(readProduct(db, formulaProductId).price, 42, 'stale CSV cannot overwrite a newer edit');
+
+
+
     const results = getResults();
     console.log(`\nMenu Studio API: ${results.passed}/${results.total} checks passed.`);
     if (results.failed > 0) process.exitCode = 1;
