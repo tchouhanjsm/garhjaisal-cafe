@@ -102,7 +102,8 @@ function verifyElectronRuntime({
   }
 
   log(
-    `verify-electron-runtime: ${appPath} present and unquarantined; development runtime checks passed.`,
+    `verify-electron-runtime: ${appPath} present and unquarantined; ` +
+      'development runtime checks passed.',
   );
   return { status: 'verified', platform, version: electronVersion, abi, appPath };
 }
