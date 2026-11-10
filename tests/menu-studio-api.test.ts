@@ -236,14 +236,32 @@ async function main() {
     console.log('\n─── Menu Studio CSV export, preview and transactional apply ───');
     const formulaProductId = 'prod-menu-studio-csv-formula';
     seedProduct(db, formulaProductId, 'cat-menu-studio-food', '+CSV Formula Item', 35);
-    const exportResponse = await (globalThis as any).fetch(baseUrl + '/api/menu-studio/csv/export', {
-      headers: owner.authHeader,
-    });
-    assertEqual(exportResponse.status, 200, 'Menu Studio CSV export is available to catalog managers');
+    const exportResponse = await (globalThis as any).fetch(
+      baseUrl + '/api/menu-studio/csv/export',
+      {
+        headers: owner.authHeader,
+      },
+    );
+    assertEqual(
+      exportResponse.status,
+      200,
+      'Menu Studio CSV export is available to catalog managers',
+    );
     const exportedCsv = await exportResponse.text();
-    assert(exportedCsv.startsWith('id,sku,name,category_id,price,is_active,updated_at,flo_csv_encoding'), 'Menu Studio CSV export includes stable identity and stale-write columns');
-    assert(exportedCsv.includes("'+CSV Formula Item"), 'CSV export neutralizes spreadsheet formula-leading product names');
-    assert(exportedCsv.includes('quote-v1'), 'CSV export carries the reversible formula-safety marker');
+    assert(
+      exportedCsv.startsWith(
+        'id,sku,name,category_id,price,is_active,updated_at,flo_csv_encoding',
+      ),
+      'Menu Studio CSV export includes stable identity and stale-write columns',
+    );
+    assert(
+      exportedCsv.includes("'+CSV Formula Item"),
+      'CSV export neutralizes spreadsheet formula-leading product names',
+    );
+    assert(
+      exportedCsv.includes('quote-v1'),
+      'CSV export carries the reversible formula-safety marker',
+    );
 
     const formulaProduct = db.prepare(
       'SELECT id, sku, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
@@ -287,7 +305,11 @@ async function main() {
       headers: owner.authHeader,
       body: { changes: response.data.changes },
     });
-    assertEqual(csvApply.status, 200, 'previewed CSV updates use the transactional Menu Studio API');
+    assertEqual(
+      csvApply.status,
+      200,
+      'previewed CSV updates use the transactional Menu Studio API',
+    );
     assertEqual(readProduct(db, formulaProductId).price, 39, 'confirmed CSV price is saved');
     assertEqual(
       readProduct(db, formulaProductId).name,
@@ -316,7 +338,11 @@ async function main() {
     assertEqual(response.status, 200, 'duplicate CSV rows return a reviewable preview');
     assertEqual(response.data.error_count, 1, 'duplicate product IDs are detected');
     assertEqual(response.data.can_apply, false, 'a CSV with any invalid row cannot be applied');
-    assertEqual(readProduct(db, formulaProductId).price, 39, 'duplicate preview leaves catalog unchanged');
+    assertEqual(
+      readProduct(db, formulaProductId).price,
+      39,
+      'duplicate preview leaves catalog unchanged',
+    );
 
     const staleCsv = [
       importHeader,
@@ -343,7 +369,11 @@ async function main() {
     });
     assertEqual(response.data.error_count, 1, 'stale CSV rows are rejected during preview');
     assertEqual(response.data.can_apply, false, 'stale CSV preview cannot be applied');
-    assertEqual(readProduct(db, formulaProductId).price, 42, 'stale CSV cannot overwrite a newer edit');
+    assertEqual(
+      readProduct(db, formulaProductId).price,
+      42,
+      'stale CSV cannot overwrite a newer edit',
+    );
 
 
 

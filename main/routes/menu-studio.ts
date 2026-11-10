@@ -2,7 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { Router, Request, Response } from 'express';
 import { getDatabase, now } from '../db';
 import { requirePermission } from '../services/authorization';
-import { decodeQuoteV1Field, FLO_CSV_ENCODING_COLUMN, FLO_CSV_ENCODING_QUOTE_V1, toQuoteV1CsvRow } from '../lib/csv';
+import {
+  decodeQuoteV1Field,
+  FLO_CSV_ENCODING_COLUMN,
+  FLO_CSV_ENCODING_QUOTE_V1,
+  toQuoteV1CsvRow,
+} from '../lib/csv';
 import { parseCSV, resolveCsvRowEncoding, toObjects } from './menu-csv';
 
 const router = Router();
@@ -176,7 +181,8 @@ router.post('/updates', requirePermission('catalog.manage'), (req: Request, res:
 
     const applyChanges = db.transaction(() => {
       const selectProduct = db.prepare(
-        'SELECT id, name, category_id, price, is_active, updated_at, deleted_at FROM products WHERE id = ?',
+        `SELECT id, name, category_id, price, is_active, updated_at, deleted_at
+         FROM products WHERE id = ?`,
       );
       const selectCategory = db.prepare(
         'SELECT id, is_active FROM categories WHERE id = ? AND deleted_at IS NULL',
@@ -326,7 +332,16 @@ router.get('/csv/export', requirePermission('catalog.manage'), (_req: Request, r
       updated_at: string;
     }[];
     const lines = [
-      ['id', 'sku', 'name', 'category_id', 'price', 'is_active', 'updated_at', FLO_CSV_ENCODING_COLUMN].join(','),
+      [
+        'id',
+        'sku',
+        'name',
+        'category_id',
+        'price',
+        'is_active',
+        'updated_at',
+        FLO_CSV_ENCODING_COLUMN,
+      ].join(','),
     ];
     for (const product of products) {
       lines.push(
@@ -361,7 +376,9 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
 
     const parsed = parseCSV(rawCsv.replace(/^\uFEFF/, ''));
     if (parsed.length < 2) {
-      return res.status(400).json({ error: 'CSV must include a header and at least one product row' });
+      return res.status(400).json({
+        error: 'CSV must include a header and at least one product row',
+      });
     }
 
     const headers = parsed[0].map((header) => header.trim().toLowerCase());
@@ -380,7 +397,8 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
     const unsupportedHeaders = headers.filter((header) => !allowedHeaders.has(header));
     if (duplicateHeaders.length || missingHeaders.length || unsupportedHeaders.length) {
       return res.status(400).json({
-        error: 'Use the CSV exported by Menu Studio. Required columns: id, sku, name, category_id, price, is_active, updated_at and flo_csv_encoding.',
+        error:
+          'Use the CSV exported by Menu Studio. Required columns: id, sku, name, category_id, price, is_active, updated_at and flo_csv_encoding.',
         code: 'invalid_csv_headers',
         missing_headers: missingHeaders,
         unsupported_headers: [...new Set(unsupportedHeaders)],
@@ -398,7 +416,8 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
 
     const db = getDatabase();
     const selectProduct = db.prepare(
-      'SELECT id, sku, name, category_id, price, is_active, updated_at, deleted_at FROM products WHERE id = ?',
+      `SELECT id, sku, name, category_id, price, is_active, updated_at, deleted_at
+       FROM products WHERE id = ?`,
     );
     const selectCategory = db.prepare(
       'SELECT id, is_active FROM categories WHERE id = ? AND deleted_at IS NULL',
@@ -464,7 +483,10 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
       const before = snapshotProduct(current);
       const suppliedUpdatedAt = decode(row.updated_at).trim();
       if (!suppliedUpdatedAt || suppliedUpdatedAt !== current.updated_at) {
-        fail('product changed after this CSV was exported; export the latest menu and retry', before);
+        fail(
+          'product changed after this CSV was exported; export the latest menu and retry',
+          before,
+        );
         return;
       }
       const suppliedSku = decode(row.sku).trim() || null;
@@ -519,7 +541,9 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
       if (name !== before.name) patch.name = name;
       if (categoryId !== before.category_id) patch.category_id = categoryId;
       if (price !== before.price) patch.price = price;
-      if (activeValues[activeValue] !== before.is_active) patch.is_active = activeValues[activeValue];
+      if (activeValues[activeValue] !== before.is_active) {
+        patch.is_active = activeValues[activeValue];
+      }
       const after: EditableSnapshot = { ...before, ...patch };
       if (Object.keys(patch).length) {
         changes.push({
