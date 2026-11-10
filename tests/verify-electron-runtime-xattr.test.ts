@@ -72,10 +72,7 @@ function verifyFixture(fixture, overrides = {}) {
 }
 
 function assertRuntimeRejects(fixture, overrides, expectedMessage) {
-  assert.throws(
-    () => verifyFixture(fixture, overrides),
-    expectedMessage,
-  );
+  assert.throws(() => verifyFixture(fixture, overrides), expectedMessage);
 }
 
 function returnPresentQuarantine() {
@@ -199,11 +196,7 @@ function run() {
     stderr: 'xattr: Permission denied',
   });
   const failedAttributeRead = readQuarantine(appPath, throwOnRead(unexpectedAttributeError));
-  assert.equal(
-    failedAttributeRead.state,
-    'error',
-    'permission failures must remain fail-closed',
-  );
+  assert.equal(failedAttributeRead.state, 'error', 'permission failures must remain fail-closed');
 
   // No Electron package is a supported no-op during source-only installs.
   const missingPackage = createRuntimeFixture({ electronInstalled: false });
