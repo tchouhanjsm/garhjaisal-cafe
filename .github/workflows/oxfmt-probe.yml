@@ -1,0 +1,22 @@
+name: Temporary Oxfmt format probe
+
+on:
+  push:
+    branches:
+      - fix/macos-electron-dev-runtime-verification
+
+permissions:
+  contents: read
+
+jobs:
+  format-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Format with the repository's exact Oxfmt version
+        run: npm exec --yes --package=oxfmt@0.76.0 -- oxfmt --write tests/cash-sessions.test.ts
+      - name: Show formatter patch
+        run: git --no-pager diff -- tests/cash-sessions.test.ts
