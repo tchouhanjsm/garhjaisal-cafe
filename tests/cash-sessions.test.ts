@@ -2337,9 +2337,7 @@ async function main() {
     // 365-day lifetime of the JWTs signed below. A far-future FixedClock would
     // make those tokens expire during this section and turn the whole test into
     // an authentication failure cascade.
-    const s11BusinessDate = new RealDate(
-      RealDate.now() + 30 * 24 * 60 * 60 * 1000,
-    )
+    const s11BusinessDate = new RealDate(RealDate.now() + 30 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
     const s11PreviousDateValue = new RealDate(`${s11BusinessDate}T00:00:00.000Z`);
