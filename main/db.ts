@@ -10343,6 +10343,52 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       }
     },
   },
+  {
+    version: 126,
+    name: 'delivery_driver_dispatch_and_cash_settlements',
+    up: () => {
+      const orderColumns = getColumns(db, 'orders');
+      if (!orderColumns.includes('delivery_driver_name')) {
+        db.exec('ALTER TABLE orders ADD COLUMN delivery_driver_name TEXT DEFAULT NULL');
+      }
+      if (!orderColumns.includes('dispatched_at')) {
+        db.exec('ALTER TABLE orders ADD COLUMN dispatched_at TEXT DEFAULT NULL');
+      }
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_orders_delivery_driver_dispatch
+          ON orders(type, delivery_driver_name, dispatched_at);
+
+        CREATE TABLE IF NOT EXISTS delivery_driver_settlements (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          driver_name TEXT NOT NULL,
+          actor_user_id TEXT NOT NULL REFERENCES users(id),
+          cash_session_id INTEGER NOT NULL REFERENCES cash_sessions(id),
+          amount_cents INTEGER NOT NULL DEFAULT 0 CHECK (amount_cents >= 0),
+          bill_count INTEGER NOT NULL DEFAULT 0 CHECK (bill_count >= 0),
+          idempotency_key TEXT NOT NULL,
+          request_hash TEXT NOT NULL,
+          response_json TEXT NOT NULL DEFAULT '{}',
+          created_at TEXT NOT NULL,
+          UNIQUE(actor_user_id, idempotency_key)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_delivery_driver_settlements_driver
+          ON delivery_driver_settlements(driver_name, created_at, id);
+
+        CREATE TABLE IF NOT EXISTS delivery_driver_settlement_bills (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          settlement_id INTEGER NOT NULL REFERENCES delivery_driver_settlements(id) ON DELETE CASCADE,
+          bill_id INTEGER NOT NULL REFERENCES bills(id),
+          order_id INTEGER NOT NULL REFERENCES orders(id),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          UNIQUE(settlement_id, bill_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_delivery_driver_settlement_bills_bill
+          ON delivery_driver_settlement_bills(bill_id);
+      `);
+    },
+  },
 ];
 
 export function backfillWhatsAppMessageAttempts(

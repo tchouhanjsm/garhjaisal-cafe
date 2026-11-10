@@ -4103,6 +4103,244 @@ function applyPaymentBatch(
   return result;
 }
 
+router.post(
+  '/batch-settle-driver',
+  requirePermission('payments.take'),
+  asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const db = getDatabase();
+      const actorId = String((req as Request & { user?: { userId?: string } }).user?.userId || '');
+      if (!actorId) throw Object.assign(new Error('Authentication required'), { statusCode: 401 });
+
+      const rawDriverName = (req.body || {}).driver_name;
+      if (typeof rawDriverName !== 'string') {
+        throw Object.assign(new Error('driver_name must be a string'), { statusCode: 400 });
+      }
+      const driverName = rawDriverName.trim().replace(/\s+/g, ' ');
+      if (!driverName || driverName.length > 80) {
+        throw Object.assign(new Error('driver_name must contain 1 to 80 characters'), {
+          statusCode: 400,
+        });
+      }
+
+      const idempotencyKey = paymentIdempotencyKey(req);
+      if (!idempotencyKey) {
+        throw Object.assign(new Error('Idempotency-Key is required for driver settlement'), {
+          statusCode: 400,
+          displayCode: 'idempotency_key_required',
+        });
+      }
+      const requestHash = createHash('sha256')
+        .update(JSON.stringify({ driver_name: driverName.toLowerCase() }))
+        .digest('hex');
+
+      const readReplay = () =>
+        db
+          .prepare(`
+            SELECT request_hash, response_json
+            FROM delivery_driver_settlements
+            WHERE actor_user_id = ? AND idempotency_key = ?
+          `)
+          .get(actorId, idempotencyKey) as
+          | { request_hash: string; response_json: string }
+          | undefined;
+
+      const prior = readReplay();
+      if (prior) {
+        if (prior.request_hash !== requestHash) {
+          throw Object.assign(new Error('Idempotency-Key was already used for another driver'), {
+            statusCode: 409,
+            displayCode: 'idempotency_conflict',
+          });
+        }
+        return res.json(JSON.parse(prior.response_json));
+      }
+
+      const minorFactor = getCurrencyMinorUnitFactor(getTenantCurrency());
+      const result = withTxn(() => {
+        const concurrentReplay = readReplay();
+        if (concurrentReplay) {
+          if (concurrentReplay.request_hash !== requestHash) {
+            throw Object.assign(new Error('Idempotency-Key was already used for another driver'), {
+              statusCode: 409,
+              displayCode: 'idempotency_conflict',
+            });
+          }
+          return JSON.parse(concurrentReplay.response_json);
+        }
+
+        const session = getOpenSession(db, actorId);
+        if (!session) {
+          throw Object.assign(new Error('Open a cash shift before reconciling driver collections'), {
+            statusCode: 409,
+            displayCode: 'cash_session_required',
+          });
+        }
+
+        const billsToSettle = db
+          .prepare(`
+            SELECT
+              b.id, b.order_id, b.bill_number, b.total, b.paid_amount,
+              b.customer_id, o.order_number
+            FROM bills b
+            JOIN orders o ON o.id = b.order_id
+            WHERE o.type = 'delivery'
+              AND o.status <> 'cancelled'
+              AND o.dispatched_at IS NOT NULL
+              AND lower(trim(COALESCE(o.delivery_driver_name, ''))) = lower(trim(?))
+              AND lower(trim(COALESCE(o.expected_payment_method, ''))) = 'cash'
+              AND b.payment_status IN ('unpaid', 'partial')
+              AND ROUND((COALESCE(b.total, 0) - COALESCE(b.paid_amount, 0)) * ?) > 0
+            ORDER BY o.dispatched_at ASC, o.id ASC, b.id ASC
+          `)
+          .all(driverName, minorFactor) as Array<{
+          id: number;
+          order_id: number;
+          bill_number: string;
+          total: number;
+          paid_amount: number | null;
+          customer_id: string | null;
+          order_number: string;
+        }>;
+        if (billsToSettle.length === 0) {
+          throw Object.assign(new Error('This driver has no outstanding cash-on-delivery bills'), {
+            statusCode: 409,
+            displayCode: 'no_outstanding_driver_cash',
+          });
+        }
+
+        const settledBills: Array<{
+          bill_id: number;
+          bill_number: string;
+          order_id: number;
+          order_number: string;
+          amount_cents: number;
+        }> = [];
+        let totalCents = 0;
+        for (const bill of billsToSettle) {
+          const dueCents = Math.round(
+            (Number(bill.total || 0) - Number(bill.paid_amount || 0)) * minorFactor,
+          );
+          if (dueCents <= 0) continue;
+          const paymentResult = applyPaymentBatch(
+            db,
+            String(bill.id),
+            [{ method: 'cash', amount: dueCents / minorFactor }],
+            bill.customer_id || undefined,
+            false,
+            null,
+            undefined,
+            actorId,
+          );
+          const amountCents =
+            Math.round(Number(paymentResult.bill.paid_amount || 0) * minorFactor) -
+            Math.round(Number(bill.paid_amount || 0) * minorFactor);
+          if (amountCents !== dueCents) {
+            throw Object.assign(new Error('A driver bill did not settle for its exact balance'), {
+              statusCode: 409,
+              displayCode: 'driver_bill_balance_changed',
+            });
+          }
+          totalCents += amountCents;
+          settledBills.push({
+            bill_id: bill.id,
+            bill_number: bill.bill_number,
+            order_id: bill.order_id,
+            order_number: bill.order_number,
+            amount_cents: amountCents,
+          });
+        }
+
+        if (settledBills.length === 0) {
+          throw Object.assign(new Error('This driver has no outstanding cash-on-delivery bills'), {
+            statusCode: 409,
+            displayCode: 'no_outstanding_driver_cash',
+          });
+        }
+        const createdAt = now();
+        const insert = db
+          .prepare(`
+            INSERT INTO delivery_driver_settlements (
+              driver_name, actor_user_id, cash_session_id, amount_cents, bill_count,
+              idempotency_key, request_hash, response_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, '{}', ?)
+          `)
+          .run(
+            driverName,
+            actorId,
+            session.id,
+            totalCents,
+            settledBills.length,
+            idempotencyKey,
+            requestHash,
+            createdAt,
+          );
+        const settlementId = Number(insert.lastInsertRowid);
+        const insertBill = db.prepare(`
+          INSERT INTO delivery_driver_settlement_bills (
+            settlement_id, bill_id, order_id, amount_cents
+          ) VALUES (?, ?, ?, ?)
+        `);
+        for (const bill of settledBills) {
+          insertBill.run(settlementId, bill.bill_id, bill.order_id, bill.amount_cents);
+          recordOrderAudit(db, {
+            orderId: bill.order_id,
+            actorUserId: actorId,
+            action: 'delivery_driver_cash_settled',
+            details: {
+              settlement_id: settlementId,
+              bill_id: bill.bill_id,
+              amount_cents: bill.amount_cents,
+              cash_session_id: session.id,
+            },
+          });
+        }
+
+        const response = {
+          settlement: {
+            id: settlementId,
+            driver_name: driverName,
+            cash_session_id: session.id,
+            bill_count: settledBills.length,
+            amount_cents: totalCents,
+            amount: totalCents / minorFactor,
+            created_at: createdAt,
+          },
+          bills: settledBills,
+        };
+        db.prepare('UPDATE delivery_driver_settlements SET response_json = ? WHERE id = ?').run(
+          JSON.stringify(response),
+          settlementId,
+        );
+        return response;
+      });
+
+      for (const settled of result.bills || []) {
+        cloudSync.recordOrderChanged(settled.order_id, 'order.delivery_driver_cash_settled');
+      }
+      if (result?.bills?.length) notifyOrderUpdated();
+      return res.json(result);
+    } catch (error: unknown) {
+      res.locals.postHogError = error;
+      const err = error as { statusCode?: unknown; displayCode?: unknown; message?: unknown };
+      const statusCode =
+        typeof err?.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600
+          ? err.statusCode
+          : 500;
+      const code =
+        typeof err?.displayCode === 'string'
+          ? err.displayCode
+          : statusCode >= 500
+            ? 'internal_error'
+            : 'validation_failed';
+      return res.status(statusCode).json({
+        error: statusCode >= 500 ? 'Unable to settle driver collections' : String(err?.message ?? ''),
+        code,
+      });
+    }
+  }),
+);
+
 interface InFlightPaymentAttempt {
   billId: string;
   requestHash: string;

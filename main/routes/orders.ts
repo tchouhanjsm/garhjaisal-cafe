@@ -646,6 +646,56 @@ function resolveItemAddons(
 }
 
 router.get(
+  '/delivery-drivers/summary',
+  requirePermission('payments.take'),
+  (req: Request, res: Response) => {
+    try {
+      const db = getDatabase();
+      const minorFactor = getCurrencyMinorUnitFactor(getTenantCurrency());
+      const drivers = db
+        .prepare(`
+          SELECT
+            MIN(trim(o.delivery_driver_name)) AS driver_name,
+            COUNT(DISTINCT b.id) AS bill_count,
+            COUNT(DISTINCT o.id) AS order_count,
+            COALESCE(SUM(CAST(ROUND(
+              (COALESCE(b.total, 0) - COALESCE(b.paid_amount, 0)) * ?
+            ) AS INTEGER)), 0) AS total_due_cents,
+            MIN(o.dispatched_at) AS oldest_dispatched_at
+          FROM orders o
+          JOIN bills b ON b.order_id = o.id
+          WHERE o.type = 'delivery'
+            AND o.status <> 'cancelled'
+            AND o.dispatched_at IS NOT NULL
+            AND trim(COALESCE(o.delivery_driver_name, '')) <> ''
+            AND lower(trim(COALESCE(o.expected_payment_method, ''))) = 'cash'
+            AND b.payment_status IN ('unpaid', 'partial')
+            AND ROUND((COALESCE(b.total, 0) - COALESCE(b.paid_amount, 0)) * ?) > 0
+          GROUP BY lower(trim(o.delivery_driver_name))
+          ORDER BY lower(trim(o.delivery_driver_name)) ASC
+        `)
+        .all(minorFactor, minorFactor) as Array<{
+        driver_name: string;
+        bill_count: number;
+        order_count: number;
+        total_due_cents: number;
+        oldest_dispatched_at: string | null;
+      }>;
+      return res.json({
+        drivers: drivers.map((driver) => ({
+          ...driver,
+          total_due: Number(driver.total_due_cents || 0) / minorFactor,
+        })),
+      });
+    } catch (error: any) {
+      return res.status(error.statusCode || 500).json({
+        error: error.statusCode ? error.message : 'Unable to load delivery driver balances',
+      });
+    }
+  },
+);
+
+router.get(
   '/',
   orderReadRateLimit,
   requirePermission('orders.read'),
@@ -1844,6 +1894,98 @@ router.get(
   },
 );
 
+router.patch(
+  '/:id/driver',
+  orderWriteRateLimit,
+  requirePermission('orders.status.update'),
+  (req: Request, res: Response) => {
+    try {
+      const db = getDatabase();
+      const actorId = String((req as Request & { user?: { userId?: string } }).user?.userId || '');
+      const body = req.body || {};
+      if (!Object.prototype.hasOwnProperty.call(body, 'delivery_driver_name')) {
+        return res.status(400).json({ error: 'delivery_driver_name is required' });
+      }
+      if (body.delivery_driver_name !== null && typeof body.delivery_driver_name !== 'string') {
+        return res.status(400).json({ error: 'delivery_driver_name must be a string or null' });
+      }
+      if (body.dispatch !== undefined && typeof body.dispatch !== 'boolean') {
+        return res.status(400).json({ error: 'dispatch must be a boolean' });
+      }
+      const driverName =
+        typeof body.delivery_driver_name === 'string'
+          ? body.delivery_driver_name.trim().replace(/\s+/g, ' ') || null
+          : null;
+      if (driverName && driverName.length > 80) {
+        return res.status(400).json({ error: 'Driver name must be 80 characters or fewer' });
+      }
+      const dispatch = body.dispatch === true;
+      if (dispatch && !driverName) {
+        return res.status(400).json({ error: 'Assign a driver before dispatching the order' });
+      }
+
+      const result = withTxn(() => {
+        const order = db
+          .prepare(
+            'SELECT id, order_number, type, status, delivery_driver_name, dispatched_at FROM orders WHERE id = ?',
+          )
+          .get(req.params.id) as
+          | {
+              id: number;
+              order_number: string;
+              type: string;
+              status: string;
+              delivery_driver_name: string | null;
+              dispatched_at: string | null;
+            }
+          | undefined;
+        if (!order) throw Object.assign(new Error('Order not found'), { statusCode: 404 });
+        if (order.type !== 'delivery') {
+          throw Object.assign(new Error('A driver can only be assigned to a delivery order'), {
+            statusCode: 409,
+          });
+        }
+        if (order.status === 'cancelled' || order.status === 'completed') {
+          throw Object.assign(new Error('A closed order cannot be dispatched'), { statusCode: 409 });
+        }
+        if (!driverName && order.dispatched_at) {
+          throw Object.assign(
+            new Error('A dispatched order must keep an assigned driver; reassign it instead'),
+            { statusCode: 409 },
+          );
+        }
+        const dispatchedAt = dispatch ? order.dispatched_at || now() : order.dispatched_at;
+        if (order.delivery_driver_name !== driverName || order.dispatched_at !== dispatchedAt) {
+          db.prepare(
+            'UPDATE orders SET delivery_driver_name = ?, dispatched_at = ?, updated_at = ? WHERE id = ?',
+          ).run(driverName, dispatchedAt, now(), order.id);
+          recordOrderAudit(db, {
+            orderId: order.id,
+            actorUserId: actorId,
+            action: 'delivery_driver_updated',
+            details: {
+              previous_driver_name: order.delivery_driver_name,
+              delivery_driver_name: driverName,
+              previous_dispatched_at: order.dispatched_at,
+              dispatched_at: dispatchedAt,
+            },
+          });
+        }
+        return db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id);
+      });
+
+      cloudSync.recordOrderChanged(Number(result.id), 'order.delivery_driver_updated');
+      notifyOrderUpdated();
+      return res.json({ order: result });
+    } catch (error: any) {
+      res.locals.postHogError = error;
+      return res.status(error.statusCode || 500).json({
+        error: error.statusCode ? error.message : 'Unable to update delivery driver',
+      });
+    }
+  },
+);
+
 router.post(
   '/',
   orderWriteRateLimit,
@@ -1868,6 +2010,7 @@ router.post(
         expected_payment_method,
         expected_payment_method_id,
         delivery_note,
+        delivery_driver_name,
         waived_charge_ids,
         opted_in_charge_ids,
         dispatch_policy,
@@ -2116,10 +2259,39 @@ router.post(
             ),
           );
       }
+      if (
+        delivery_driver_name !== undefined &&
+        delivery_driver_name !== null &&
+        typeof delivery_driver_name !== 'string'
+      ) {
+        return res.status(400).json(
+          structuredOperationFailure(
+            req,
+            'fc.backend.order.create.other_validation',
+            'not_applied',
+            'delivery_driver_name must be a string',
+          ),
+        );
+      }
+
       // Courier-only details: other order types never store them.
       const isDelivery = type === 'delivery';
       const deliveryNote =
         isDelivery && typeof delivery_note === 'string' ? delivery_note.trim() || null : null;
+      const deliveryDriverName =
+        isDelivery && typeof delivery_driver_name === 'string'
+          ? delivery_driver_name.trim().replace(/\s+/g, ' ') || null
+          : null;
+      if (deliveryDriverName && deliveryDriverName.length > 80) {
+        return res.status(400).json(
+          structuredOperationFailure(
+            req,
+            'fc.backend.order.create.other_validation',
+            'not_applied',
+            'delivery_driver_name must be 80 characters or fewer',
+          ),
+        );
+      }
       const onlinePlatform =
         typeof online_platform === 'string' ? online_platform.trim().slice(0, 100) : null;
       const externalOrderId =
@@ -2349,9 +2521,9 @@ router.post(
           packaging_charge, delivery_charge, packaging_tax_category_id, delivery_tax_category_id,
           service_charge, service_charge_tax_category_id, online_platform, external_order_id,
           scheduled_for, release_status, released_at, release_blocked_reason,
-          checkout_stage, dispatch_policy,
+          checkout_stage, dispatch_policy, delivery_driver_name,
           status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 'pending', ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 'pending', ?, ?)
       `)
           .run(
             orderNumber,
@@ -2377,6 +2549,7 @@ router.post(
             shouldDeferRelease ? 'scheduled' : 'released',
             derivedCheckoutStage,
             isOnPayment ? 'on_payment' : dispatch_policy || 'immediate',
+            deliveryDriverName,
             now(),
             now(),
           );
