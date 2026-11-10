@@ -505,7 +505,8 @@ export default function MenuStudioPage() {
 
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <span className="me-auto text-sm text-muted-foreground">
-          {visibleProducts.length} of {products.length} items · select up to {MAX_BULK_SELECTION} per bulk update
+          {visibleProducts.length} of {products.length} items · up to {MAX_BULK_SELECTION}
+          per bulk update
         </span>
         <Button
           size="sm"
