@@ -50,9 +50,7 @@ export function KotDispatchRecoveryModal({
 
         <div className="space-y-3">
           <div className="flex flex-wrap gap-3 text-sm">
-            <span className="text-green-700 dark:text-green-400">
-              {submittedCount} submitted
-            </span>
+            <span className="text-green-700 dark:text-green-400">{submittedCount} submitted</span>
             <span className="text-destructive">{failedCount} need attention</span>
           </div>
 

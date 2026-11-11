@@ -1051,8 +1051,7 @@ export default function POSPage() {
         return {
           ...current,
           results: current.results.map(
-            (result) =>
-              byKey.get(`${result.station_name}::${result.printer_name}`) ?? result,
+            (result) => byKey.get(`${result.station_name}::${result.printer_name}`) ?? result,
           ),
         };
       });
