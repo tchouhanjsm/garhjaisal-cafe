@@ -236,6 +236,8 @@ async function main() {
     console.log('\n─── Menu Studio CSV export, preview and transactional apply ───');
     const formulaProductId = 'prod-menu-studio-csv-formula';
     seedProduct(db, formulaProductId, 'cat-menu-studio-food', '+CSV Formula Item', 35);
+    const omittedProductId = 'prod-menu-studio-csv-omitted';
+    seedProduct(db, omittedProductId, 'cat-menu-studio-food', 'Not in import file', 95);
     const exportResponse = await (globalThis as any).fetch(
       baseUrl + '/api/menu-studio/csv/export',
       { headers: owner.authHeader },
@@ -296,6 +298,17 @@ async function main() {
     assertEqual(response.status, 200, 'a valid Menu Studio CSV can be previewed');
     assertEqual(response.data.ready_count, 1, 'preview identifies one valid product change');
     assertEqual(response.data.error_count, 0, 'valid CSV preview has no row errors');
+    assertEqual(
+      response.data.omitted_count,
+      3,
+      'preview counts catalog products that are not present in this CSV',
+    );
+    assert(
+      response.data.omitted_products.some(
+        (product: any) => product.id === omittedProductId,
+      ),
+      'preview identifies omitted products without treating them as deletions',
+    );
     assertEqual(
       response.data.changes[0].patch.category_id,
       'cat-menu-studio-drinks',

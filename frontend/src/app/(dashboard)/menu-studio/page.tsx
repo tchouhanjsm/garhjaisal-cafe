@@ -82,6 +82,16 @@ type MenuStudioCsvPreview = {
   ready_count: number;
   unchanged_count: number;
   error_count: number;
+  omitted_count: number;
+  omitted_products: {
+    id: string;
+    sku: string | null;
+    name: string;
+    category_name: string | null;
+    price: number;
+    is_active: number | null;
+  }[];
+  omitted_preview_truncated: boolean;
   can_apply: boolean;
   changes: MenuStudioChange[];
   rows: MenuStudioCsvPreviewRow[];
@@ -1109,7 +1119,7 @@ export default function MenuStudioPage() {
               </button>
             </div>
 
-            <div className="grid shrink-0 grid-cols-3 gap-2 border-b border-border p-4">
+            <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-border p-4 sm:grid-cols-4">
               <div className="rounded-lg bg-muted p-3">
                 <p className="text-xs text-muted-foreground">Ready to update</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums">{csvPreview.ready_count}</p>
@@ -1136,6 +1146,42 @@ export default function MenuStudioPage() {
                     <li key={String(index) + '-' + error}>{error}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {csvPreview.omitted_count > 0 && (
+              <div className="shrink-0 border-b border-border px-4 py-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-sm font-semibold">
+                    Not included in this file ({csvPreview.omitted_count})
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    These products will remain unchanged. Nothing is deleted.
+                  </p>
+                </div>
+                <div className="mt-2 grid max-h-28 gap-x-6 gap-y-1 overflow-auto text-xs sm:grid-cols-2">
+                  {csvPreview.omitted_products.map((product) => (
+                    <div
+                      key={product.id}
+                      className="flex min-w-0 items-center justify-between gap-3 py-1"
+                    >
+                      <span className="min-w-0 truncate">
+                        {product.name}
+                        {product.sku ? (
+                          <span className="ms-1 text-muted-foreground">({product.sku})</span>
+                        ) : null}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {formatCurrency(Number(product.price))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {csvPreview.omitted_preview_truncated && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Showing the first {csvPreview.omitted_products.length} omitted products.
+                  </p>
+                )}
               </div>
             )}
 

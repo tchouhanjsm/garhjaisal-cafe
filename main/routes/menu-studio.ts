@@ -637,11 +637,43 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
       }
     });
 
+    const importedIds = Array.from(seenIds);
+    const omittedFilter = importedIds.length
+      ? 'p.id NOT IN (' + importedIds.map(() => '?').join(', ') + ')'
+      : '1 = 1';
+    const omittedCountRow = db
+      .prepare(
+        'SELECT COUNT(*) AS count FROM products p WHERE p.deleted_at IS NULL AND ' +
+          omittedFilter,
+      )
+      .get(...importedIds) as { count: number };
+    const omittedProducts = db
+      .prepare(
+        \`SELECT p.id, p.sku, p.name, c.name AS category_name, p.price, p.is_active
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+         WHERE p.deleted_at IS NULL AND \${omittedFilter}
+         ORDER BY p.name COLLATE NOCASE, p.id
+         LIMIT 50\`,
+      )
+      .all(...importedIds) as {
+      id: string;
+      sku: string | null;
+      name: string;
+      category_name: string | null;
+      price: number;
+      is_active: number | null;
+    }[];
+    const omittedCount = Number(omittedCountRow.count);
+
     res.json({
       row_count: rows.length,
       ready_count: readyCount,
       unchanged_count: unchangedCount,
       error_count: errors.length,
+      omitted_count: omittedCount,
+      omitted_products: omittedProducts,
+      omitted_preview_truncated: omittedCount > omittedProducts.length,
       can_apply: errors.length === 0 && changes.length > 0,
       changes,
       rows: previewRows,
