@@ -88,6 +88,7 @@ const STUBBED_PRINTER_IPS = new Set([
   GRILL_STATION_PRINTER.ip,
   BAR_STATION_PRINTER.ip,
 ]);
+const printerFailureModes = new Map<string, 'connect' | 'write'>();
 
 async function getFreeTcpPort(): Promise<number> {
   const probe = net.createServer();
@@ -204,6 +205,7 @@ async function main() {
   (net.Socket.prototype as any).connect = function (this: net.Socket, ...args: any[]) {
     const [port, host, connectListener] = args;
     if (typeof port === 'number' && typeof host === 'string' && STUBBED_PRINTER_IPS.has(host)) {
+      const failureMode = printerFailureModes.get(host);
       const chunks: Buffer[] = [];
       let finalized = false;
       const finalize = () => {
@@ -226,6 +228,10 @@ async function main() {
         const buf = Buffer.isBuffer(chunk) ? Buffer.from(chunk) : Buffer.from(chunk as any);
         chunks.push(buf);
         const callback = typeof encodingOrCb === 'function' ? encodingOrCb : cb;
+        if (failureMode === 'write') {
+          process.nextTick(() => this.emit('error', new Error('socket hang up after write started')));
+          return true;
+        }
         if (callback) process.nextTick(callback);
         return true;
       };
@@ -235,9 +241,18 @@ async function main() {
         return this;
       };
       (this as any).destroy = () => {
-        finalize();
+        if (failureMode !== 'connect') finalize();
         return this;
       };
+      if (failureMode === 'connect') {
+        process.nextTick(() => {
+          const error = Object.assign(new Error(`connect ECONNREFUSED ${host}:${port}`), {
+            code: 'ECONNREFUSED',
+          });
+          this.emit('error', error);
+        });
+        return this;
+      }
       if (typeof connectListener === 'function') {
         process.nextTick(connectListener);
       }
@@ -497,6 +512,73 @@ async function main() {
     console.log(
       '  ✓ Waiter App append-items print-kot routed only touched stations (Bar + fallback Kitchen)',
     );
+
+    // 6. Partial station failure: a refused connection identifies only the station
+    //    that is safe to retry; already-submitted stations are never replayed.
+    printerFailureModes.set(GRILL_STATION_PRINTER.ip, 'connect');
+    recordedDispatches.length = 0;
+    try {
+      const partialFailureRes = await postJson(
+        serverAppBaseUrl,
+        '/api/printers/print-kot',
+        { orderId: createdOrder.id },
+        waiterToken,
+      );
+      assert.equal(partialFailureRes.status, 502);
+      assert.equal(partialFailureRes.body.success, false);
+      const partialResults = partialFailureRes.body.station_results as Array<{
+        printer_name: string;
+        dispatch_state: string;
+        retry_safety: string;
+      }>;
+      assert.equal(partialResults.length, 3, 'one outcome is returned for each routed station');
+      const failedGrill = partialResults.find(
+        (result) => result.printer_name === GRILL_STATION_PRINTER.name,
+      );
+      assert.equal(failedGrill?.dispatch_state, 'failed');
+      assert.equal(failedGrill?.retry_safety, 'safe_to_retry');
+      assert.equal(
+        partialResults.filter((result) => result.dispatch_state === 'submitted').length,
+        2,
+        'Bar and fallback Kitchen remain confirmed as submitted',
+      );
+      assert.deepEqual(partialFailureRes.body.recovery.safe_to_retry_stations, ['Grill']);
+      assert.equal(
+        recordedDispatches.length,
+        2,
+        'the refused Grill connection sends no bytes; only successful stations are recorded',
+      );
+    } finally {
+      printerFailureModes.delete(GRILL_STATION_PRINTER.ip);
+    }
+
+    // A failure after connect/write begins is ambiguous and must be checked before retry.
+    printerFailureModes.set(BAR_STATION_PRINTER.ip, 'write');
+    recordedDispatches.length = 0;
+    try {
+      const uncertainFailureRes = await postJson(
+        serverAppBaseUrl,
+        '/api/printers/print-kot',
+        { orderId: createdOrder.id },
+        waiterToken,
+      );
+      assert.equal(uncertainFailureRes.status, 502);
+      const uncertainResults = uncertainFailureRes.body.station_results as Array<{
+        printer_name: string;
+        dispatch_state: string;
+        retry_safety: string;
+      }>;
+      const uncertainBar = uncertainResults.find(
+        (result) => result.printer_name === BAR_STATION_PRINTER.name,
+      );
+      assert.equal(uncertainBar?.dispatch_state, 'failed');
+      assert.equal(uncertainBar?.retry_safety, 'verify_before_retry');
+      assert.deepEqual(uncertainFailureRes.body.recovery.verify_before_retry_stations, ['Bar']);
+      assert.match(uncertainFailureRes.body.detail, /inspect the physical ticket before retrying/i);
+    } finally {
+      printerFailureModes.delete(BAR_STATION_PRINTER.ip);
+    }
+    console.log('  ✓ Partial and uncertain KOT failures report station-level recovery safety');
 
     // 6. Inactive station fallback: when Bar station (stn-bar) is marked inactive,
     //    posting /api/printers/print-kot routes Grill items to GRILL_STATION_PRINTER and
