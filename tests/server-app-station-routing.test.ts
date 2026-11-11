@@ -606,7 +606,11 @@ async function main() {
     assert.equal(retryResponse.body.station_results.length, 1);
     assert.equal(retryResponse.body.station_results[0].station_name, 'Grill');
     assert.equal(retryResponse.body.station_results[0].dispatch_state, 'submitted');
-    assert.equal(recordedDispatches.length, 1, 'only the previously failed Grill station is retried');
+    assert.equal(
+      recordedDispatches.length,
+      1,
+      'only the previously failed Grill station is retried',
+    );
     assert.equal(recordedDispatches[0].ip, GRILL_STATION_PRINTER.ip);
     assert.equal(recordedDispatches[0].port, GRILL_STATION_PRINTER.port);
 

@@ -43,8 +43,8 @@ export function KotDispatchRecoveryModal({
             Kitchen ticket dispatch
           </DialogTitle>
           <DialogDescription>
-            Review each kitchen station before retrying. Stations already submitted will not be
-            sent again.
+            Review each kitchen station before retrying. Stations already submitted will not be sent
+            again.
           </DialogDescription>
         </DialogHeader>
 

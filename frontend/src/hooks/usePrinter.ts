@@ -819,8 +819,7 @@ export const usePrinterStore = create<PrinterState>()(
                 message?: string;
               };
               const payload = e.response?.data;
-              const message =
-                payload?.detail || payload?.error || e.message || 'KOT print failed';
+              const message = payload?.detail || payload?.error || e.message || 'KOT print failed';
               if (payload?.station_results?.length) {
                 throw new KotDispatchError(message, payload);
               }

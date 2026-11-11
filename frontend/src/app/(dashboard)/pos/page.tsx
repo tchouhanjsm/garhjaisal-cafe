@@ -1046,10 +1046,7 @@ export default function POSPage() {
       setKotRecovery((current) => {
         if (!current) return current;
         const byKey = new Map(
-          updates.map((result) => [
-            `${result.station_name}::${result.printer_name}`,
-            result,
-          ]),
+          updates.map((result) => [`${result.station_name}::${result.printer_name}`, result]),
         );
         return {
           ...current,

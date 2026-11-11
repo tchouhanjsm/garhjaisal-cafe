@@ -1339,7 +1339,9 @@ type KotStationPrintOutcome = {
 // Only connection failures that prove no socket was established can be retried
 // without risking a duplicate physical ticket.
 function isKotPrintDefinitelyNotSent(detail?: string): boolean {
-  const value = String(detail || '').trim().toLowerCase();
+  const value = String(detail || '')
+    .trim()
+    .toLowerCase();
   return (
     value.includes('timed out connecting to ') ||
     /network error:\s*connect (?:econnrefused|ehostunreach|enetunreach|eaddrnotavail)\b/.test(
