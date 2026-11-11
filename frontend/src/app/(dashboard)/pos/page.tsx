@@ -1381,6 +1381,40 @@ export default function POSPage() {
     setPrinterArabicShaping,
   ]);
 
+  useEffect(() => {
+    let active = true;
+    let refreshInFlight = false;
+
+    const refreshCatalog = async () => {
+      if (refreshInFlight) return;
+      refreshInFlight = true;
+      try {
+        const [categoryResponse, productResponse] = await Promise.all([
+          api.get('/categories?active=1'),
+          api.get('/products?active=1'),
+        ]);
+        if (!active) return;
+        setCategories((categoryResponse.data.categories as Category[]) || []);
+        setProducts((productResponse.data.products as Product[]) || []);
+      } catch {
+        // Keep the last successfully loaded catalog available while offline.
+      } finally {
+        refreshInFlight = false;
+      }
+    };
+
+    const refreshOnReturn = () => {
+      if (document.visibilityState === 'visible') void refreshCatalog();
+    };
+    window.addEventListener('focus', refreshOnReturn);
+    document.addEventListener('visibilitychange', refreshOnReturn);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', refreshOnReturn);
+      document.removeEventListener('visibilitychange', refreshOnReturn);
+    };
+  }, [setCategories, setProducts]);
+
   const getPreservedAttemptScheduledFor = (
     cartState: Parameters<typeof buildCartFingerprintFromState>[0] = useCartStore.getState(),
     targetStoreId: string | number = useAuthStore.getState().currentTenant?.id ?? currentStoreId,
