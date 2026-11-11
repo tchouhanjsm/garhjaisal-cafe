@@ -53,7 +53,11 @@ import { useCashDrawerMovements } from '@/hooks/useCashDrawerMovements';
 import { isPrintCancelledOnTenantChangeError, usePrinterStore } from '@/hooks/usePrinter';
 import { printerService } from '@/lib/printer/PrinterService';
 import { showPrintWarningsToast } from '@/lib/printer/warnings-toast';
-import { formatKotErrorToast, formatReceiptErrorToast } from '@/lib/printer/warnings';
+import {
+  extractPrinterErrorMessage,
+  formatKotErrorToast,
+  formatReceiptErrorToast,
+} from '@/lib/printer/warnings';
 import { AI_HELP_PROVIDERS, copyPrinterDiagnostic } from '@/lib/printer/ai-help';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { usePosKeyboardShortcuts } from '@/hooks/usePosKeyboardShortcuts';
@@ -999,19 +1003,22 @@ export default function POSPage() {
     } catch (err) {
       console.error('[POS] KOT print failed:', err);
       const code = 'printer.queue_failed';
+      const printDetail =
+        extractPrinterErrorMessage(err) ||
+        'Kitchen ticket printing failed after the order was created';
       reportOrderFailure({
         code,
         title: t('printingFailed'),
         message: t('saleCompletePrintFailed'),
         nextStep: t('saleCompleteReprintNextStep'),
-        detail: 'Kitchen ticket printing failed after the order was created',
+        detail: printDetail,
         status: null,
         operation: 'printer.print',
         stage: 'printing',
         outcome: 'unknown',
         reasonCode: code,
       });
-      toast.error(formatKotErrorToast(t('kotPrintFailed'), t('saleCompletePrintFailed')));
+      toast.error(formatKotErrorToast(printDetail, t('saleCompletePrintFailed')));
     }
   };
 
