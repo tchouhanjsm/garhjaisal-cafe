@@ -250,7 +250,6 @@ If printing still fails:
 The printer endpoints are in the [API reference](reference/api.md). They cover configured printers,
 detection, supported profiles, test printing, receipt printing, and kitchen tickets.
 
-
 ## Windows hub and phone waiter workflow
 
 For a small hotel using a Windows counter PC and staff phones, keep the Windows PC as the local
