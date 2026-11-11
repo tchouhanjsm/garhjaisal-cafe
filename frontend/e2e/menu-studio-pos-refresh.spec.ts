@@ -106,5 +106,5 @@ test.describe('Menu Studio to live POS catalog', () => {
         'the renamed available product returns to POS without a page reload',
       ).toBeVisible();
     },
-  );;
+  );
 });
