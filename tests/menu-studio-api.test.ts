@@ -484,7 +484,6 @@ async function main() {
       'audit export protects formula-leading product names in spreadsheet software',
     );
 
-
     const results = getResults();
     console.log(`\nMenu Studio API: ${results.passed}/${results.total} checks passed.`);
     if (results.failed > 0) process.exitCode = 1;
