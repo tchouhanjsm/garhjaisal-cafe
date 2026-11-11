@@ -489,6 +489,63 @@ async function main() {
       'audit export protects formula-leading product names in spreadsheet software',
     );
 
+    const firstAuditPage = await (globalThis as any).fetch(
+      baseUrl + '/api/menu-studio/audit/export?limit=1',
+      { headers: owner.authHeader },
+    );
+    assertEqual(firstAuditPage.status, 200, 'audit export supports bounded first pages');
+    const firstAuditCsv = await firstAuditPage.text();
+    const throughId = firstAuditPage.headers.get('x-menu-studio-audit-through-id');
+    const nextBeforeId = firstAuditPage.headers.get('x-menu-studio-audit-next-before-id');
+    assert(
+      Boolean(throughId) && Boolean(nextBeforeId),
+      'first audit page returns a stable high-water mark and next cursor',
+    );
+    assertEqual(
+      firstAuditPage.headers.get('x-menu-studio-audit-page-count'),
+      '1',
+      'first audit page reports the number of exported records',
+    );
+    assert(
+      Number(firstAuditPage.headers.get('x-menu-studio-audit-total-count')) > 1,
+      'audit export reports the complete record count beyond one page',
+    );
+    assert(firstAuditCsv.startsWith('audit_id,'), 'the first audit page includes the CSV header');
+
+    const secondAuditPage = await (globalThis as any).fetch(
+      baseUrl +
+        '/api/menu-studio/audit/export?limit=1&through_id=' +
+        throughId +
+        '&before_id=' +
+        nextBeforeId,
+      { headers: owner.authHeader },
+    );
+    assertEqual(secondAuditPage.status, 200, 'audit export accepts the next page cursor');
+    const secondAuditCsv = await secondAuditPage.text();
+    assert(
+      !secondAuditCsv.startsWith('audit_id,'),
+      'subsequent audit pages do not repeat the CSV header',
+    );
+    assert(
+      /^\d+,/.test(secondAuditCsv),
+      'subsequent audit pages begin with the next structured audit record',
+    );
+    assert(
+      firstAuditCsv.split(/\r?\n/)[1]?.split(',')[0] !== secondAuditCsv.split(',')[0],
+      'audit cursors do not repeat the previous page record',
+    );
+    assertEqual(
+      secondAuditPage.headers.get('x-menu-studio-audit-through-id'),
+      throughId,
+      'all audit pages retain the original high-water mark',
+    );
+
+    const invalidAuditCursor = await (globalThis as any).fetch(
+      baseUrl + '/api/menu-studio/audit/export?through_id=invalid',
+      { headers: owner.authHeader },
+    );
+    assertEqual(invalidAuditCursor.status, 400, 'invalid audit export cursors are rejected');
+
     const results = getResults();
     console.log(`\nMenu Studio API: ${results.passed}/${results.total} checks passed.`);
     if (results.failed > 0) process.exitCode = 1;

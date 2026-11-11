@@ -698,7 +698,40 @@ router.get('/audit/export', requirePermission('catalog.view'), (req: Request, re
   try {
     const rawLimit = Number(req.query.limit);
     const limit = Number.isInteger(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 5000) : 5000;
-    const rows = getDatabase()
+    const rawThroughId = req.query.through_id;
+    const rawBeforeId = req.query.before_id;
+    if (
+      (rawThroughId !== undefined &&
+        (typeof rawThroughId !== 'string' || !/^(?:0|[1-9]\d*)$/.test(rawThroughId))) ||
+      (rawBeforeId !== undefined &&
+        (typeof rawBeforeId !== 'string' || !/^[1-9]\d*$/.test(rawBeforeId)))
+    ) {
+      return res.status(400).json({ error: 'Audit export cursors must be positive integer IDs' });
+    }
+
+    const db = getDatabase();
+    const maximumId = Number(
+      (
+        db.prepare('SELECT COALESCE(MAX(id), 0) AS id FROM menu_studio_audit_log').get() as {
+          id: number;
+        }
+      ).id,
+    );
+    const throughId = rawThroughId === undefined ? maximumId : Number(rawThroughId);
+    const beforeId = rawBeforeId === undefined ? null : Number(rawBeforeId);
+    if (
+      !Number.isSafeInteger(throughId) ||
+      throughId < 0 ||
+      (beforeId !== null &&
+        (!Number.isSafeInteger(beforeId) || beforeId <= 0 || beforeId > throughId))
+    ) {
+      return res.status(400).json({ error: 'Audit export cursor is outside the valid range' });
+    }
+
+    const beforeFilter = beforeId === null ? '' : 'AND a.id < ? ';
+    const queryParameters =
+      beforeId === null ? [throughId, limit + 1] : [throughId, beforeId, limit + 1];
+    const rows = db
       .prepare(
         'SELECT a.id, a.batch_id, a.product_id, p.name AS product_name, ' +
           'a.actor_user_id, u.name AS actor_name, a.action, ' +
@@ -706,9 +739,11 @@ router.get('/audit/export', requirePermission('catalog.view'), (req: Request, re
           'FROM menu_studio_audit_log a ' +
           'LEFT JOIN products p ON p.id = a.product_id ' +
           'LEFT JOIN users u ON u.id = a.actor_user_id ' +
+          'WHERE a.id <= ? ' +
+          beforeFilter +
           'ORDER BY a.id DESC LIMIT ?',
       )
-      .all(limit) as {
+      .all(...queryParameters) as {
       id: number;
       batch_id: string;
       product_id: string;
@@ -720,22 +755,34 @@ router.get('/audit/export', requirePermission('catalog.view'), (req: Request, re
       after_json: string;
       created_at: string;
     }[];
-    const lines = [
-      [
-        'audit_id',
-        'batch_id',
-        'product_id',
-        'product_name',
-        'actor_user_id',
-        'actor_name',
-        'action',
-        'before_json',
-        'after_json',
-        'created_at',
-        FLO_CSV_ENCODING_COLUMN,
-      ].join(','),
-    ];
-    for (const row of rows) {
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const totalCount = Number(
+      (
+        db
+          .prepare('SELECT COUNT(*) AS count FROM menu_studio_audit_log WHERE id <= ?')
+          .get(throughId) as { count: number }
+      ).count,
+    );
+    const lines: string[] = [];
+    if (beforeId === null) {
+      lines.push(
+        [
+          'audit_id',
+          'batch_id',
+          'product_id',
+          'product_name',
+          'actor_user_id',
+          'actor_name',
+          'action',
+          'before_json',
+          'after_json',
+          'created_at',
+          FLO_CSV_ENCODING_COLUMN,
+        ].join(','),
+      );
+    }
+    for (const row of pageRows) {
       lines.push(
         toQuoteV1CsvRow([
           row.id,
@@ -752,11 +799,18 @@ router.get('/audit/export', requirePermission('catalog.view'), (req: Request, re
         ]),
       );
     }
+
+    res.setHeader('X-Menu-Studio-Audit-Through-Id', String(throughId));
+    res.setHeader('X-Menu-Studio-Audit-Page-Count', String(pageRows.length));
+    res.setHeader('X-Menu-Studio-Audit-Total-Count', String(totalCount));
+    if (hasMore && pageRows.length > 0) {
+      res.setHeader(
+        'X-Menu-Studio-Audit-Next-Before-Id',
+        String(pageRows[pageRows.length - 1].id),
+      );
+    }
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename="menu-studio-audit-latest-' + limit + '.csv"',
-    );
+    res.setHeader('Content-Disposition', 'attachment; filename="menu-studio-audit.csv"');
     res.send(lines.join('\r\n'));
   } catch (error: any) {
     res.locals.postHogError = error;

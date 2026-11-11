@@ -425,18 +425,54 @@ export default function MenuStudioPage() {
 
   const downloadAuditCsv = async () => {
     try {
-      const response = await api.get('/menu-studio/audit/export?limit=5000', {
-        responseType: 'blob',
-      });
-      const url = URL.createObjectURL(response.data as Blob);
+      const pages: Blob[] = [];
+      let throughId: string | null = null;
+      let beforeId: string | null = null;
+      let exportedCount = 0;
+      let totalCount = 0;
+
+      while (true) {
+        const params = new URLSearchParams({ limit: '5000' });
+        if (throughId !== null) params.set('through_id', throughId);
+        if (beforeId !== null) params.set('before_id', beforeId);
+        const response = await api.get('/menu-studio/audit/export?' + params.toString(), {
+          responseType: 'blob',
+        });
+        pages.push(response.data as Blob);
+
+        const responseHeaders = response.headers as Record<string, string | undefined>;
+        const responseThroughId = responseHeaders['x-menu-studio-audit-through-id'];
+        const nextBeforeId = responseHeaders['x-menu-studio-audit-next-before-id'];
+        if (!responseThroughId || (throughId !== null && responseThroughId !== throughId)) {
+          throw new Error('Audit export did not retain a stable history cursor');
+        }
+        throughId = responseThroughId;
+        exportedCount += Number(responseHeaders['x-menu-studio-audit-page-count'] || 0);
+        totalCount = Number(responseHeaders['x-menu-studio-audit-total-count'] || 0);
+
+        if (!nextBeforeId) break;
+        if (beforeId !== null && Number(nextBeforeId) >= Number(beforeId)) {
+          throw new Error('Audit export returned a non-advancing cursor');
+        }
+        beforeId = nextBeforeId;
+      }
+
+      const blob = new Blob(pages, { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'menu-studio-audit-latest-5000.csv';
+      link.download = 'menu-studio-audit.csv';
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast.success('Menu Studio audit exported');
+      toast.success(
+        'Exported ' +
+          exportedCount.toLocaleString() +
+          ' of ' +
+          totalCount.toLocaleString() +
+          ' audit entries',
+      );
     } catch (error) {
       toast.error(errorMessage(error) || 'Could not export audit history');
     }
