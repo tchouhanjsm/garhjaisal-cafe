@@ -573,6 +573,24 @@ async function main() {
       printerFailureModes.delete(GRILL_STATION_PRINTER.ip);
     }
 
+    // If station assignment changes before retry, refuse to send the old ticket
+    // to a different kitchen station or silently fall back to the default printer.
+    db.prepare("UPDATE kitchen_stations SET is_active = 0 WHERE id = 'stn-grill'").run();
+    recordedDispatches.length = 0;
+    const reroutedRetryResponse = await postJson(
+      serverAppBaseUrl,
+      '/api/printers/print-kot',
+      {
+        orderId: createdOrder.id,
+        retryStations: [{ station_name: 'Grill', item_ids: retryableGrillItemIds }],
+      },
+      waiterToken,
+    );
+    assert.equal(reroutedRetryResponse.status, 409);
+    assert.equal(reroutedRetryResponse.body.code, 'KOT_RETRY_ROUTING_CHANGED');
+    assert.equal(recordedDispatches.length, 0);
+    db.prepare("UPDATE kitchen_stations SET is_active = 1 WHERE id = 'stn-grill'").run();
+
     // Retry only the station whose connection failure proved that no ticket was sent.
     recordedDispatches.length = 0;
     const retryResponse = await postJson(
