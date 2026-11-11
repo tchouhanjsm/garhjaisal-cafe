@@ -417,7 +417,7 @@ async function main() {
     response = await api(baseUrl, '/api/menu-studio/csv/preview', {
       method: 'POST',
       headers: owner.authHeader,
-      body: { csv: [importHeader, shortRow].join('\\n') },
+      body: { csv: [importHeader, shortRow].join('\n') },
     });
     assertEqual(response.status, 200, 'missing-column CSV returns a reviewable preview');
     assertEqual(response.data.error_count, 1, 'CSV rows with missing columns are rejected');
