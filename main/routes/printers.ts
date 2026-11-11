@@ -1519,7 +1519,8 @@ router.post(
             (group) => group.items.length > 0,
           );
           const routedGroup = routedRetryGroups[0];
-          const routedPrinterId = routedGroup?.printer?.id ?? printer.id;
+          const routedPrinterId =
+            (routedGroup?.printer as { id?: string | number } | null | undefined)?.id ?? printer.id;
           const routedItemIds = new Set(
             routedGroup?.items.map((item: any) => String(item?.id)) ?? [],
           );
