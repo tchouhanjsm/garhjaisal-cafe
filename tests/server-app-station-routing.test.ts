@@ -546,6 +546,7 @@ async function main() {
       assert.equal(partialFailureRes.status, 502);
       assert.equal(partialFailureRes.body.success, false);
       const partialResults = partialFailureRes.body.station_results as Array<{
+        printer_id: string | number;
         printer_name: string;
         dispatch_state: string;
         retry_safety: string;
@@ -557,6 +558,7 @@ async function main() {
       );
       assert.equal(failedGrill?.dispatch_state, 'failed');
       assert.equal(failedGrill?.retry_safety, 'safe_to_retry');
+      assert.equal(String(failedGrill?.printer_id), GRILL_STATION_PRINTER.id);
       retryableGrillItemIds = failedGrill?.item_ids ?? [];
       assert.equal(
         partialResults.filter((result) => result.dispatch_state === 'submitted').length,
@@ -582,7 +584,11 @@ async function main() {
       '/api/printers/print-kot',
       {
         orderId: createdOrder.id,
-        retryStations: [{ station_name: 'Grill', item_ids: retryableGrillItemIds }],
+        retryStations: [{
+          station_name: 'Grill',
+          printer_id: GRILL_STATION_PRINTER.id,
+          item_ids: retryableGrillItemIds,
+        }],
       },
       waiterToken,
     );
@@ -590,6 +596,33 @@ async function main() {
     assert.equal(reroutedRetryResponse.body.code, 'KOT_RETRY_ROUTING_CHANGED');
     assert.equal(recordedDispatches.length, 0);
     db.prepare("UPDATE kitchen_stations SET is_active = 1 WHERE id = 'stn-grill'").run();
+
+    // Same station and item IDs are insufficient when its printer was remapped.
+    db.prepare('UPDATE kitchen_stations SET printer_id = ? WHERE id = ?').run(
+      DEFAULT_KITCHEN_PRINTER.id,
+      'stn-grill',
+    );
+    recordedDispatches.length = 0;
+    const remappedPrinterRetryResponse = await postJson(
+      serverAppBaseUrl,
+      '/api/printers/print-kot',
+      {
+        orderId: createdOrder.id,
+        retryStations: [{
+          station_name: 'Grill',
+          printer_id: GRILL_STATION_PRINTER.id,
+          item_ids: retryableGrillItemIds,
+        }],
+      },
+      waiterToken,
+    );
+    assert.equal(remappedPrinterRetryResponse.status, 409);
+    assert.equal(remappedPrinterRetryResponse.body.code, 'KOT_RETRY_ROUTING_CHANGED');
+    assert.equal(recordedDispatches.length, 0);
+    db.prepare('UPDATE kitchen_stations SET printer_id = ? WHERE id = ?').run(
+      GRILL_STATION_PRINTER.id,
+      'stn-grill',
+    );
 
     // Retry only the station whose connection failure proved that no ticket was sent.
     recordedDispatches.length = 0;

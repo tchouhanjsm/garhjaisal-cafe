@@ -207,6 +207,7 @@ export interface KotStationPrintOutcome {
 
 export interface KotRetryStation {
   station_name: string;
+  printer_id: string | number;
   item_ids: Array<string | number>;
 }
 

@@ -1062,6 +1062,7 @@ export default function POSPage() {
         retryStations: [
           {
             station_name: station.station_name,
+            printer_id: station.printer_id,
             item_ids: station.item_ids,
           },
         ],

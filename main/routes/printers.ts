@@ -1324,6 +1324,7 @@ export function routeItemsToStations(
 
 type KotStationPrintOutcome = {
   station_name: string;
+  printer_id: string | number;
   printer_name: string;
   item_count: number;
   item_ids: Array<string | number>;
@@ -1477,11 +1478,16 @@ router.post(
         for (const retryRequest of retryStations) {
           const requestedStationName =
             typeof retryRequest?.station_name === 'string' ? retryRequest.station_name.trim() : '';
+          const requestedPrinterId = retryRequest?.printer_id;
+          const hasValidPrinterId =
+            (typeof requestedPrinterId === 'string' || typeof requestedPrinterId === 'number') &&
+            String(requestedPrinterId).trim() !== '';
           const requestedItemIds: unknown[] = Array.isArray(retryRequest?.item_ids)
             ? retryRequest.item_ids
             : [];
           if (
             !requestedStationName ||
+            !hasValidPrinterId ||
             requestedItemIds.length === 0 ||
             seenStationNames.has(requestedStationName) ||
             requestedItemIds.some(
@@ -1513,12 +1519,14 @@ router.post(
             (group) => group.items.length > 0,
           );
           const routedGroup = routedRetryGroups[0];
+          const routedPrinterId = routedGroup?.printer?.id ?? printer.id;
           const routedItemIds = new Set(
             routedGroup?.items.map((item: any) => String(item?.id)) ?? [],
           );
           if (
             routedRetryGroups.length !== 1 ||
             routedGroup.stationName !== requestedStationName ||
+            String(routedPrinterId) !== String(requestedPrinterId) ||
             routedItemIds.size !== normalizedItemIds.length ||
             normalizedItemIds.some((id) => !routedItemIds.has(id))
           ) {
@@ -1560,6 +1568,7 @@ router.post(
         warnings.push(...(result.warnings || []));
         stationResults.push({
           station_name: group.stationName,
+          printer_id: targetPrinter?.id,
           printer_name: targetPrinter?.name || 'Configured printer',
           item_count: group.items.length,
           item_ids: group.items
