@@ -317,15 +317,19 @@ router.get('/csv/export', requirePermission('catalog.manage'), (_req: Request, r
     const db = getDatabase();
     const products = db
       .prepare(
-        `SELECT id, sku, name, category_id, price, is_active, updated_at
-           FROM products WHERE deleted_at IS NULL
-           ORDER BY name COLLATE NOCASE, id`,
+        `SELECT p.id, p.sku, p.name, p.category_id, c.name AS category_name,
+                p.price, p.is_active, p.updated_at
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
+         WHERE p.deleted_at IS NULL
+         ORDER BY p.name COLLATE NOCASE, p.id`,
       )
       .all() as {
       id: string;
       sku: string | null;
       name: string;
       category_id: string | null;
+      category_name: string | null;
       price: number;
       is_active: number | null;
       updated_at: string;
@@ -336,6 +340,7 @@ router.get('/csv/export', requirePermission('catalog.manage'), (_req: Request, r
         'sku',
         'name',
         'category_id',
+        'category_name',
         'price',
         'is_active',
         'updated_at',
@@ -349,6 +354,7 @@ router.get('/csv/export', requirePermission('catalog.manage'), (_req: Request, r
           product.sku,
           product.name,
           product.category_id,
+          product.category_name,
           Number(product.price),
           Number(product.is_active ?? 1) === 1 ? 'yes' : 'no',
           product.updated_at,
@@ -386,13 +392,25 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
       'sku',
       'name',
       'category_id',
+      'category_name',
       'price',
       'is_active',
       'updated_at',
       FLO_CSV_ENCODING_COLUMN,
     ]);
     const duplicateHeaders = headers.filter((header, index) => headers.indexOf(header) !== index);
-    const missingHeaders = [...allowedHeaders].filter((header) => !headers.includes(header));
+    const requiredHeaders = [
+      'id',
+      'sku',
+      'name',
+      'category_id',
+      'price',
+      'is_active',
+      'updated_at',
+      FLO_CSV_ENCODING_COLUMN,
+    ];
+    const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+    const hasCategoryNameColumn = headers.includes('category_name');
     const unsupportedHeaders = headers.filter((header) => !allowedHeaders.has(header));
     if (duplicateHeaders.length || missingHeaders.length || unsupportedHeaders.length) {
       return res.status(400).json({
@@ -406,6 +424,12 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
     }
 
     const rows = toObjects(parsed);
+    const malformedRowWidths = new Map<number, number>();
+    parsed.slice(1).forEach((fields, index) => {
+      if (fields.length !== headers.length) {
+        malformedRowWidths.set(index, fields.length);
+      }
+    });
     if (rows.length < 1 || rows.length > 250) {
       return res.status(400).json({
         error: 'Menu Studio CSV import supports between 1 and 250 product rows per batch',
@@ -419,7 +443,10 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
          FROM products WHERE id = ?`,
     );
     const selectCategory = db.prepare(
-      'SELECT id, is_active FROM categories WHERE id = ? AND deleted_at IS NULL',
+      'SELECT id, name, is_active FROM categories WHERE id = ? AND deleted_at IS NULL',
+    );
+    const selectCategoryByName = db.prepare(
+      'SELECT id, name, is_active FROM categories WHERE lower(trim(name)) = lower(trim(?)) AND deleted_at IS NULL AND is_active = 1',
     );
     const seenIds = new Set<string>();
     const changes: MenuStudioChange[] = [];
@@ -458,6 +485,13 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
         });
       };
 
+      const actualColumnCount = malformedRowWidths.get(index);
+      if (actualColumnCount !== undefined) {
+        fail(
+          'expected ' + headers.length + ' columns but found ' + actualColumnCount,
+        );
+        return;
+      }
       if (!encoding.ok) {
         fail(encoding.error);
         return;
@@ -497,11 +531,39 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
         fail('item name must contain 1 to 120 characters', before);
         return;
       }
-      const categoryValue = decode(row.category_id).trim();
-      const categoryId = categoryValue || null;
-      if (categoryId) {
+      const suppliedCategoryId = decode(row.category_id).trim() || null;
+      if (suppliedCategoryId !== (current.category_id || null)) {
+        fail(
+          'category_id is a reference field; keep it unchanged and edit category_name instead',
+          before,
+        );
+        return;
+      }
+      let categoryId = suppliedCategoryId;
+      if (hasCategoryNameColumn) {
+        const categoryName = decode(row.category_name).trim();
+        if (categoryName) {
+          const matches = selectCategoryByName.all(categoryName) as {
+            id: string;
+            name: string;
+            is_active: number;
+          }[];
+          if (matches.length === 0) {
+            fail('category name must match an active category', before);
+            return;
+          }
+          const retainedMatch = matches.find((category) => category.id === suppliedCategoryId);
+          if (matches.length > 1 && !retainedMatch) {
+            fail('category name is ambiguous; choose a category with a unique active name', before);
+            return;
+          }
+          categoryId = retainedMatch?.id || matches[0].id;
+        } else {
+          categoryId = null;
+        }
+      } else if (categoryId) {
         const category = selectCategory.get(categoryId) as
-          | { id: string; is_active: number }
+          | { id: string; name: string; is_active: number }
           | undefined;
         if (!category || Number(category.is_active) !== 1) {
           fail('category id must refer to an active category', before);

@@ -247,13 +247,14 @@ async function main() {
     );
     const exportedCsv = await exportResponse.text();
     assert(
-      exportedCsv.startsWith('id,sku,name,category_id,price,is_active,updated_at,flo_csv_encoding'),
+      exportedCsv.startsWith('id,sku,name,category_id,category_name,price,is_active,updated_at,flo_csv_encoding'),
       'Menu Studio CSV export includes stable identity and stale-write columns',
     );
     assert(
       exportedCsv.includes("'+CSV Formula Item"),
       'CSV export neutralizes spreadsheet formula-leading product names',
     );
+    assert(exportedCsv.includes('Food'), 'CSV export includes a readable category name');
     assert(
       exportedCsv.includes('quote-v1'),
       'CSV export carries the reversible formula-safety marker',
@@ -261,11 +262,15 @@ async function main() {
 
     const formulaProduct = db
       .prepare(
-        'SELECT id, sku, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
+        `SELECT p.id, p.sku, p.name, p.category_id, c.name AS category_name,
+                p.price, p.is_active, p.updated_at
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         WHERE p.id = ?`,
       )
       .get(formulaProductId) as any;
     const { toQuoteV1CsvRow, FLO_CSV_ENCODING_QUOTE_V1 } = require('../main/lib/csv');
-    const importHeader = 'id,sku,name,category_id,price,is_active,updated_at,flo_csv_encoding';
+    const importHeader = 'id,sku,name,category_id,category_name,price,is_active,updated_at,flo_csv_encoding';
     const previewCsv = [
       importHeader,
       toQuoteV1CsvRow([
@@ -273,6 +278,7 @@ async function main() {
         formulaProduct.sku,
         formulaProduct.name,
         formulaProduct.category_id,
+        'Drinks',
         39,
         'yes',
         formulaProduct.updated_at,
@@ -287,6 +293,11 @@ async function main() {
     assertEqual(response.status, 200, 'a valid Menu Studio CSV can be previewed');
     assertEqual(response.data.ready_count, 1, 'preview identifies one valid product change');
     assertEqual(response.data.error_count, 0, 'valid CSV preview has no row errors');
+    assertEqual(
+      response.data.changes[0].patch.category_id,
+      'cat-menu-studio-drinks',
+      'category name edits resolve to the matching active category ID',
+    );
     assertEqual(
       readProduct(db, formulaProductId).price,
       35,
@@ -310,6 +321,11 @@ async function main() {
     );
     assertEqual(readProduct(db, formulaProductId).price, 39, 'confirmed CSV price is saved');
     assertEqual(
+      readProduct(db, formulaProductId).category_id,
+      'cat-menu-studio-drinks',
+      'confirmed category name change is saved by the Menu Studio transaction',
+    );
+    assertEqual(
       readProduct(db, formulaProductId).name,
       '+CSV Formula Item',
       'CSV apply preserves the original formula-leading product name',
@@ -317,7 +333,11 @@ async function main() {
 
     const currentFormulaProduct = db
       .prepare(
-        'SELECT id, sku, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
+        `SELECT p.id, p.sku, p.name, p.category_id, c.name AS category_name,
+                p.price, p.is_active, p.updated_at
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         WHERE p.id = ?`,
       )
       .get(formulaProductId) as any;
     const duplicateRow = toQuoteV1CsvRow([
@@ -325,6 +345,7 @@ async function main() {
       currentFormulaProduct.sku,
       currentFormulaProduct.name,
       currentFormulaProduct.category_id,
+      currentFormulaProduct.category_name,
       40,
       'yes',
       currentFormulaProduct.updated_at,
@@ -344,6 +365,42 @@ async function main() {
       'duplicate preview leaves catalog unchanged',
     );
 
+
+    const invalidCategoryCsv = [
+      importHeader,
+      toQuoteV1CsvRow([
+        currentFormulaProduct.id,
+        currentFormulaProduct.sku,
+        currentFormulaProduct.name,
+        currentFormulaProduct.category_id,
+        'Not a real category',
+        43,
+        'yes',
+        currentFormulaProduct.updated_at,
+        FLO_CSV_ENCODING_QUOTE_V1,
+      ]),
+    ].join('\n');
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: invalidCategoryCsv },
+    });
+    assertEqual(response.data.error_count, 1, 'unknown category names are rejected');
+    assertEqual(response.data.can_apply, false, 'invalid category preview cannot be applied');
+    assertEqual(
+      readProduct(db, formulaProductId).category_id,
+      'cat-menu-studio-drinks',
+      'invalid category preview leaves the current category unchanged',
+    );
+
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: [importHeader, duplicateRow + ',unexpected'].join('\n') },
+    });
+    assertEqual(response.data.error_count, 1, 'CSV rows with extra columns are rejected');
+    assertEqual(response.data.can_apply, false, 'malformed row preview cannot be applied');
+
     const staleCsv = [
       importHeader,
       toQuoteV1CsvRow([
@@ -351,6 +408,7 @@ async function main() {
         currentFormulaProduct.sku,
         currentFormulaProduct.name,
         currentFormulaProduct.category_id,
+        currentFormulaProduct.category_name,
         41,
         'yes',
         currentFormulaProduct.updated_at,

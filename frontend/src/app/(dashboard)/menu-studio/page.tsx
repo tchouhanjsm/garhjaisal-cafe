@@ -253,6 +253,10 @@ export default function MenuStudioPage() {
     });
   }, [selectedProducts, bulkPriceMode, amountValue, amountFormat.currencyFractionDigits]);
 
+  const categoryLabel = (categoryId: string | null): string =>
+    categories.find((category) => category.id === categoryId)?.name ||
+    (categoryId ? 'Unavailable category' : 'Uncategorized');
+
   const allVisibleSelected =
     visibleProducts.length > 0 &&
     visibleProducts.every((product) => selectedIds.includes(product.id));
@@ -1209,8 +1213,8 @@ export default function MenuStudioPage() {
                           row.after &&
                           row.before.category_id !== row.after.category_id && (
                             <p className="mt-1 text-xs text-muted-foreground">
-                              Category: {row.before.category_id || 'Uncategorized'} →{' '}
-                              {row.after.category_id || 'Uncategorized'}
+                              Category: {categoryLabel(row.before.category_id)} →{' '}
+                              {categoryLabel(row.after.category_id)}
                             </p>
                           )}
                       </td>
