@@ -3371,8 +3371,9 @@ export default function POSPage() {
       setShowTablePicker(false);
       toast.success(t('orderHeld', { tableName }));
       await refreshTables();
-    } catch {
-      toast.error(t('holdOrderFailed'));
+    } catch (error) {
+      await refreshTables();
+      toast.error(extractPrinterErrorMessage(error) || t('holdOrderFailed'));
     }
   };
 

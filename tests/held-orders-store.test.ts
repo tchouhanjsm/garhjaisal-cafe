@@ -546,6 +546,10 @@ async function main() {
     'a resumed hold returns the opted-in selection',
   );
 
+  // Another terminal consumed this snapshot; refresh before the next save so
+  // the expected identity reflects the now-empty server state.
+  await selectionStore.getState().fetchHeldOrders();
+
   // A hold written by an older build has no selection fields at all.
   serverOrders.set('table-legacy-selection', makeHeldOrder('table-legacy-selection'));
   await selectionResume.getState().fetchHeldOrders();
