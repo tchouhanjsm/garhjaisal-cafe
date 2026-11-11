@@ -643,8 +643,7 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
       : '1 = 1';
     const omittedCountRow = db
       .prepare(
-        'SELECT COUNT(*) AS count FROM products p WHERE p.deleted_at IS NULL AND ' +
-          omittedFilter,
+        'SELECT COUNT(*) AS count FROM products p WHERE p.deleted_at IS NULL AND ' + omittedFilter,
       )
       .get(...importedIds) as { count: number };
     const omittedProducts = db

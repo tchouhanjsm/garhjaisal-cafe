@@ -304,9 +304,7 @@ async function main() {
       'preview counts catalog products that are not present in this CSV',
     );
     assert(
-      response.data.omitted_products.some(
-        (product: any) => product.id === omittedProductId,
-      ),
+      response.data.omitted_products.some((product: any) => product.id === omittedProductId),
       'preview identifies omitted products without treating them as deletions',
     );
     assertEqual(
