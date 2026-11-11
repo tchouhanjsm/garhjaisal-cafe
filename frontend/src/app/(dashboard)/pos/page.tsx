@@ -1184,20 +1184,33 @@ export default function POSPage() {
       void refreshScheduledOrders();
     }, 10000);
     let tableRefreshInFlight = false;
+    const refreshOperationalTables = () => {
+      if (
+        document.visibilityState !== 'visible' ||
+        !isRestaurant ||
+        !tablesRequired ||
+        tableRefreshInFlight
+      ) {
+        return;
+      }
+      tableRefreshInFlight = true;
+      void Promise.allSettled([refreshTables(), fetchHeldOrders()]).finally(() => {
+        tableRefreshInFlight = false;
+      });
+    };
     const refreshOnReturn = () => {
       if (document.visibilityState !== 'visible') return;
       void refreshScheduledOrders();
-      if (isRestaurant && tablesRequired && !tableRefreshInFlight) {
-        tableRefreshInFlight = true;
-        void Promise.allSettled([refreshTables(), fetchHeldOrders()]).finally(() => {
-          tableRefreshInFlight = false;
-        });
-      }
+      refreshOperationalTables();
     };
+    // A foreground terminal may stay open while another terminal changes a table.
+    // Keep the shared table/held-cart view current without polling hidden windows.
+    const tableRefreshInterval = setInterval(refreshOperationalTables, 15000);
     window.addEventListener('focus', refreshOnReturn);
     document.addEventListener('visibilitychange', refreshOnReturn);
     return () => {
       clearInterval(interval);
+      clearInterval(tableRefreshInterval);
       window.removeEventListener('focus', refreshOnReturn);
       document.removeEventListener('visibilitychange', refreshOnReturn);
     };
