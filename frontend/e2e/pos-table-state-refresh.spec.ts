@@ -77,8 +77,14 @@ test.describe('POS shared table state refresh', () => {
           response.url().includes('/api/tables') &&
           response.url().includes('include_items=1'),
       );
+      const refreshedProducts = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname === '/api/products' &&
+          new URL(response.url()).searchParams.get('active') === '1',
+      );
       await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-      await refreshedTables;
+      await Promise.all([refreshedTables, refreshedProducts]);
 
       await page.getByTestId('cart-table-button').click();
       const picker = page.getByRole('heading', { name: /select table/i });
