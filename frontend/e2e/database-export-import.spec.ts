@@ -200,6 +200,17 @@ test.describe('Database Settings JSON Export and Import', () => {
   }) => {
     await signInAsOwner(page);
 
+    // Match the current schema to keep this test on the normal merge-import path.
+    const token = await page.evaluate(() => localStorage.getItem('token'));
+    expect(token).toBeTruthy();
+    const versionResponse = await page.request.get(`${BASE}/api/db/export`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(versionResponse.ok()).toBeTruthy();
+    const exportedDatabase = await versionResponse.json();
+    const currentSchemaVersion = exportedDatabase.schema_version as string;
+    expect(currentSchemaVersion).toMatch(/^(?:0|[1-9]\d*)$/);
+
     const runId = Math.random().toString(36).substring(2, 8);
     const uniqueProductId = `prod-e2e-${runId}`;
     const uniqueCustomerId = `cust-e2e-${runId}`;
@@ -211,7 +222,7 @@ test.describe('Database Settings JSON Export and Import', () => {
 
     const contaminatedPayload = {
       app: 'FloDesktop',
-      schema_version: '125',
+      schema_version: currentSchemaVersion,
       data: {
         settings: [],
         categories: [],
@@ -291,7 +302,6 @@ test.describe('Database Settings JSON Export and Import', () => {
       });
 
       // Verify FTS search index rebuild via order search
-      const token = await page.evaluate(() => localStorage.getItem('token'));
       const orderSearchRes = await page.request.get(
         `${BASE}/api/orders?search=${encodeURIComponent(uniqueOrderNumber)}`,
         { headers: { Authorization: `Bearer ${token}` } },

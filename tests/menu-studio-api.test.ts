@@ -1,0 +1,562 @@
+/**
+ * Menu Studio API: transactional catalog edits, stale-write rejection and audit history.
+ *
+ * Usage: node tests/run-electron-node-test.cjs tests/menu-studio-api.test.ts
+ */
+const Module = require('module');
+const originalLoad = Module._load;
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flo-menu-studio-'));
+
+Module._load = function (request: string, parent: unknown, isMain: boolean) {
+  if (request === 'electron') {
+    return { app: { isPackaged: true, getPath: () => testDir, getVersion: () => 'test' } };
+  }
+  return originalLoad.apply(this, arguments as any);
+};
+
+process.env.JWT_SECRET = 'test-secret-menu-studio';
+
+const jwt = require('jsonwebtoken');
+const {
+  initTestDb,
+  createApp,
+  startServer,
+  seedOwnerUser,
+  seedCategory,
+  seedProduct,
+  api,
+  assert,
+  assertEqual,
+  getResults,
+  closeDatabase,
+} = require('./helpers/test-setup');
+const { getJWTSecret } = require('../main/routes/auth');
+const { menuStudioRoutes } = require('../main/routes/menu-studio');
+
+function readProduct(db: any, id: string) {
+  return db
+    .prepare(
+      'SELECT id, name, category_id, price, is_active, updated_at FROM products WHERE id = ?',
+    )
+    .get(id) as any;
+}
+
+function expectedSnapshot(product: any) {
+  return {
+    name: product.name,
+    category_id: product.category_id,
+    price: Number(product.price),
+    is_active: Number(product.is_active) === 1,
+  };
+}
+
+async function main() {
+  const db = initTestDb();
+  const owner = seedOwnerUser(db);
+  seedCategory(db, 'cat-menu-studio-food', 'Food');
+  seedCategory(db, 'cat-menu-studio-drinks', 'Drinks');
+  seedProduct(db, 'prod-menu-studio-a', 'cat-menu-studio-food', 'Paneer Tikka', 220);
+  seedProduct(db, 'prod-menu-studio-b', 'cat-menu-studio-drinks', 'Masala Chai', 80);
+
+  db.prepare(`
+    INSERT INTO product_variants (id, product_id, name, price, is_active, sort_order, created_at, updated_at)
+    VALUES ('var-menu-studio-a', 'prod-menu-studio-a', 'Half', 140, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `).run();
+
+  const app = createApp({ '/api/menu-studio': menuStudioRoutes });
+  const { baseUrl, server } = await startServer(app);
+  const unauthorisedToken = jwt.sign(
+    { userId: 'menu-studio-no-access', email: 'no-access@test.local', role: 'server' },
+    getJWTSecret(),
+    { expiresIn: '1h' },
+  );
+
+  try {
+    const initialA = readProduct(db, 'prod-menu-studio-a');
+    const initialB = readProduct(db, 'prod-menu-studio-b');
+
+    let response = await api(baseUrl, '/api/menu-studio/updates', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: {
+        changes: [
+          {
+            id: initialA.id,
+            expected_updated_at: initialA.updated_at,
+            expected: expectedSnapshot(initialA),
+            patch: { price: 240 },
+          },
+          {
+            id: initialB.id,
+            expected_updated_at: initialB.updated_at,
+            expected: expectedSnapshot(initialB),
+            patch: { is_active: false },
+          },
+        ],
+      },
+    });
+    assertEqual(response.status, 200, 'a multi-product edit is accepted');
+    assertEqual(response.data.updated_count, 2, 'both products are committed in one batch');
+    assert(Boolean(response.data.batch_id), 'the batch receives a traceable batch ID');
+    assertEqual(readProduct(db, initialA.id).price, 240, 'the base product price is updated');
+    assertEqual(readProduct(db, initialB.id).is_active, 0, 'availability is updated');
+    assertEqual(
+      db.prepare('SELECT price FROM product_variants WHERE id = ?').get('var-menu-studio-a').price,
+      140,
+      'variant prices remain unchanged by a base-product edit',
+    );
+
+    const firstBatchAudit = db
+      .prepare('SELECT * FROM menu_studio_audit_log WHERE batch_id = ? ORDER BY id')
+      .all(response.data.batch_id) as any[];
+    assertEqual(firstBatchAudit.length, 2, 'one audit entry is written for each changed product');
+    assertEqual(
+      firstBatchAudit[0].actor_user_id,
+      owner.userId,
+      'audit entries retain the acting user',
+    );
+    assertEqual(
+      JSON.parse(firstBatchAudit[0].before_json).price,
+      220,
+      'audit stores the previous price',
+    );
+    assertEqual(
+      JSON.parse(firstBatchAudit[0].after_json).price,
+      240,
+      'audit stores the resulting price',
+    );
+    assertEqual(
+      firstBatchAudit[0].action,
+      'price_updated',
+      'price changes are classified in the audit',
+    );
+
+    const staleFirst = readProduct(db, initialA.id);
+    const staleSecond = readProduct(db, initialB.id);
+    db.prepare('UPDATE products SET price = ? WHERE id = ?').run(245, initialA.id);
+    const auditCountBeforeStale = (
+      db.prepare('SELECT COUNT(*) AS count FROM menu_studio_audit_log').get() as any
+    ).count;
+
+    response = await api(baseUrl, '/api/menu-studio/updates', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: {
+        changes: [
+          {
+            id: staleFirst.id,
+            expected_updated_at: staleFirst.updated_at,
+            expected: expectedSnapshot(staleFirst),
+            patch: { price: 250 },
+          },
+          {
+            id: staleSecond.id,
+            expected_updated_at: staleSecond.updated_at,
+            expected: expectedSnapshot(staleSecond),
+            patch: { name: 'Chai' },
+          },
+        ],
+      },
+    });
+    assertEqual(response.status, 409, 'a stale edit is rejected');
+    assertEqual(response.data.code, 'stale_write', 'the stale conflict has a stable machine code');
+    assertEqual(
+      readProduct(db, staleFirst.id).price,
+      245,
+      'the newer concurrent price is preserved',
+    );
+    assertEqual(
+      readProduct(db, staleSecond.id).name,
+      staleSecond.name,
+      'the rest of a stale batch is rolled back',
+    );
+    assertEqual(
+      (db.prepare('SELECT COUNT(*) AS count FROM menu_studio_audit_log').get() as any).count,
+      auditCountBeforeStale,
+      'a rejected batch writes no partial audit entries',
+    );
+
+    response = await api(baseUrl, '/api/menu-studio/updates', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: {
+        changes: [
+          {
+            id: staleSecond.id,
+            expected_updated_at: staleSecond.updated_at,
+            expected: expectedSnapshot(staleSecond),
+            patch: { variants: [{ name: 'Large', price: 300 }] },
+          },
+        ],
+      },
+    });
+    assertEqual(
+      response.status,
+      400,
+      'unsupported catalog fields cannot enter through Menu Studio',
+    );
+    assertEqual(
+      readProduct(db, staleSecond.id).name,
+      staleSecond.name,
+      'an unsupported field leaves the catalog untouched',
+    );
+
+    response = await api(baseUrl, '/api/menu-studio/updates', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${unauthorisedToken}` },
+      body: { changes: [] },
+    });
+    assertEqual(response.status, 403, 'catalog writers without catalog.manage are denied');
+
+    response = await api(baseUrl, `/api/menu-studio/audit?product_id=${initialA.id}&limit=10`, {
+      headers: owner.authHeader,
+    });
+    assertEqual(response.status, 200, 'audit history can be read');
+    assert(
+      response.data.entries.some((entry: any) => entry.product_id === initialA.id),
+      'the product audit filter returns its edits',
+    );
+    assert(
+      response.data.entries.some(
+        (entry: any) => entry.before?.price === 220 && entry.after?.price === 240,
+      ),
+      'audit API returns parsed before and after snapshots',
+    );
+
+    response = await api(baseUrl, '/api/menu-studio/updates', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { changes: [] },
+    });
+    assertEqual(response.status, 400, 'empty edit batches are rejected');
+
+    console.log('\n─── Menu Studio CSV export, preview and transactional apply ───');
+    const formulaProductId = 'prod-menu-studio-csv-formula';
+    seedProduct(db, formulaProductId, 'cat-menu-studio-food', '+CSV Formula Item', 35);
+    const omittedProductId = 'prod-menu-studio-csv-omitted';
+    seedProduct(db, omittedProductId, 'cat-menu-studio-food', 'Not in import file', 95);
+    const exportResponse = await (globalThis as any).fetch(
+      baseUrl + '/api/menu-studio/csv/export',
+      { headers: owner.authHeader },
+    );
+    assertEqual(
+      exportResponse.status,
+      200,
+      'Menu Studio CSV export is available to catalog managers',
+    );
+    const exportedCsv = await exportResponse.text();
+    assert(
+      exportedCsv.startsWith(
+        'id,sku,name,category_id,category_name,price,is_active,updated_at,flo_csv_encoding',
+      ),
+      'Menu Studio CSV export includes stable identity and stale-write columns',
+    );
+    assert(
+      exportedCsv.includes("'+CSV Formula Item"),
+      'CSV export neutralizes spreadsheet formula-leading product names',
+    );
+    assert(exportedCsv.includes('Food'), 'CSV export includes a readable category name');
+    assert(
+      exportedCsv.includes('quote-v1'),
+      'CSV export carries the reversible formula-safety marker',
+    );
+
+    const formulaProduct = db
+      .prepare(
+        `SELECT p.id, p.sku, p.name, p.category_id, c.name AS category_name,
+                p.price, p.is_active, p.updated_at
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         WHERE p.id = ?`,
+      )
+      .get(formulaProductId) as any;
+    const { toQuoteV1CsvRow, FLO_CSV_ENCODING_QUOTE_V1 } = require('../main/lib/csv');
+    const importHeader =
+      'id,sku,name,category_id,category_name,price,is_active,updated_at,flo_csv_encoding';
+    const previewCsv = [
+      importHeader,
+      toQuoteV1CsvRow([
+        formulaProduct.id,
+        formulaProduct.sku,
+        formulaProduct.name,
+        formulaProduct.category_id,
+        'Drinks',
+        39,
+        'yes',
+        formulaProduct.updated_at,
+        FLO_CSV_ENCODING_QUOTE_V1,
+      ]),
+    ].join('\n');
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: previewCsv },
+    });
+    assertEqual(response.status, 200, 'a valid Menu Studio CSV can be previewed');
+    assertEqual(response.data.ready_count, 1, 'preview identifies one valid product change');
+    assertEqual(response.data.error_count, 0, 'valid CSV preview has no row errors');
+    assertEqual(
+      response.data.omitted_count,
+      3,
+      'preview counts catalog products that are not present in this CSV',
+    );
+    assert(
+      response.data.omitted_products.some((product: any) => product.id === omittedProductId),
+      'preview identifies omitted products without treating them as deletions',
+    );
+    assertEqual(
+      response.data.changes[0].patch.category_id,
+      'cat-menu-studio-drinks',
+      'category name edits resolve to the matching active category ID',
+    );
+    assertEqual(
+      readProduct(db, formulaProductId).price,
+      35,
+      'preview never mutates catalog values',
+    );
+    assertEqual(
+      response.data.rows[0].before.name,
+      '+CSV Formula Item',
+      'quote-v1 preview restores formula-leading names without changing the item identity',
+    );
+
+    const csvApply = await api(baseUrl, '/api/menu-studio/updates', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { changes: response.data.changes },
+    });
+    assertEqual(
+      csvApply.status,
+      200,
+      'previewed CSV updates use the transactional Menu Studio API',
+    );
+    assertEqual(readProduct(db, formulaProductId).price, 39, 'confirmed CSV price is saved');
+    assertEqual(
+      readProduct(db, formulaProductId).category_id,
+      'cat-menu-studio-drinks',
+      'confirmed category name change is saved by the Menu Studio transaction',
+    );
+    assertEqual(
+      readProduct(db, formulaProductId).name,
+      '+CSV Formula Item',
+      'CSV apply preserves the original formula-leading product name',
+    );
+
+    const currentFormulaProduct = db
+      .prepare(
+        `SELECT p.id, p.sku, p.name, p.category_id, c.name AS category_name,
+                p.price, p.is_active, p.updated_at
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         WHERE p.id = ?`,
+      )
+      .get(formulaProductId) as any;
+    const duplicateRow = toQuoteV1CsvRow([
+      currentFormulaProduct.id,
+      currentFormulaProduct.sku,
+      currentFormulaProduct.name,
+      currentFormulaProduct.category_id,
+      currentFormulaProduct.category_name,
+      40,
+      'yes',
+      currentFormulaProduct.updated_at,
+      FLO_CSV_ENCODING_QUOTE_V1,
+    ]);
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: [importHeader, duplicateRow, duplicateRow].join('\n') },
+    });
+    assertEqual(response.status, 200, 'duplicate CSV rows return a reviewable preview');
+    assertEqual(response.data.error_count, 1, 'duplicate product IDs are detected');
+    assertEqual(response.data.can_apply, false, 'a CSV with any invalid row cannot be applied');
+    assertEqual(
+      readProduct(db, formulaProductId).price,
+      39,
+      'duplicate preview leaves catalog unchanged',
+    );
+
+    const invalidCategoryCsv = [
+      importHeader,
+      toQuoteV1CsvRow([
+        currentFormulaProduct.id,
+        currentFormulaProduct.sku,
+        currentFormulaProduct.name,
+        currentFormulaProduct.category_id,
+        'Not a real category',
+        43,
+        'yes',
+        currentFormulaProduct.updated_at,
+        FLO_CSV_ENCODING_QUOTE_V1,
+      ]),
+    ].join('\n');
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: invalidCategoryCsv },
+    });
+    assertEqual(response.data.error_count, 1, 'unknown category names are rejected');
+    assertEqual(response.data.can_apply, false, 'invalid category preview cannot be applied');
+    assertEqual(
+      readProduct(db, formulaProductId).category_id,
+      'cat-menu-studio-drinks',
+      'invalid category preview leaves the current category unchanged',
+    );
+
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: [importHeader, duplicateRow + ',unexpected'].join('\n') },
+    });
+    assertEqual(response.status, 200, 'extra-column CSV returns a reviewable preview');
+    assertEqual(response.data.error_count, 1, 'CSV rows with extra columns are rejected');
+    assertEqual(response.data.can_apply, false, 'malformed row preview cannot be applied');
+    assertEqual(
+      response.data.omitted_count,
+      3,
+      'a malformed row with a readable product ID is present, not omitted, in reconciliation',
+    );
+
+    const shortRow = toQuoteV1CsvRow([
+      currentFormulaProduct.id,
+      currentFormulaProduct.sku,
+      currentFormulaProduct.name,
+      currentFormulaProduct.category_id,
+      currentFormulaProduct.category_name,
+      44,
+      'yes',
+      currentFormulaProduct.updated_at,
+    ]);
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: [importHeader, shortRow].join('\n') },
+    });
+    assertEqual(response.status, 200, 'missing-column CSV returns a reviewable preview');
+    assertEqual(response.data.error_count, 1, 'CSV rows with missing columns are rejected');
+    assertEqual(response.data.can_apply, false, 'missing-column preview cannot be applied');
+
+    const staleCsv = [
+      importHeader,
+      toQuoteV1CsvRow([
+        currentFormulaProduct.id,
+        currentFormulaProduct.sku,
+        currentFormulaProduct.name,
+        currentFormulaProduct.category_id,
+        currentFormulaProduct.category_name,
+        41,
+        'yes',
+        currentFormulaProduct.updated_at,
+        FLO_CSV_ENCODING_QUOTE_V1,
+      ]),
+    ].join('\n');
+    db.prepare('UPDATE products SET price = ?, updated_at = ? WHERE id = ?').run(
+      42,
+      '2026-11-10 17:30:00',
+      formulaProductId,
+    );
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: staleCsv },
+    });
+    assertEqual(response.data.error_count, 1, 'stale CSV rows are rejected during preview');
+    assertEqual(response.data.can_apply, false, 'stale CSV preview cannot be applied');
+    assertEqual(
+      readProduct(db, formulaProductId).price,
+      42,
+      'stale CSV cannot overwrite a newer edit',
+    );
+
+    const auditExportResponse = await (globalThis as any).fetch(
+      baseUrl + '/api/menu-studio/audit/export?limit=100',
+      { headers: owner.authHeader },
+    );
+    assertEqual(auditExportResponse.status, 200, 'catalog viewers can export audit history');
+    const auditCsv = await auditExportResponse.text();
+    assert(
+      auditCsv.startsWith(
+        'audit_id,batch_id,product_id,product_name,actor_user_id,actor_name,action,before_json,after_json,created_at,flo_csv_encoding',
+      ),
+      'audit export includes structured identity and snapshot columns',
+    );
+    assert(auditCsv.includes('price_updated'), 'audit export contains the recorded change action');
+    assert(
+      auditCsv.includes("'+CSV Formula Item"),
+      'audit export protects formula-leading product names in spreadsheet software',
+    );
+
+    const firstAuditPage = await (globalThis as any).fetch(
+      baseUrl + '/api/menu-studio/audit/export?limit=1',
+      { headers: owner.authHeader },
+    );
+    assertEqual(firstAuditPage.status, 200, 'audit export supports bounded first pages');
+    const firstAuditCsv = await firstAuditPage.text();
+    const throughId = firstAuditPage.headers.get('x-menu-studio-audit-through-id');
+    const nextBeforeId = firstAuditPage.headers.get('x-menu-studio-audit-next-before-id');
+    assert(
+      Boolean(throughId) && Boolean(nextBeforeId),
+      'first audit page returns a stable high-water mark and next cursor',
+    );
+    assertEqual(
+      firstAuditPage.headers.get('x-menu-studio-audit-page-count'),
+      '1',
+      'first audit page reports the number of exported records',
+    );
+    assert(
+      Number(firstAuditPage.headers.get('x-menu-studio-audit-total-count')) > 1,
+      'audit export reports the complete record count beyond one page',
+    );
+    assert(firstAuditCsv.startsWith('audit_id,'), 'the first audit page includes the CSV header');
+
+    const secondAuditPage = await (globalThis as any).fetch(
+      baseUrl +
+        '/api/menu-studio/audit/export?limit=1&through_id=' +
+        throughId +
+        '&before_id=' +
+        nextBeforeId,
+      { headers: owner.authHeader },
+    );
+    assertEqual(secondAuditPage.status, 200, 'audit export accepts the next page cursor');
+    const secondAuditCsv = await secondAuditPage.text();
+    assert(
+      !secondAuditCsv.startsWith('audit_id,'),
+      'subsequent audit pages do not repeat the CSV header',
+    );
+    assert(
+      /^\d+,/.test(secondAuditCsv),
+      'subsequent audit pages begin with the next structured audit record',
+    );
+    assert(
+      firstAuditCsv.split(/\r?\n/)[1]?.split(',')[0] !== secondAuditCsv.split(',')[0],
+      'audit cursors do not repeat the previous page record',
+    );
+    assertEqual(
+      secondAuditPage.headers.get('x-menu-studio-audit-through-id'),
+      throughId,
+      'all audit pages retain the original high-water mark',
+    );
+
+    const invalidAuditCursor = await (globalThis as any).fetch(
+      baseUrl + '/api/menu-studio/audit/export?through_id=invalid',
+      { headers: owner.authHeader },
+    );
+    assertEqual(invalidAuditCursor.status, 400, 'invalid audit export cursors are rejected');
+
+    const results = getResults();
+    console.log(`\nMenu Studio API: ${results.passed}/${results.total} checks passed.`);
+    if (results.failed > 0) process.exitCode = 1;
+  } finally {
+    server.close();
+    closeDatabase();
+    fs.rmSync(testDir, { recursive: true, force: true });
+  }
+}
+
+main().catch((error: any) => {
+  console.error(error);
+  process.exit(1);
+});

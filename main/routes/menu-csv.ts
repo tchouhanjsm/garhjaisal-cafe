@@ -41,7 +41,7 @@ type CsvRowEncodingResult =
   | { ok: true; mode: 'quote-v1' | 'unmarked' }
   | { ok: false; error: string };
 
-function resolveCsvRowEncoding(row: Record<string, string>): CsvRowEncodingResult {
+export function resolveCsvRowEncoding(row: Record<string, string>): CsvRowEncodingResult {
   const marker = row[FLO_CSV_ENCODING_COLUMN] ?? '';
   if (marker === '') {
     return { ok: true, mode: 'unmarked' };
@@ -125,7 +125,7 @@ class CsvImportError extends Error {
 
 // ─── CSV helpers ─────────────────────────────────────────────────────────────
 
-function parseCSV(text: string): string[][] {
+export function parseCSV(text: string): string[][] {
   if (typeof text !== 'string') throw new CsvImportError('CSV data must be a string');
   if (Buffer.byteLength(text, 'utf8') > MAX_CSV_BYTES) {
     throw new CsvImportError(`CSV exceeds the ${MAX_CSV_BYTES}-byte size limit`);
@@ -232,7 +232,7 @@ function parseCSV(text: string): string[][] {
   return rows;
 }
 
-function toObjects(rows: string[][]): Record<string, string>[] {
+export function toObjects(rows: string[][]): Record<string, string>[] {
   if (rows.length < 2) return [];
   const headers = rows[0].map((h) => h.trim().toLowerCase());
   return rows.slice(1).map((row, index) => {
