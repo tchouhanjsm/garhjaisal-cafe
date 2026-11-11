@@ -10,10 +10,7 @@ type CreatedTable = {
 };
 
 test.describe('POS shared table state refresh', () => {
-  test('refreshes occupied table state in POS on focus', async ({
-    page,
-    request,
-  }) => {
+  test('refreshes occupied table state in POS on focus', async ({ page, request }) => {
     const headers = ownerAuth();
     let originalBusiness: BusinessSettings | undefined;
     let tableId: string | undefined;
@@ -115,10 +112,7 @@ test.describe('POS shared table state refresh', () => {
     }
   });
 
-  test('restores a held cart after POS focus refresh', async ({
-    page,
-    request,
-  }) => {
+  test('restores a held cart after POS focus refresh', async ({ page, request }) => {
     const headers = ownerAuth();
     let originalBusiness: BusinessSettings | undefined;
     let tableId: string | undefined;
