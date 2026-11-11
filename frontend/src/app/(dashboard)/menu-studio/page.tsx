@@ -1167,6 +1167,11 @@ export default function MenuStudioPage() {
                     >
                       <span className="min-w-0 truncate">
                         {product.name}
+                        {product.category_name ? (
+                          <span className="ms-1 text-muted-foreground">
+                            · {product.category_name}
+                          </span>
+                        ) : null}
                         {product.sku ? (
                           <span className="ms-1 text-muted-foreground">({product.sku})</span>
                         ) : null}

@@ -649,12 +649,12 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
       .get(...importedIds) as { count: number };
     const omittedProducts = db
       .prepare(
-        \`SELECT p.id, p.sku, p.name, c.name AS category_name, p.price, p.is_active
-         FROM products p
-         LEFT JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL
-         WHERE p.deleted_at IS NULL AND \${omittedFilter}
-         ORDER BY p.name COLLATE NOCASE, p.id
-         LIMIT 50\`,
+        'SELECT p.id, p.sku, p.name, c.name AS category_name, p.price, p.is_active ' +
+          'FROM products p ' +
+          'LEFT JOIN categories c ON c.id = p.category_id AND c.deleted_at IS NULL ' +
+          'WHERE p.deleted_at IS NULL AND ' +
+          omittedFilter +
+          ' ORDER BY p.name COLLATE NOCASE, p.id LIMIT 50',
       )
       .all(...importedIds) as {
       id: string;
