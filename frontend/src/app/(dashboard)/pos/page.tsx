@@ -258,6 +258,7 @@ export default function POSPage() {
   const isRestaurant = (currentTenant?.business_type ?? 'restaurant') === 'restaurant';
   const cart = useCartStore();
   const heldOrders = useHeldOrdersStore();
+  const fetchHeldOrders = useHeldOrdersStore((state) => state.fetchHeldOrders);
   const {
     customerMandatory,
     autoPrintKot,
@@ -1104,15 +1105,17 @@ export default function POSPage() {
     }
   };
 
-  const refreshTables = async () => {
+  const refreshTables = useCallback(async () => {
     if (!isRestaurant || !tablesRequired) return;
+    const originStoreId = currentStoreIdRef.current;
     try {
       const { data } = await api.get('/tables?active=1&include_items=1');
+      if (currentStoreIdRef.current !== originStoreId) return;
       setTables(data.tables || []);
     } catch {
-      /* ignore */
+      /* ignore background refresh failures */
     }
-  };
+  }, [isRestaurant, tablesRequired]);
 
   const canReadOrders = tenantCan(currentTenant, 'orders.read');
   const refreshScheduledOrders = useCallback(async () => {
@@ -1180,15 +1183,32 @@ export default function POSPage() {
     const interval = setInterval(() => {
       void refreshScheduledOrders();
     }, 10000);
-    const onFocus = () => {
+    let tableRefreshInFlight = false;
+    const refreshOnReturn = () => {
+      if (document.visibilityState !== 'visible') return;
       void refreshScheduledOrders();
+      if (isRestaurant && tablesRequired && !tableRefreshInFlight) {
+        tableRefreshInFlight = true;
+        void Promise.allSettled([refreshTables(), fetchHeldOrders()]).finally(() => {
+          tableRefreshInFlight = false;
+        });
+      }
     };
-    window.addEventListener('focus', onFocus);
+    window.addEventListener('focus', refreshOnReturn);
+    document.addEventListener('visibilitychange', refreshOnReturn);
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('focus', refreshOnReturn);
+      document.removeEventListener('visibilitychange', refreshOnReturn);
     };
-  }, [currentStoreId, refreshScheduledOrders]);
+  }, [
+    currentStoreId,
+    fetchHeldOrders,
+    isRestaurant,
+    refreshScheduledOrders,
+    refreshTables,
+    tablesRequired,
+  ]);
 
   // Replay persisted append attempt on reload to recover lost in-flight responses.
   useEffect(() => {
