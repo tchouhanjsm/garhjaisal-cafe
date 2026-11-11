@@ -414,6 +414,11 @@ async function main() {
     assertEqual(response.status, 200, 'extra-column CSV returns a reviewable preview');
     assertEqual(response.data.error_count, 1, 'CSV rows with extra columns are rejected');
     assertEqual(response.data.can_apply, false, 'malformed row preview cannot be applied');
+    assertEqual(
+      response.data.omitted_count,
+      3,
+      'a malformed row with a readable product ID is present, not omitted, in reconciliation',
+    );
 
     const shortRow = toQuoteV1CsvRow([
       currentFormulaProduct.id,

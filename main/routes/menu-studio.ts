@@ -489,6 +489,18 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
         });
       };
 
+      if (!id) {
+        fail('product id is required');
+        return;
+      }
+      if (seenIds.has(id)) {
+        fail('duplicate product id in this CSV');
+        return;
+      }
+      // A malformed row is still present in the uploaded file when its stable
+      // product ID is readable. Count it as present for reconciliation, while
+      // keeping it ineligible for updates.
+      seenIds.add(id);
       const actualColumnCount = malformedRowWidths.get(index);
       if (actualColumnCount !== undefined) {
         fail('expected ' + headers.length + ' columns but found ' + actualColumnCount);
@@ -498,15 +510,6 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
         fail(encoding.error);
         return;
       }
-      if (!id) {
-        fail('product id is required');
-        return;
-      }
-      if (seenIds.has(id)) {
-        fail('duplicate product id in this CSV');
-        return;
-      }
-      seenIds.add(id);
 
       const current = selectProduct.get(id) as (ProductRow & { sku: string | null }) | undefined;
       if (!current || current.deleted_at) {
