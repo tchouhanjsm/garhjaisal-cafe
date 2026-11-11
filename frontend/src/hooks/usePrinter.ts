@@ -193,6 +193,7 @@ export interface HardwarePrinter {
 
 export interface KotStationPrintOutcome {
   station_name: string;
+  printer_id: string | number;
   printer_name: string;
   item_count: number;
   item_ids: Array<string | number>;

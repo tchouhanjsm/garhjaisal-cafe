@@ -631,7 +631,11 @@ async function main() {
       '/api/printers/print-kot',
       {
         orderId: createdOrder.id,
-        retryStations: [{ station_name: 'Grill', item_ids: retryableGrillItemIds }],
+        retryStations: [{
+          station_name: 'Grill',
+          printer_id: GRILL_STATION_PRINTER.id,
+          item_ids: retryableGrillItemIds,
+        }],
       },
       waiterToken,
     );
@@ -654,7 +658,11 @@ async function main() {
       '/api/printers/print-kot',
       {
         orderId: createdOrder.id,
-        retryStations: [{ station_name: 'Grill', item_ids: ['not-an-order-item'] }],
+        retryStations: [{
+          station_name: 'Grill',
+          printer_id: GRILL_STATION_PRINTER.id,
+          item_ids: ['not-an-order-item'],
+        }],
       },
       waiterToken,
     );
