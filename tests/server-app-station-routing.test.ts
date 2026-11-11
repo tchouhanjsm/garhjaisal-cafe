@@ -549,6 +549,7 @@ async function main() {
         printer_name: string;
         dispatch_state: string;
         retry_safety: string;
+        item_ids: Array<string | number>;
       }>;
       assert.equal(partialResults.length, 3, 'one outcome is returned for each routed station');
       const failedGrill = partialResults.find(
