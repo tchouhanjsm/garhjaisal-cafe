@@ -535,6 +535,7 @@ async function main() {
     //    that is safe to retry; already-submitted stations are never replayed.
     printerFailureModes.set(GRILL_STATION_PRINTER.ip, 'connect');
     recordedDispatches.length = 0;
+    let retryableGrillItemIds: Array<string | number> = [];
     try {
       const partialFailureRes = await postJson(
         serverAppBaseUrl,
@@ -555,6 +556,7 @@ async function main() {
       );
       assert.equal(failedGrill?.dispatch_state, 'failed');
       assert.equal(failedGrill?.retry_safety, 'safe_to_retry');
+      retryableGrillItemIds = failedGrill?.item_ids ?? [];
       assert.equal(
         partialResults.filter((result) => result.dispatch_state === 'submitted').length,
         2,
@@ -569,6 +571,40 @@ async function main() {
     } finally {
       printerFailureModes.delete(GRILL_STATION_PRINTER.ip);
     }
+
+    // Retry only the station whose connection failure proved that no ticket was sent.
+    recordedDispatches.length = 0;
+    const retryResponse = await postJson(
+      serverAppBaseUrl,
+      '/api/printers/print-kot',
+      {
+        orderId: createdOrder.id,
+        retryStations: [{ station_name: 'Grill', item_ids: retryableGrillItemIds }],
+      },
+      waiterToken,
+    );
+    assert.equal(retryResponse.status, 200);
+    assert.equal(retryResponse.body.station_results.length, 1);
+    assert.equal(retryResponse.body.station_results[0].station_name, 'Grill');
+    assert.equal(retryResponse.body.station_results[0].dispatch_state, 'submitted');
+    assert.equal(recordedDispatches.length, 1, 'only the previously failed Grill station is retried');
+    assert.equal(recordedDispatches[0].ip, GRILL_STATION_PRINTER.ip);
+    assert.equal(recordedDispatches[0].port, GRILL_STATION_PRINTER.port);
+
+    // Unknown or no-longer-pending item IDs are refused before any printer receives bytes.
+    recordedDispatches.length = 0;
+    const staleRetryResponse = await postJson(
+      serverAppBaseUrl,
+      '/api/printers/print-kot',
+      {
+        orderId: createdOrder.id,
+        retryStations: [{ station_name: 'Grill', item_ids: ['not-an-order-item'] }],
+      },
+      waiterToken,
+    );
+    assert.equal(staleRetryResponse.status, 409);
+    assert.equal(staleRetryResponse.body.code, 'KOT_RETRY_ITEMS_CHANGED');
+    assert.equal(recordedDispatches.length, 0);
 
     // A failure after connect/write begins is ambiguous and must be checked before retry.
     printerFailureModes.set(BAR_STATION_PRINTER.ip, 'write');

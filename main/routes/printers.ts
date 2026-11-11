@@ -1455,7 +1455,85 @@ router.post(
       let stationGroups = routeItemsToStations(db, kotSourceItems).filter(
         (group) => group.items.length > 0,
       );
-      if (stationName) {
+      if (req.body?.retryStations !== undefined) {
+        const retryStations: unknown = req.body.retryStations;
+        if (!Array.isArray(retryStations) || retryStations.length === 0 || stationName) {
+          return res.status(400).json({
+            error: 'retryStations must be a non-empty array and cannot be combined with stationName',
+            code: 'KOT_RETRY_REQUEST_INVALID',
+          });
+        }
+
+        const pendingItemsById = new Map(
+          orderItems
+            .filter(
+              (item: any) => item?.id != null && isKotItemPending(item?.status),
+            )
+            .map((item: any) => [String(item.id), item]),
+        );
+        const seenStationNames = new Set<string>();
+        const seenItemIds = new Set<string>();
+        const retryGroups: ReturnType<typeof routeItemsToStations> = [];
+
+        for (const retryRequest of retryStations) {
+          const requestedStationName =
+            typeof retryRequest?.station_name === 'string'
+              ? retryRequest.station_name.trim()
+              : '';
+          const requestedItemIds: unknown[] = Array.isArray(retryRequest?.item_ids)
+            ? retryRequest.item_ids
+            : [];
+          if (
+            !requestedStationName ||
+            requestedItemIds.length === 0 ||
+            seenStationNames.has(requestedStationName) ||
+            requestedItemIds.some(
+              (id) =>
+                (typeof id !== 'string' && typeof id !== 'number') ||
+                String(id).trim() === '' ||
+                seenItemIds.has(String(id)),
+            )
+          ) {
+            return res.status(400).json({
+              error: 'Each retry station must have a unique name and unique, non-empty item IDs',
+              code: 'KOT_RETRY_REQUEST_INVALID',
+            });
+          }
+
+          const normalizedItemIds = requestedItemIds.map(String);
+          normalizedItemIds.forEach((id) => seenItemIds.add(id));
+          seenStationNames.add(requestedStationName);
+          const retryItems = normalizedItemIds.map((id) => pendingItemsById.get(id));
+          if (retryItems.some((item) => !item)) {
+            return res.status(409).json({
+              error: 'One or more KOT items are no longer pending on this order. Refresh before retrying.',
+              code: 'KOT_RETRY_ITEMS_CHANGED',
+            });
+          }
+
+          const routedRetryGroups = routeItemsToStations(db, retryItems).filter(
+            (group) => group.items.length > 0,
+          );
+          const routedGroup = routedRetryGroups[0];
+          const routedItemIds = new Set(
+            routedGroup?.items.map((item: any) => String(item?.id)) ?? [],
+          );
+          if (
+            routedRetryGroups.length !== 1 ||
+            routedGroup.stationName !== requestedStationName ||
+            routedItemIds.size !== normalizedItemIds.length ||
+            normalizedItemIds.some((id) => !routedItemIds.has(id))
+          ) {
+            return res.status(409).json({
+              error: 'KOT station routing changed since the failed print. Refresh and review the order before retrying.',
+              code: 'KOT_RETRY_ROUTING_CHANGED',
+            });
+          }
+
+          retryGroups.push(routedGroup);
+        }
+        stationGroups = retryGroups;
+      } else if (stationName) {
         stationGroups = [];
         if (kotSourceItems.length > 0) {
           stationGroups.push({
