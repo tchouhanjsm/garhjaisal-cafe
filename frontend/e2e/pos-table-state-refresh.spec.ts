@@ -319,6 +319,8 @@ test.describe('POS shared table state refresh', () => {
           .catch(() => {});
       }
     }
+  });
+
   test('polls for occupied table changes while POS remains visible', async ({ page, request }) => {
     const headers = ownerAuth();
     let originalBusiness: BusinessSettings | undefined;
