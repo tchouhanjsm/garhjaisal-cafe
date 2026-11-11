@@ -60,8 +60,21 @@ const serverApi = {
     orderNotes: string;
     waivedChargeIds?: string[];
     optedInChargeIds?: string[];
+    expectedHeldOrderId?: string | null;
   }) => {
     assert.equal(url, '/held-orders');
+    const current = serverOrders.get(body.tableId);
+    if (
+      (body.expectedHeldOrderId === null && current) ||
+      (typeof body.expectedHeldOrderId === 'string' &&
+        (!current || current.id !== body.expectedHeldOrderId))
+    ) {
+      const conflict = new Error('This table was updated on another terminal.') as Error & {
+        response: { status: number; data: { code: string } };
+      };
+      conflict.response = { status: 409, data: { code: 'HELD_ORDER_CONFLICT' } };
+      throw conflict;
+    }
     const id = `ho-${body.tableId}-${++nextOrderId}`;
     serverOrders.set(body.tableId, {
       id,
@@ -161,6 +174,37 @@ async function main() {
   await secondTerminal.getState().fetchHeldOrders();
   assert.equal(firstTerminal.getState().hasHeldOrder('table-a'), true, 'first terminal caches the held order');
   assert.equal(secondTerminal.getState().hasHeldOrder('table-a'), true, 'second terminal retains the same held-order snapshot');
+
+  // Both terminals read the same held identity. The first update rotates it;
+  // the second terminal must receive a conflict instead of silently overwriting.
+  const concurrentTableId = 'table-concurrent-hold';
+  const concurrentInitial = makeHeldOrder(concurrentTableId);
+  serverOrders.set(concurrentTableId, concurrentInitial);
+  await firstTerminal.getState().fetchHeldOrders();
+  await secondTerminal.getState().fetchHeldOrders();
+  await firstTerminal.getState().holdOrder(
+    concurrentTableId,
+    concurrentInitial.items,
+    null,
+    1,
+    'updated by terminal A',
+  );
+  const latestConcurrent = serverOrders.get(concurrentTableId);
+  assert.ok(latestConcurrent);
+  await assert.rejects(
+    () => secondTerminal.getState().holdOrder(
+      concurrentTableId,
+      concurrentInitial.items,
+      null,
+      1,
+      'stale overwrite by terminal B',
+    ),
+    /updated on another terminal/i,
+    'a stale terminal surfaces the optimistic concurrency conflict',
+  );
+  assert.equal(serverOrders.get(concurrentTableId)?.orderNotes, 'updated by terminal A', 'the first terminal update is not overwritten');
+  assert.equal(secondTerminal.getState().getHeldOrder(concurrentTableId)?.id, latestConcurrent.id, 'the stale terminal refreshes to the current held identity');
+  assert.equal(secondTerminal.getState().getHeldOrder(concurrentTableId)?.orderNotes, 'updated by terminal A', 'the stale terminal refreshes current cart contents');
 
   const restored = await firstTerminal.getState().restoreOrder('table-a');
   assert.equal(restored?.tableId, 'table-a', 'first consumer receives the held order');

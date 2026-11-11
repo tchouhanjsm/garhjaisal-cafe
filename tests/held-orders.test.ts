@@ -256,6 +256,81 @@ async function main() {
       { method: 'DELETE', headers: authHeader },
     );
 
+    console.log('\n─── Scenario B4: held-cart writes reject stale terminal snapshots ───');
+    const concurrentTableId = 'tbl-held-concurrency';
+    seedTable(db, concurrentTableId, 5);
+    const initialConcurrentHold = await api(baseUrl, '/api/held-orders', {
+      method: 'POST',
+      body: {
+        tableId: concurrentTableId,
+        items: mockItems,
+        expectedHeldOrderId: null,
+        orderNotes: 'Terminal A initial',
+      },
+      headers: authHeader,
+    });
+    assertEqualOrThrow(initialConcurrentHold.status, 200, 'a new hold succeeds only when no server hold exists');
+    const firstIdentity = initialConcurrentHold.data.id;
+
+    const refreshedConcurrentHold = await api(baseUrl, '/api/held-orders', {
+      method: 'POST',
+      body: {
+        tableId: concurrentTableId,
+        items: mockItems,
+        expectedHeldOrderId: firstIdentity,
+        orderNotes: 'Terminal A update',
+      },
+      headers: authHeader,
+    });
+    assertEqualOrThrow(refreshedConcurrentHold.status, 200, 'the current held identity can be updated');
+    assertOrThrow(refreshedConcurrentHold.data.id !== firstIdentity, 'each successful update issues a new held-order identity');
+
+    const staleConcurrentWrite = await api(baseUrl, '/api/held-orders', {
+      method: 'POST',
+      body: {
+        tableId: concurrentTableId,
+        items: mockItems,
+        expectedHeldOrderId: firstIdentity,
+        orderNotes: 'Stale Terminal B overwrite',
+      },
+      headers: authHeader,
+    });
+    assertEqualOrThrow(staleConcurrentWrite.status, 409, 'a stale terminal cannot overwrite a newer held cart');
+    assertEqualOrThrow(staleConcurrentWrite.data.code, 'HELD_ORDER_CONFLICT', 'stale writes return a stable conflict code');
+    const concurrentAfterConflict = await readHeldForTable(concurrentTableId);
+    assertEqualOrThrow(concurrentAfterConflict.id, refreshedConcurrentHold.data.id, 'the current held identity survives the conflict');
+    assertEqualOrThrow(concurrentAfterConflict.orderNotes, 'Terminal A update', 'the current cart contents survive the conflict');
+
+    const staleCreate = await api(baseUrl, '/api/held-orders', {
+      method: 'POST',
+      body: {
+        tableId: concurrentTableId,
+        items: mockItems,
+        expectedHeldOrderId: null,
+        orderNotes: 'Stale create',
+      },
+      headers: authHeader,
+    });
+    assertEqualOrThrow(staleCreate.status, 409, 'a terminal that saw no hold cannot replace a hold created elsewhere');
+    assertEqualOrThrow((await readHeldForTable(concurrentTableId)).id, refreshedConcurrentHold.data.id, 'stale create preserves the latest hold');
+
+    const missingExpectedIdentity = await api(baseUrl, '/api/held-orders', {
+      method: 'POST',
+      body: {
+        tableId: concurrentTableId,
+        items: mockItems,
+        expectedHeldOrderId: 'missing-held-id',
+      },
+      headers: authHeader,
+    });
+    assertEqualOrThrow(missingExpectedIdentity.status, 409, 'an identity that no longer exists is rejected');
+    await api(
+      baseUrl,
+      `/api/held-orders/${concurrentTableId}?heldOrderId=${encodeURIComponent(refreshedConcurrentHold.data.id)}`,
+      { method: 'DELETE', headers: authHeader },
+    );
+    console.log('  ✓ optimistic held-cart writes reject stale terminals without data loss');
+
     // ═══════════════════════════════════════════════════════════════════
     console.log('\n─── Scenario C: POST /held-orders validates request data ───');
     const invalidRequests = [

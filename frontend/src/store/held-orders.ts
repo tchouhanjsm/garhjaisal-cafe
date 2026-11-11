@@ -116,9 +116,31 @@ export const createHeldOrdersStore = (apiClient: HeldOrdersApiClient = api) => c
       optedInChargeIds: string[] = [],
     ) => {
       try {
-        const { data } = await apiClient.post<HeldOrderPostResponse>(HELD_ORDERS_ENDPOINT, {
-          tableId, items, customerId, guestCount, orderNotes, waivedChargeIds, optedInChargeIds,
-        });
+        const expectedHeldOrderId = get().orders[tableId]?.id ?? null;
+        let data: HeldOrderPostResponse;
+        try {
+          const response = await apiClient.post<HeldOrderPostResponse>(HELD_ORDERS_ENDPOINT, {
+            tableId,
+            items,
+            customerId,
+            guestCount,
+            orderNotes,
+            waivedChargeIds,
+            optedInChargeIds,
+            expectedHeldOrderId,
+          });
+          data = response.data;
+        } catch (error) {
+          const status = (error as { response?: { status?: number } })?.response?.status;
+          if (status === 409) {
+            try {
+              await get().fetchHeldOrders();
+            } catch {
+              // Preserve the original conflict; a failed refresh must not hide it.
+            }
+          }
+          throw error;
+        }
         markTableMutation(tableId);
         set((state) => ({
           orders: {
