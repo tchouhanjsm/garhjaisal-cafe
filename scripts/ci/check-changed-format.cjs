@@ -153,7 +153,7 @@ function changedFiles(base, head, strategy) {
 }
 
 function runCheck(pkg, files) {
-  const invocation = scope.oxfmtInvocation(pkg, files, { mode: 'write' });
+  const invocation = scope.oxfmtInvocation(pkg, files, { mode: 'check' });
   const result = spawnSync(invocation.command, invocation.args, {
     cwd: invocation.cwd,
     encoding: 'utf8',
@@ -161,16 +161,6 @@ function runCheck(pkg, files) {
   });
   if (result.error) throw new Error(`oxfmt could not run: ${result.error.message}`);
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-  const diff = spawnSync('git', ['diff', '--', ...files], {
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  if (diff.error) throw new Error(`git diff could not run: ${diff.error.message}`);
-  if (diff.stdout.trim()) {
-    console.log(`Oxfmt generated patch for ${pkg.name} files:`);
-    console.log(diff.stdout);
-  }
-  return;
   if (result.status === 0) return;
   if (output) console.error(output);
   if (result.status === 2) {

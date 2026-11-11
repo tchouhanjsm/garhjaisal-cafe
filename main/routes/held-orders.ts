@@ -347,7 +347,8 @@ router.post(
       if (heldOrderConflict) {
         return res.status(409).json({
           code: 'HELD_ORDER_CONFLICT',
-          error: 'This table was updated on another terminal. The latest held cart has been preserved; refresh before trying again.',
+          error:
+            'This table was updated on another terminal. The latest held cart has been preserved; refresh before trying again.',
         });
       }
 
