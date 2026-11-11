@@ -25,9 +25,9 @@ test.describe('Menu Studio to live POS catalog', () => {
     productId = undefined;
   });
 
-  test('refreshes product edits and availability when the POS window returns to the foreground', async ({
-    page,
-  }) => {
+  test(
+    'refreshes product edits and availability when the POS window returns to the foreground',
+    async ({ page }) => {
     await login(page, 'owner');
 
     const originalName = `Menu Refresh Probe ${Date.now()}`;
