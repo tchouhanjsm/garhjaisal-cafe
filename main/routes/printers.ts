@@ -1452,11 +1452,19 @@ router.post(
       const kotSourceItems = (Array.isArray(items) ? items : orderItems).filter((item: any) =>
         isKotItemPending(item?.status),
       );
-      const stationGroups = stationName
-        ? kotSourceItems.length > 0
-          ? [{ stationName: String(stationName || 'Kitchen'), printer, items: kotSourceItems }]
-          : []
-        : routeItemsToStations(db, kotSourceItems).filter((group) => group.items.length > 0);
+      let stationGroups = routeItemsToStations(db, kotSourceItems).filter(
+        (group) => group.items.length > 0,
+      );
+      if (stationName) {
+        stationGroups = [];
+        if (kotSourceItems.length > 0) {
+          stationGroups.push({
+            stationName: String(stationName || 'Kitchen'),
+            printer,
+            items: kotSourceItems,
+          });
+        }
+      }
 
       const warnings: NonNullable<Awaited<ReturnType<typeof printKOTDetailed>>['warnings']> = [];
       const stationResults: KotStationPrintOutcome[] = [];
