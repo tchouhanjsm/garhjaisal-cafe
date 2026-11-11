@@ -133,9 +133,6 @@ test.describe('POS shared table state refresh', () => {
       if (productId) {
         await deleteProduct({ request }, productId).catch(() => {});
       }
-      if (productId) {
-        await deleteProduct({ request }, productId).catch(() => {});
-      }
       if (tableId) {
         await request
           .patch(`${BASE}/api/tables/${tableId}/status`, {
@@ -284,6 +281,9 @@ test.describe('POS shared table state refresh', () => {
         await request
           .delete(`${BASE}/api/held-orders/${tableId}?heldOrderId=${heldOrderId}`, { headers })
           .catch(() => {});
+      }
+      if (productId) {
+        await deleteProduct({ request }, productId).catch(() => {});
       }
       if (tableId) {
         await request
