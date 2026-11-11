@@ -423,6 +423,25 @@ export default function MenuStudioPage() {
     }
   };
 
+  const downloadAuditCsv = async () => {
+    try {
+      const response = await api.get('/menu-studio/audit/export?limit=5000', {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(response.data as Blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'menu-studio-audit-latest-5000.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Menu Studio audit exported');
+    } catch (error) {
+      toast.error(errorMessage(error) || 'Could not export audit history');
+    }
+  };
+
   const downloadMenuCsv = async () => {
     try {
       const response = await api.get('/menu-studio/csv/export', { responseType: 'blob' });
@@ -561,6 +580,10 @@ export default function MenuStudioPage() {
           <Button size="sm" variant="outline" onClick={() => void downloadMenuCsv()}>
             <Download className="me-2 size-4" />
             Export CSV
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void downloadAuditCsv()}>
+            <Download className="me-2 size-4" />
+            Export history
           </Button>
           <Button variant="outline" onClick={() => void loadData(true)} disabled={refreshing}>
             <RefreshCw className={'me-2 size-4 ' + (refreshing ? 'animate-spin' : '')} />

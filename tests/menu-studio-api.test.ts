@@ -466,6 +466,25 @@ async function main() {
       'stale CSV cannot overwrite a newer edit',
     );
 
+    const auditExportResponse = await (globalThis as any).fetch(
+      baseUrl + '/api/menu-studio/audit/export?limit=100',
+      { headers: owner.authHeader },
+    );
+    assertEqual(auditExportResponse.status, 200, 'catalog viewers can export audit history');
+    const auditCsv = await auditExportResponse.text();
+    assert(
+      auditCsv.startsWith(
+        'audit_id,batch_id,product_id,product_name,actor_user_id,actor_name,action,before_json,after_json,created_at,flo_csv_encoding',
+      ),
+      'audit export includes structured identity and snapshot columns',
+    );
+    assert(auditCsv.includes('price_updated'), 'audit export contains the recorded change action');
+    assert(
+      auditCsv.includes("'+CSV Formula Item"),
+      'audit export protects formula-leading product names in spreadsheet software',
+    );
+
+
     const results = getResults();
     console.log(`\nMenu Studio API: ${results.passed}/${results.total} checks passed.`);
     if (results.failed > 0) process.exitCode = 1;

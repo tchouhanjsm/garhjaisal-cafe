@@ -691,6 +691,77 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
   }
 });
 
+router.get('/audit/export', requirePermission('catalog.view'), (req: Request, res: Response) => {
+  try {
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isInteger(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 5000) : 5000;
+    const rows = getDatabase()
+      .prepare(
+        \`SELECT a.id, a.batch_id, a.product_id, p.name AS product_name,
+                a.actor_user_id, u.name AS actor_name, a.action,
+                a.before_json, a.after_json, a.created_at
+         FROM menu_studio_audit_log a
+         LEFT JOIN products p ON p.id = a.product_id
+         LEFT JOIN users u ON u.id = a.actor_user_id
+         ORDER BY a.id DESC LIMIT ?\`,
+      )
+      .all(limit) as {
+      id: number;
+      batch_id: string;
+      product_id: string;
+      product_name: string | null;
+      actor_user_id: string;
+      actor_name: string | null;
+      action: string;
+      before_json: string;
+      after_json: string;
+      created_at: string;
+    }[];
+    const lines = [
+      [
+        'audit_id',
+        'batch_id',
+        'product_id',
+        'product_name',
+        'actor_user_id',
+        'actor_name',
+        'action',
+        'before_json',
+        'after_json',
+        'created_at',
+        FLO_CSV_ENCODING_COLUMN,
+      ].join(','),
+    ];
+    for (const row of rows) {
+      lines.push(
+        toQuoteV1CsvRow([
+          row.id,
+          row.batch_id,
+          row.product_id,
+          row.product_name,
+          row.actor_user_id,
+          row.actor_name,
+          row.action,
+          row.before_json,
+          row.after_json,
+          row.created_at,
+          FLO_CSV_ENCODING_QUOTE_V1,
+        ]),
+      );
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="menu-studio-audit-latest-' + limit + '.csv"',
+    );
+    res.send(lines.join('\r\n'));
+  } catch (error: any) {
+    res.locals.postHogError = error;
+    console.error('[Menu Studio] Audit export failed:', error);
+    res.status(500).json({ error: 'Could not export Menu Studio audit history' });
+  }
+});
+
 router.get('/audit', requirePermission('catalog.view'), (req: Request, res: Response) => {
   try {
     const db = getDatabase();
