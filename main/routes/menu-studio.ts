@@ -8,7 +8,7 @@ import {
   FLO_CSV_ENCODING_QUOTE_V1,
   toQuoteV1CsvRow,
 } from '../lib/csv';
-import { parseCSV, resolveCsvRowEncoding, toObjects } from './menu-csv';
+import { parseCSV, resolveCsvRowEncoding } from './menu-csv';
 
 const router = Router();
 
@@ -423,12 +423,16 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
       });
     }
 
-    const rows = toObjects(parsed);
     const malformedRowWidths = new Map<number, number>();
-    parsed.slice(1).forEach((fields, index) => {
+    const rows = parsed.slice(1).map((fields, index) => {
       if (fields.length !== headers.length) {
         malformedRowWidths.set(index, fields.length);
       }
+      const row: Record<string, string> = {};
+      headers.forEach((header, columnIndex) => {
+        row[header] = (fields[columnIndex] ?? '').trim();
+      });
+      return row;
     });
     if (rows.length < 1 || rows.length > 250) {
       return res.status(400).json({

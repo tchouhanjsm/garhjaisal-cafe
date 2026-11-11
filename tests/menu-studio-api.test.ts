@@ -400,8 +400,28 @@ async function main() {
       headers: owner.authHeader,
       body: { csv: [importHeader, duplicateRow + ',unexpected'].join('\n') },
     });
+    assertEqual(response.status, 200, 'extra-column CSV returns a reviewable preview');
     assertEqual(response.data.error_count, 1, 'CSV rows with extra columns are rejected');
     assertEqual(response.data.can_apply, false, 'malformed row preview cannot be applied');
+
+    const shortRow = toQuoteV1CsvRow([
+      currentFormulaProduct.id,
+      currentFormulaProduct.sku,
+      currentFormulaProduct.name,
+      currentFormulaProduct.category_id,
+      currentFormulaProduct.category_name,
+      44,
+      'yes',
+      currentFormulaProduct.updated_at,
+    ]);
+    response = await api(baseUrl, '/api/menu-studio/csv/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { csv: [importHeader, shortRow].join('\\n') },
+    });
+    assertEqual(response.status, 200, 'missing-column CSV returns a reviewable preview');
+    assertEqual(response.data.error_count, 1, 'CSV rows with missing columns are rejected');
+    assertEqual(response.data.can_apply, false, 'missing-column preview cannot be applied');
 
     const staleCsv = [
       importHeader,
