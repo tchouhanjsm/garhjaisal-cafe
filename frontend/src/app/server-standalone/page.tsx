@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChefHat,
   Circle,
+  Copy,
   Delete,
   Flame,
   KeyRound,
@@ -23,6 +24,7 @@ import {
   SquarePen,
   Trash2,
   UserRound,
+  WifiOff,
 } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -53,6 +55,16 @@ import type {
   ProductVariant,
 } from '@/lib/types';
 import { cartItemToOrderItem } from '@/lib/cart-order-item';
+import {
+  formatServerAppTicketNote,
+  loadServerAppCatalog,
+  loadServerAppDraft,
+  loadServerAppLocalUser,
+  saveServerAppCatalog,
+  saveServerAppDraft,
+  saveServerAppLocalUser,
+  type ServerAppPersistedSendAttempt,
+} from '@/lib/server-app-local';
 
 type User = { id: string; name: string; email: string; role: string; permission_ids?: string[] };
 type PinUser = { id: string; name: string; role: string };
@@ -238,6 +250,10 @@ export default function ServerStandalonePage() {
   const phoneDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const phoneAbortRef = useRef<AbortController | null>(null);
   const [sending, setSending] = useState(false);
+  const [hubReachable, setHubReachable] = useState<boolean | null>(null);
+  const [browserOnline, setBrowserOnline] = useState(true);
+  const [usingCachedCatalog, setUsingCachedCatalog] = useState(false);
+  const [localDraftSaved, setLocalDraftSaved] = useState(false);
   // Synchronous re-entry guard: `sending` state updates too late to stop a second click fired before the first render.
   const sendInFlightRef = useRef(false);
   // Nonce and frozen target snapshot for the pending send attempt, paired with a signature of what defines it.
@@ -272,6 +288,149 @@ export default function ServerStandalonePage() {
       })
     | null
   >(null);
+
+  function tokenUserId(token: string): string | null {
+    try {
+      const encoded = token.split('.')[1];
+      if (!encoded) return null;
+      const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(
+        window.atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')),
+      );
+      const id = payload.userId ?? payload.id;
+      return typeof id === 'string' && id ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function restoreLocalDraftForUser(ownerId: string): boolean {
+    const localDraft = loadServerAppDraft<DraftLine>(window.localStorage, ownerId);
+    if (!localDraft) return false;
+    selectedTableIdRef.current = localDraft.tableId;
+    setSelectedTableId(localDraft.tableId);
+    setDraft(localDraft.draftLines);
+    setCustomerName(localDraft.customerName);
+    setCustomerPhone(localDraft.customerPhone);
+    setOrderNotes(localDraft.orderNotes);
+    if (localDraft.attempt) {
+      const saved = localDraft.attempt as ServerAppPersistedSendAttempt<DraftLine>;
+      sendAttemptRef.current = {
+        signature: saved.signature,
+        nonce: saved.nonce,
+        snapshot: {
+          ...saved.snapshot,
+          existingItemIds: new Set(
+            saved.snapshot.existingItemIds.map(Number).filter(Number.isFinite),
+          ),
+        },
+      };
+    }
+    setLocalDraftSaved(true);
+    return true;
+  }
+
+  function persistLocalDraft(
+    ownerId: string,
+    snapshot: SendSnapshot,
+    attempt: { signature: string; nonce: string; snapshot: SendSnapshot } | null,
+  ): boolean {
+    const savedAttempt: ServerAppPersistedSendAttempt<DraftLine> | undefined = attempt
+      ? {
+          signature: attempt.signature,
+          nonce: attempt.nonce,
+          snapshot: {
+            ...attempt.snapshot,
+            existingItemIds: Array.from(attempt.snapshot.existingItemIds),
+          },
+        }
+      : undefined;
+    const saved = saveServerAppDraft(window.localStorage, ownerId, {
+      tableId: snapshot.tableId,
+      tableName: snapshot.tableName,
+      draftLines: snapshot.draftLines,
+      customerName: snapshot.customerName,
+      customerPhone: snapshot.customerPhone,
+      orderNotes: snapshot.orderNotes,
+      savedAt: new Date().toISOString(),
+      ...(savedAttempt ? { attempt: savedAttempt } : {}),
+    });
+    const hasWork =
+      snapshot.draftLines.length > 0 ||
+      Boolean(snapshot.orderNotes.trim()) ||
+      Boolean(snapshot.customerName.trim()) ||
+      Boolean(snapshot.customerPhone.trim()) ||
+      Boolean(savedAttempt);
+    setLocalDraftSaved(saved && hasWork);
+    return saved;
+  }
+
+  function persistCurrentLocalDraft(ownerId: string): boolean {
+    const snapshot: SendSnapshot = {
+      tableId: selectedTableId,
+      tableName: tables.find((table) => table.id === selectedTableId)?.name,
+      orderId: currentOrder?.id ?? null,
+      orderCustomer: currentOrder?.customer ?? null,
+      existingItemIds: new Set((currentOrder?.items || []).map((item) => item.id)),
+      draftLines: draft.map((line) => ({
+        ...line,
+        addons: line.addons.map((addon) => ({ ...addon })),
+      })),
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      orderNotes,
+    };
+    return persistLocalDraft(ownerId, snapshot, sendAttemptRef.current);
+  }
+
+  function saveOfflineDraft() {
+    if (!user?.id || !selectedTableId) return;
+    const saved = persistCurrentLocalDraft(user.id);
+    if (saved) {
+      toast.success('Saved on this phone. It has NOT been sent to the kitchen.');
+    } else {
+      toast.error('Device storage is unavailable. Copy the ticket note into your Notes app.');
+    }
+  }
+
+  async function copyTicketNote() {
+    const note = formatServerAppTicketNote({
+      tableName: activeTable?.name || (activeTable?.number ? String(activeTable.number) : undefined),
+      tableId: selectedTableId,
+      draftLines: draft,
+      customerName,
+      customerPhone,
+      orderNotes,
+      savedAt: new Date().toISOString(),
+    });
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(note);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = note;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        textarea.remove();
+        if (!copied) throw new Error('Clipboard unavailable');
+      }
+      toast.success('Ticket note copied. Paste it into Notes or share it with the team.');
+    } catch {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'FloCafe ticket note', text: note });
+          return;
+        } catch {
+          // A dismissed share sheet is not an order failure.
+        }
+      }
+      toast.error('Copy is unavailable. Use the device Notes app as a manual fallback.');
+    }
+  }
 
   useEffect(() => {
     liveDraftRef.current = {
@@ -317,21 +476,61 @@ export default function ServerStandalonePage() {
     if (sendInFlightRef.current && !options?.allowWhileSending) return;
     const session = authSessionSeqRef.current;
     const token = localStorage.getItem(TOKEN_KEY);
-    const [categoriesRes, productsRes, tablesRes] = await Promise.all([
-      api.get('/api/categories', { params: { active: 'true' } }),
-      api.get('/api/products', { params: { active: 'true' } }),
-      api.get('/api/tables', { params: { active: 'true' } }),
-    ]);
-    if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY)) return;
-    if (sendInFlightRef.current && !options?.allowWhileSending) return;
-    setCategories(categoriesRes.data.categories || []);
-    setProducts(productsRes.data.products || []);
-    const loadedTables = tablesRes.data.tables || [];
-    setTables(loadedTables);
-    setTablesLoaded(true);
-    if (!selectedTableIdRef.current && loadedTables[0]) {
-      selectedTableIdRef.current = loadedTables[0].id;
-      setSelectedTableId(loadedTables[0].id);
+    const ownerId = activeUserIdRef.current;
+    try {
+      const [categoriesRes, productsRes, tablesRes] = await Promise.all([
+        api.get('/api/categories', { params: { active: 'true' } }),
+        api.get('/api/products', { params: { active: 'true' } }),
+        api.get('/api/tables', { params: { active: 'true' } }),
+      ]);
+      if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY)) return;
+      if (sendInFlightRef.current && !options?.allowWhileSending) return;
+      const loadedCategories = categoriesRes.data.categories || [];
+      const loadedProducts = productsRes.data.products || [];
+      const loadedTables = tablesRes.data.tables || [];
+      setCategories(loadedCategories);
+      setProducts(loadedProducts);
+      setTables(loadedTables);
+      setTablesLoaded(true);
+      setHubReachable(true);
+      setUsingCachedCatalog(false);
+      if (ownerId) {
+        saveServerAppCatalog(window.localStorage, ownerId, {
+          categories: loadedCategories,
+          products: loadedProducts,
+          tables: loadedTables.map((table: Table) => ({
+            id: table.id,
+            name: table.name,
+            number: table.number,
+            status: table.status,
+            activeOrder: table.activeOrder
+              ? { id: table.activeOrder.id, order_number: table.activeOrder.order_number }
+              : null,
+            current_order: table.current_order
+              ? { id: table.current_order.id, order_number: table.current_order.order_number }
+              : null,
+          })),
+        });
+      }
+      if (!selectedTableIdRef.current && loadedTables[0]) {
+        selectedTableIdRef.current = loadedTables[0].id;
+        setSelectedTableId(loadedTables[0].id);
+      }
+    } catch (error) {
+      setHubReachable(false);
+      const cached = ownerId ? loadServerAppCatalog(window.localStorage, ownerId) : null;
+      if (!cached) throw error;
+      if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY)) return;
+      setCategories(cached.categories as Category[]);
+      setProducts(cached.products as Product[]);
+      setTables(cached.tables as Table[]);
+      setTablesLoaded(true);
+      setUsingCachedCatalog(true);
+      if (!selectedTableIdRef.current && cached.tables[0]) {
+        const firstTable = cached.tables[0] as Table;
+        selectedTableIdRef.current = firstTable.id;
+        setSelectedTableId(firstTable.id);
+      }
     }
   }
 
@@ -367,6 +566,7 @@ export default function ServerStandalonePage() {
         return;
       }
       const order = res.data.orders?.[0] || null;
+      setHubReachable(true);
       setCurrentOrder(order);
       const suspended = suspendedDraftRef.current;
       const pendingAttempt =
@@ -391,6 +591,7 @@ export default function ServerStandalonePage() {
       orderLoadedTableIdRef.current = tableId;
       setOrderLoadedTableId(tableId);
     } catch (error) {
+      setHubReachable(false);
       if (
         !options?.allowWhileSending &&
         !sendInFlightRef.current &&
@@ -409,21 +610,48 @@ export default function ServerStandalonePage() {
   useEffect(() => {
     if (!api) return;
     let cancelled = false;
-    api
+    const rememberedToken = localStorage.getItem(TOKEN_KEY);
+    const infoRequest = api
       .get<ServerAppInfo>('/api/server-app/info')
       .then((infoResponse) => {
-        if (!cancelled) setRegional(infoResponse.data);
-        return api.get('/api/auth/me');
-      })
-      .then((res) => {
-        if (!cancelled) setUser(res.data.user);
+        if (cancelled) return;
+        setRegional(infoResponse.data);
+        setHubReachable(true);
       })
       .catch((error) => {
+        if (cancelled) return;
+        setHubReachable(false);
         if (error.response?.status === 404) setDisabled(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
       });
+    const userRequest = rememberedToken
+      ? api
+          .get('/api/auth/me')
+          .then((res) => {
+            if (cancelled || !res.data?.user) return;
+            const nextUser = res.data.user as User;
+            activeUserIdRef.current = nextUser.id;
+            saveServerAppLocalUser(window.localStorage, nextUser);
+            setUser(nextUser);
+            restoreLocalDraftForUser(nextUser.id);
+          })
+          .catch((error) => {
+            if (cancelled) return;
+            const ownerId = tokenUserId(rememberedToken);
+            const canUseLocalSession =
+              Boolean(ownerId) && (!window.navigator.onLine || !error.response);
+            const cachedUser = canUseLocalSession && ownerId
+              ? loadServerAppLocalUser(window.localStorage, ownerId)
+              : null;
+            if (!cachedUser) return;
+            activeUserIdRef.current = cachedUser.id;
+            setUser(cachedUser);
+            restoreLocalDraftForUser(cachedUser.id);
+            setHubReachable(false);
+          })
+      : Promise.resolve();
+    Promise.all([infoRequest, userRequest]).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
     return () => {
       cancelled = true;
     };
@@ -434,6 +662,40 @@ export default function ServerStandalonePage() {
   useEffect(() => {
     activeUserIdRef.current = userId ?? null;
   }, [userId]);
+
+  useEffect(() => {
+    const updateOnlineState = () => {
+      const online = window.navigator.onLine;
+      setBrowserOnline(online);
+      if (!online) setHubReachable(false);
+    };
+    updateOnlineState();
+    window.addEventListener('online', updateOnlineState);
+    window.addEventListener('offline', updateOnlineState);
+    return () => {
+      window.removeEventListener('online', updateOnlineState);
+      window.removeEventListener('offline', updateOnlineState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    const snapshot: SendSnapshot = {
+      tableId: selectedTableId,
+      tableName: tables.find((table) => table.id === selectedTableId)?.name,
+      orderId: currentOrder?.id ?? null,
+      orderCustomer: currentOrder?.customer ?? null,
+      existingItemIds: new Set((currentOrder?.items || []).map((item) => item.id)),
+      draftLines: draft.map((line) => ({
+        ...line,
+        addons: line.addons.map((addon) => ({ ...addon })),
+      })),
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      orderNotes,
+    };
+    persistLocalDraft(userId, snapshot, sendAttemptRef.current);
+  }, [userId, selectedTableId, tables, currentOrder, draft, customerName, customerPhone, orderNotes]);
 
   useEffect(() => {
     if (!api || user || disabled || loading) return;
@@ -557,28 +819,13 @@ export default function ServerStandalonePage() {
   useEffect(() => {
     if (!userId || !api) return;
     let cancelled = false;
-    Promise.all([
-      api.get('/api/categories', { params: { active: 'true' } }),
-      api.get('/api/products', { params: { active: 'true' } }),
-      api.get('/api/tables', { params: { active: 'true' } }),
-    ])
-      .then(([categoriesRes, productsRes, tablesRes]) => {
-        if (cancelled || sendInFlightRef.current) return;
-        setCategories(categoriesRes.data.categories || []);
-        setProducts(productsRes.data.products || []);
-        const loadedTables = tablesRes.data.tables || [];
-        setTables(loadedTables);
-        setTablesLoaded(true);
-        if (!selectedTableIdRef.current && loadedTables[0]) {
-          selectedTableIdRef.current = loadedTables[0].id;
-          setSelectedTableId(loadedTables[0].id);
-        }
-      })
-      .catch(() => toast.error(t('couldNotLoadData')));
+    loadAll().catch(() => {
+      if (!cancelled) toast.error(t('couldNotLoadData'));
+    });
     return () => {
       cancelled = true;
     };
-  }, [api, selectedTableId, userId, t]);
+  }, [api, userId, t]);
 
   useEffect(() => {
     if (!selectedTableId || !userId || !api) return;
@@ -786,18 +1033,27 @@ export default function ServerStandalonePage() {
       setCustomerPhone(suspended.customerPhone);
       setOrderNotes(suspended.orderNotes);
       sendAttemptRef.current = suspended.attempt;
-    } else if (suspended) {
-      const hadDraft =
-        suspended.draft.length > 0 ||
-        Boolean(suspended.attempt) ||
-        Boolean(suspended.orderNotes.trim()) ||
-        Boolean(suspended.customerName.trim()) ||
-        Boolean(suspended.customerPhone.trim());
-      suspendedDraftRef.current = null;
-      if (hadDraft) {
-        toast(t('draftDiscardedOnUserChange'));
+    } else {
+      if (suspended) {
+        const hadDraft =
+          suspended.draft.length > 0 ||
+          Boolean(suspended.attempt) ||
+          Boolean(suspended.orderNotes.trim()) ||
+          Boolean(suspended.customerName.trim()) ||
+          Boolean(suspended.customerPhone.trim());
+        suspendedDraftRef.current = null;
+        if (hadDraft) toast(t('draftDiscardedOnUserChange'));
       }
+      selectedTableIdRef.current = '';
+      setSelectedTableId('');
+      setDraft([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setOrderNotes('');
+      sendAttemptRef.current = null;
+      restoreLocalDraftForUser(loggedInUser.id);
     }
+    saveServerAppLocalUser(window.localStorage, loggedInUser);
     setSelectedPinUser(null);
     setPin('');
     setPinError('');
@@ -1081,15 +1337,12 @@ export default function ServerStandalonePage() {
   }
 
   async function sendDraft() {
-    if (
-      !api ||
-      !selectedTableId ||
-      orderLoadedTableIdRef.current !== selectedTableId ||
-      draft.length === 0 ||
-      sendInFlightRef.current
-    ) {
+    if (!api || !selectedTableId || draft.length === 0 || sendInFlightRef.current) return;
+    if (!browserOnline || hubReachable !== true) {
+      saveOfflineDraft();
       return;
     }
+    if (orderLoadedTableIdRef.current !== selectedTableId) return;
     const requestToken = localStorage.getItem(TOKEN_KEY);
     const requestSession = authSessionSeqRef.current;
     const requestOwner = user?.id;
@@ -1128,6 +1381,8 @@ export default function ServerStandalonePage() {
         snapshot: candidateSnapshot,
       };
     }
+    const activeAttempt = sendAttemptRef.current;
+    if (activeAttempt) persistLocalDraft(requestOwner, activeAttempt.snapshot, activeAttempt);
     const { nonce, snapshot } = sendAttemptRef.current;
     const requestTableId = snapshot.requestTableId ?? snapshot.tableId;
     const idempotencyKey = `server-app-${requestTableId}-${nonce}`;
@@ -1247,6 +1502,8 @@ export default function ServerStandalonePage() {
         if (isCurrent()) await printOrderSlip(orderId, enrichedOrder, requestToken, isCurrent);
       })();
     } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number } };
+      if (!axiosError.response || !window.navigator.onLine) setHubReachable(false);
       if (isCurrent()) toastApiError(error, t('couldNotSendOrder'), apiErrorT);
     } finally {
       sendInFlightRef.current = false;
@@ -1255,6 +1512,67 @@ export default function ServerStandalonePage() {
   }
 
   const activeTable = tables.find((table) => table.id === selectedTableId) || null;
+
+  async function copyTicketNote() {
+    const note = formatServerAppTicketNote({
+      tableName: activeTable?.name || (activeTable?.number ? String(activeTable.number) : undefined),
+      tableId: selectedTableId,
+      draftLines: draft,
+      customerName,
+      customerPhone,
+      orderNotes,
+      savedAt: new Date().toISOString(),
+    });
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(note);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = note;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        textarea.remove();
+        if (!copied) throw new Error('Clipboard unavailable');
+      }
+      toast.success('Ticket note copied. Paste it into Notes or share it with the team.');
+    } catch {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'FloCafe ticket note', text: note });
+          return;
+        } catch {
+          // Dismissing the share sheet does not fail the ticket.
+        }
+      }
+      toast.error('Copy is unavailable. Use the device Notes app as a manual fallback.');
+    }
+  }
+
+  function saveOfflineDraft() {
+    if (!user?.id || !selectedTableId) return;
+    const attempt = sendAttemptRef.current;
+    const snapshot: SendSnapshot = {
+      tableId: selectedTableId,
+      tableName: activeTable?.name || (activeTable?.number ? String(activeTable.number) : undefined),
+      orderId: currentOrder?.id ?? null,
+      orderCustomer: currentOrder?.customer ?? null,
+      existingItemIds: new Set((currentOrder?.items || []).map((item) => item.id)),
+      draftLines: draft.map((line) => ({ ...line, addons: line.addons.map((addon) => ({ ...addon })) })),
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      orderNotes,
+    };
+    const saved = persistLocalDraft(user.id, snapshot, attempt);
+    if (saved) {
+      toast.success('Saved on this phone. It has NOT been sent to the kitchen.');
+    } else {
+      toast.error('Device storage is unavailable. Copy the ticket note into your Notes app.');
+    }
+  }
   const canMoveTable = tenantCan(user as unknown as Tenant, 'tables.orders.move');
   const draftTotal = draft.reduce((sum, line) => {
     const addonTotal = line.addons.reduce(
@@ -1564,6 +1882,11 @@ export default function ServerStandalonePage() {
     <>
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{t('currentTicket')}</h2>
+        {localDraftSaved && (
+          <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+            Saved on this device
+          </span>
+        )}
         {currentOrder && activeTable && canMoveTable && (
           <button
             type="button"
@@ -1710,7 +2033,7 @@ export default function ServerStandalonePage() {
         )}
       </div>
 
-      {draft.length > 0 && (
+      {(draft.length > 0 || !browserOnline || hubReachable === false || orderNotes.length > 0) && (
         <div className="mt-3">
           <textarea
             value={orderNotes}
@@ -1727,6 +2050,18 @@ export default function ServerStandalonePage() {
         </div>
       )}
 
+      {(draft.length > 0 || orderNotes.trim()) && (
+        <button
+          type="button"
+          onClick={copyTicketNote}
+          data-testid="server-app-copy-ticket-note"
+          className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-muted"
+        >
+          <Copy size={15} />
+          Copy ticket note to this device
+        </button>
+      )}
+
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
         <span className="text-sm text-muted-foreground">{t('draftTotal')}</span>
         <span className="text-lg font-bold">
@@ -1734,17 +2069,23 @@ export default function ServerStandalonePage() {
         </span>
       </div>
       <button
-        onClick={sendDraft}
+        onClick={hubReachable === true && browserOnline ? sendDraft : saveOfflineDraft}
         disabled={
           !selectedTableId ||
-          orderLoadedTableId !== selectedTableId ||
-          draft.length === 0 ||
+          (hubReachable === true && browserOnline
+            ? orderLoadedTableId !== selectedTableId || draft.length === 0
+            : draft.length === 0 && !orderNotes.trim()) ||
           sending
         }
+        data-testid={hubReachable === true && browserOnline ? 'server-app-send-order' : 'server-app-save-offline'}
         className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand font-semibold text-white disabled:opacity-50"
       >
-        <Send size={17} />
-        {sending ? t('sending') : currentOrder ? t('addToOrder') : t('sendToKitchen')}
+        {hubReachable === true && browserOnline ? <Send size={17} /> : <Smartphone size={17} />}
+        {sending
+          ? t('sending')
+          : hubReachable === true && browserOnline
+            ? currentOrder ? t('addToOrder') : t('sendToKitchen')
+            : 'Save on this phone — not sent'}
       </button>
     </>
   );
@@ -1783,6 +2124,25 @@ export default function ServerStandalonePage() {
           </button>
         </div>
       </header>
+
+      {(!browserOnline || hubReachable === false) && user && (
+        <div
+          role="status"
+          data-testid="server-app-offline-banner"
+          className="mx-auto mt-3 flex max-w-6xl items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          <WifiOff size={17} className="mt-0.5 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">Offline — this ticket is saved on this phone only.</p>
+            <p className="text-xs">
+              It has not reached the Windows hub or kitchen printer. Reconnect and refresh before sending.
+              {usingCachedCatalog
+                ? ' The menu and table list are the last saved copy; availability may have changed.'
+                : ''}
+            </p>
+          </div>
+        </div>
+      )}
 
       {tablesLoaded && tables.length === 0 ? (
         <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 px-6 text-center">

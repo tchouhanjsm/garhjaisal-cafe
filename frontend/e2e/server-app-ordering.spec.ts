@@ -68,6 +68,72 @@ test.describe('Server App tableside ordering', () => {
     ).toBeTruthy();
   });
 
+  test('keeps an unsent ticket on the phone across offline reload, then sends it after reconnecting', async ({
+    page,
+    context,
+  }) => {
+    const managerToken = getE2eToken('e2e-manager', 'manager@flo.local', 'manager');
+    const serverToken = getE2eToken('e2e-server', 'server@flo.local', 'server');
+    const headers = { Authorization: `Bearer ${managerToken}` };
+    const tableName = `Offline Phone ${Date.now()}`;
+    const tableRes = await page.request.post(`${E2E_BASE_URL}/api/tables`, {
+      headers,
+      data: { number: tableName, capacity: 2 },
+    });
+    expect(tableRes.ok()).toBeTruthy();
+    const { table } = await tableRes.json();
+
+    await openServerApp(page, serverToken);
+    await expect(page.getByRole('button', { name: new RegExp(tableName) })).toBeVisible();
+    await page.getByRole('button', { name: new RegExp(tableName) }).click();
+    const search = page.getByTestId('pos-product-grid').getByPlaceholder('Search menu');
+    await search.fill('E2E Coffee');
+    await search.press('Enter');
+    const note = 'Room 12 — guest arrives after sunset';
+    await page.getByPlaceholder('Order notes (optional)').first().fill(note);
+
+    await context.setOffline(true);
+    await expect(page.getByTestId('server-app-offline-banner')).toContainText('saved on this phone');
+    await page.getByTestId('server-app-save-offline').click();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const key = Object.keys(localStorage).find((entry) =>
+            entry.startsWith('flocafe:server-app-local:v1:'),
+          );
+          if (!key) return '';
+          const record = JSON.parse(localStorage.getItem(key) || '{}');
+          return record.draft?.orderNotes || '';
+        }),
+      )
+      .toBe(note);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('server-app-offline-banner')).toBeVisible();
+    await expect(page.getByPlaceholder('Order notes (optional)').first()).toHaveValue(note);
+    await expect(page.getByTestId('server-app-copy-ticket-note')).toBeVisible();
+
+    const beforeSend = await page.request.get(`${E2E_BASE_URL}/api/orders`, {
+      headers,
+      params: { table_id: table.id, type: 'dine_in', per_page: 5 },
+    });
+    expect((await beforeSend.json()).orders).toHaveLength(0);
+
+    await context.setOffline(false);
+    await page.getByRole('button', { name: 'Refresh' }).click();
+    await expect(page.getByTestId('server-app-send-order')).toBeEnabled();
+    await page.getByTestId('server-app-send-order').click();
+    await expect(page.getByText('Order sent').first()).toBeVisible();
+
+    const afterSend = await page.request.get(`${E2E_BASE_URL}/api/orders`, {
+      headers,
+      params: { table_id: table.id, type: 'dine_in', per_page: 5 },
+    });
+    const { orders } = await afterSend.json();
+    expect(orders).toHaveLength(1, 'local offline save must not create an order');
+    expect(orders[0]?.special_instructions).toBe(note);
+  });
+
   test('does not open browser print popup when no hardware printer is configured (400)', async ({
     page,
   }) => {
