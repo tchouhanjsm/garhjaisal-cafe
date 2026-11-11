@@ -418,7 +418,9 @@ async function main() {
     );
     assert.equal(printKotWithItemsRes.body.success, true);
     assert.deepEqual(
-      printKotWithItemsRes.body.station_results.map((result: { station_name: string }) => result.station_name),
+      printKotWithItemsRes.body.station_results.map(
+        (result: { station_name: string }) => result.station_name,
+      ),
       ['Grill', 'Bar', 'Kitchen'],
       'successful dispatch returns one structured outcome for each routed station',
     );
@@ -666,7 +668,7 @@ async function main() {
       db.prepare("UPDATE kitchen_stations SET is_active = 1 WHERE id = 'stn-bar'").run();
     }
 
-    // 7. Negative verification: if station routing is bypassed (e.g. an explicit stationName forces
+    // 8. Negative verification: if station routing is bypassed (e.g. an explicit stationName forces
     //    all items onto a single default-printer ticket, or items land on the wrong station),
     //    assertMultiStationRouting must fail.
     recordedDispatches.length = 0;

@@ -1474,7 +1474,10 @@ router.post(
           item_count: group.items.length,
           item_ids: group.items
             .map((item: any) => item?.id)
-            .filter((id: unknown): id is string | number => typeof id === 'string' || typeof id === 'number'),
+            .filter(
+              (id: unknown): id is string | number =>
+                typeof id === 'string' || typeof id === 'number',
+            ),
           dispatch_state: result.ok ? 'submitted' : 'failed',
           retry_safety: result.ok
             ? 'not_applicable'
