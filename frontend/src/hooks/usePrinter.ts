@@ -191,6 +191,45 @@ export interface HardwarePrinter {
   capabilities?: ThermalPrinterCapabilities;
 }
 
+export interface KotStationPrintOutcome {
+  station_name: string;
+  printer_name: string;
+  item_count: number;
+  item_ids: Array<string | number>;
+  dispatch_state: 'submitted' | 'failed';
+  retry_safety: 'not_applicable' | 'safe_to_retry' | 'verify_before_retry';
+  detail?: string;
+  failure_class?: string;
+  code?: string;
+  correlation_id?: string;
+  stage?: string;
+}
+
+export interface KotRetryStation {
+  station_name: string;
+  item_ids: Array<string | number>;
+}
+
+export interface KotDispatchFailurePayload {
+  error?: string;
+  detail?: string;
+  station_results?: KotStationPrintOutcome[];
+  recovery?: {
+    safe_to_retry_stations?: string[];
+    verify_before_retry_stations?: string[];
+  };
+}
+
+export class KotDispatchError extends Error {
+  readonly payload: KotDispatchFailurePayload;
+
+  constructor(message: string, payload: KotDispatchFailurePayload) {
+    super(message);
+    this.name = 'KotDispatchError';
+    this.payload = payload;
+  }
+}
+
 interface PrinterState {
   status: PrinterStatus;
   deviceInfo: PrinterInfo | null;
@@ -216,7 +255,10 @@ interface PrinterState {
     tenant: ReceiptTenant,
     opts?: TaxBillOptions,
   ) => Promise<PrintWarning[]>;
-  printKot: (order: Order, opts?: KotOptions & { items?: OrderItem[] }) => Promise<PrintWarning[]>;
+  printKot: (
+    order: Order,
+    opts?: KotOptions & { items?: OrderItem[]; retryStations?: KotRetryStation[] },
+  ) => Promise<PrintWarning[]>;
   printDeliverySlip: (
     order: Order,
     contact: DeliverySlipContact,
@@ -765,6 +807,7 @@ export const usePrinterStore = create<PrinterState>()(
                   orderId: order.id,
                   items: opts?.items ?? order.items,
                   stationName: opts?.stationName,
+                  ...(opts?.retryStations ? { retryStations: opts.retryStations } : {}),
                   useUnicode: printerUseUnicode,
                   arabicShaping: printerArabicShaping,
                 },
@@ -772,15 +815,16 @@ export const usePrinterStore = create<PrinterState>()(
               return response.data.warnings || [];
             } catch (err: unknown) {
               const e = err as {
-                response?: { data?: { error?: string; detail?: string } };
+                response?: { data?: KotDispatchFailurePayload };
                 message?: string;
               };
-              throw new Error(
-                e.response?.data?.detail ||
-                  e.response?.data?.error ||
-                  e.message ||
-                  'KOT print failed',
-              );
+              const payload = e.response?.data;
+              const message =
+                payload?.detail || payload?.error || e.message || 'KOT print failed';
+              if (payload?.station_results?.length) {
+                throw new KotDispatchError(message, payload);
+              }
+              throw new Error(message);
             }
           }
 

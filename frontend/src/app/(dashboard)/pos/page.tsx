@@ -50,7 +50,13 @@ import { usePosSortPreference } from '@/hooks/usePosSort';
 import { tenantCan } from '@/lib/permissions';
 import { CashDrawerMovementModal } from '@/components/dashboard/CashDrawerMovementModal';
 import { useCashDrawerMovements } from '@/hooks/useCashDrawerMovements';
-import { isPrintCancelledOnTenantChangeError, usePrinterStore } from '@/hooks/usePrinter';
+import {
+  isPrintCancelledOnTenantChangeError,
+  KotDispatchError,
+  usePrinterStore,
+  type KotStationPrintOutcome,
+} from '@/hooks/usePrinter';
+import { KotDispatchRecoveryModal } from '@/components/pos/KotDispatchRecoveryModal';
 import { printerService } from '@/lib/printer/PrinterService';
 import { showPrintWarningsToast } from '@/lib/printer/warnings-toast';
 import {
@@ -301,6 +307,11 @@ export default function POSPage() {
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [showPrintMenuModal, setShowPrintMenuModal] = useState(false);
+  const [kotRecovery, setKotRecovery] = useState<{
+    order: Order;
+    results: KotStationPrintOutcome[];
+  } | null>(null);
+  const [retryingKotStations, setRetryingKotStations] = useState<string[]>([]);
 
   // Modal state
   const [showTablePicker, setShowTablePicker] = useState(false);
@@ -1002,6 +1013,9 @@ export default function POSPage() {
       showPrintWarningsToast(printWarnings);
     } catch (err) {
       console.error('[POS] KOT print failed:', err);
+      if (err instanceof KotDispatchError && err.payload.station_results?.length) {
+        setKotRecovery({ order, results: err.payload.station_results });
+      }
       const code = 'printer.queue_failed';
       const printDetail =
         extractPrinterErrorMessage(err) ||
@@ -1019,6 +1033,77 @@ export default function POSPage() {
         reasonCode: code,
       });
       toast.error(formatKotErrorToast(printDetail, t('saleCompletePrintFailed')));
+    }
+  };
+
+  const retryKotStation = async (station: KotStationPrintOutcome) => {
+    if (!kotRecovery || station.retry_safety !== 'safe_to_retry') return;
+    const stationKey = `${station.station_name}::${station.printer_name}`;
+    if (retryingKotStations.includes(stationKey)) return;
+    setRetryingKotStations((current) => [...current, stationKey]);
+
+    const mergeResults = (updates: KotStationPrintOutcome[]) => {
+      setKotRecovery((current) => {
+        if (!current) return current;
+        const byKey = new Map(
+          updates.map((result) => [
+            `${result.station_name}::${result.printer_name}`,
+            result,
+          ]),
+        );
+        return {
+          ...current,
+          results: current.results.map(
+            (result) =>
+              byKey.get(`${result.station_name}::${result.printer_name}`) ?? result,
+          ),
+        };
+      });
+    };
+
+    try {
+      const printWarnings = await printKot(kotRecovery.order, {
+        retryStations: [
+          {
+            station_name: station.station_name,
+            item_ids: station.item_ids,
+          },
+        ],
+      });
+      showPrintWarningsToast(printWarnings);
+      mergeResults([
+        {
+          ...station,
+          dispatch_state: 'submitted',
+          retry_safety: 'not_applicable',
+          detail: undefined,
+          failure_class: undefined,
+          code: undefined,
+          correlation_id: undefined,
+          stage: undefined,
+        },
+      ]);
+      toast.success(`${station.station_name} KOT sent successfully.`);
+    } catch (error) {
+      if (error instanceof KotDispatchError && error.payload.station_results?.length) {
+        mergeResults(error.payload.station_results);
+      } else {
+        mergeResults([
+          {
+            ...station,
+            retry_safety: 'verify_before_retry',
+            detail:
+              extractPrinterErrorMessage(error) ||
+              'The retry result is unknown. Inspect the physical ticket before sending again.',
+          },
+        ]);
+      }
+      toast.error(
+        extractPrinterErrorMessage(error) ||
+          `Could not retry the ${station.station_name} KOT. Check the printer before retrying.`,
+      );
+    } finally {
+      setRetryingKotStations((current) => current.filter((key) => key !== stationKey));
     }
   };
 
@@ -4146,6 +4231,13 @@ export default function POSPage() {
           setTicketModalQrDataUrl(null);
           setTicketModalQrPayload(null);
         }}
+      />
+      <KotDispatchRecoveryModal
+        open={kotRecovery !== null}
+        results={kotRecovery?.results ?? []}
+        retryingStationKeys={retryingKotStations}
+        onRetry={retryKotStation}
+        onClose={() => setKotRecovery(null)}
       />
 
       {paymentBill && (
