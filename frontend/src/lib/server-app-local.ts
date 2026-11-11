@@ -9,8 +9,8 @@ export interface ServerAppPersistedSendAttempt<TLine = unknown> {
   signature: string;
   nonce: string;
   snapshot: {
-    tableId: string; requestTableId?: string; tableName?: string; orderId: number | null;
-    orderCustomer: { id?: string; name: string; phone?: string } | null;
+    tableId: string; requestTableId?: string; tableName: string | undefined; orderId: number | null;
+    orderCustomer: { id?: string; name: string; phone?: string } | null | undefined;
     existingItemIds: Array<number | string>; draftLines: TLine[];
     customerName: string; customerPhone: string; orderNotes: string;
   };

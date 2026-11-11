@@ -334,6 +334,7 @@ export default function ServerStandalonePage() {
     ownerId: string,
     snapshot: SendSnapshot,
     attempt: { signature: string; nonce: string; snapshot: SendSnapshot } | null,
+    savedAt: string,
   ): boolean {
     const savedAttempt: ServerAppPersistedSendAttempt<DraftLine> | undefined = attempt
       ? {
@@ -352,84 +353,9 @@ export default function ServerStandalonePage() {
       customerName: snapshot.customerName,
       customerPhone: snapshot.customerPhone,
       orderNotes: snapshot.orderNotes,
-      savedAt: new Date().toISOString(),
+      savedAt,
       ...(savedAttempt ? { attempt: savedAttempt } : {}),
     });
-    const hasWork =
-      snapshot.draftLines.length > 0 ||
-      Boolean(snapshot.orderNotes.trim()) ||
-      Boolean(snapshot.customerName.trim()) ||
-      Boolean(snapshot.customerPhone.trim()) ||
-      Boolean(savedAttempt);
-    setLocalDraftSaved(saved && hasWork);
-    return saved;
-  }
-
-  function persistCurrentLocalDraft(ownerId: string): boolean {
-    const snapshot: SendSnapshot = {
-      tableId: selectedTableId,
-      tableName: tables.find((table) => table.id === selectedTableId)?.name,
-      orderId: currentOrder?.id ?? null,
-      orderCustomer: currentOrder?.customer ?? null,
-      existingItemIds: new Set((currentOrder?.items || []).map((item) => item.id)),
-      draftLines: draft.map((line) => ({
-        ...line,
-        addons: line.addons.map((addon) => ({ ...addon })),
-      })),
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
-      orderNotes,
-    };
-    return persistLocalDraft(ownerId, snapshot, sendAttemptRef.current);
-  }
-
-  function saveOfflineDraft() {
-    if (!user?.id || !selectedTableId) return;
-    const saved = persistCurrentLocalDraft(user.id);
-    if (saved) {
-      toast.success('Saved on this phone. It has NOT been sent to the kitchen.');
-    } else {
-      toast.error('Device storage is unavailable. Copy the ticket note into your Notes app.');
-    }
-  }
-
-  async function copyTicketNote() {
-    const note = formatServerAppTicketNote({
-      tableName: activeTable?.name || (activeTable?.number ? String(activeTable.number) : undefined),
-      tableId: selectedTableId,
-      draftLines: draft,
-      customerName,
-      customerPhone,
-      orderNotes,
-      savedAt: new Date().toISOString(),
-    });
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(note);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = note;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        const copied = document.execCommand('copy');
-        textarea.remove();
-        if (!copied) throw new Error('Clipboard unavailable');
-      }
-      toast.success('Ticket note copied. Paste it into Notes or share it with the team.');
-    } catch {
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: 'FloCafe ticket note', text: note });
-          return;
-        } catch {
-          // A dismissed share sheet is not an order failure.
-        }
-      }
-      toast.error('Copy is unavailable. Use the device Notes app as a manual fallback.');
-    }
   }
 
   useEffect(() => {
@@ -471,7 +397,7 @@ export default function ServerStandalonePage() {
     });
   }, [api]);
 
-  async function loadAll(options?: { allowWhileSending?: boolean }) {
+  const loadAll = useCallback(async (options?: { allowWhileSending?: boolean }) => {
     if (!api) return;
     if (sendInFlightRef.current && !options?.allowWhileSending) return;
     const session = authSessionSeqRef.current;
@@ -532,7 +458,7 @@ export default function ServerStandalonePage() {
         setSelectedTableId(firstTable.id);
       }
     }
-  }
+  }, [api]);
 
   function cancelPendingCustomerLookup() {
     clearTimeout(phoneDebounceRef.current);
@@ -669,10 +595,11 @@ export default function ServerStandalonePage() {
       setBrowserOnline(online);
       if (!online) setHubReachable(false);
     };
-    updateOnlineState();
+    const initialStateFrame = window.requestAnimationFrame(updateOnlineState);
     window.addEventListener('online', updateOnlineState);
     window.addEventListener('offline', updateOnlineState);
     return () => {
+      window.cancelAnimationFrame(initialStateFrame);
       window.removeEventListener('online', updateOnlineState);
       window.removeEventListener('offline', updateOnlineState);
     };
@@ -694,7 +621,7 @@ export default function ServerStandalonePage() {
       customerPhone: customerPhone.trim(),
       orderNotes,
     };
-    persistLocalDraft(userId, snapshot, sendAttemptRef.current);
+    persistLocalDraft(userId, snapshot, sendAttemptRef.current, new Date().toISOString());
   }, [userId, selectedTableId, tables, currentOrder, draft, customerName, customerPhone, orderNotes]);
 
   useEffect(() => {
@@ -819,13 +746,16 @@ export default function ServerStandalonePage() {
   useEffect(() => {
     if (!userId || !api) return;
     let cancelled = false;
-    loadAll().catch(() => {
-      if (!cancelled) toast.error(t('couldNotLoadData'));
-    });
+    const timer = window.setTimeout(() => {
+      void loadAll().catch(() => {
+        if (!cancelled) toast.error(t('couldNotLoadData'));
+      });
+    }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [api, userId, t]);
+  }, [api, userId, t, loadAll]);
 
   useEffect(() => {
     if (!selectedTableId || !userId || !api) return;
@@ -1382,7 +1312,15 @@ export default function ServerStandalonePage() {
       };
     }
     const activeAttempt = sendAttemptRef.current;
-    if (activeAttempt) persistLocalDraft(requestOwner, activeAttempt.snapshot, activeAttempt);
+    if (activeAttempt) {
+      persistLocalDraft(
+        requestOwner,
+        activeAttempt.snapshot,
+        activeAttempt,
+        new Date().toISOString(),
+      );
+      setLocalDraftSaved(true);
+    }
     const { nonce, snapshot } = sendAttemptRef.current;
     const requestTableId = snapshot.requestTableId ?? snapshot.tableId;
     const idempotencyKey = `server-app-${requestTableId}-${nonce}`;
@@ -1566,7 +1504,13 @@ export default function ServerStandalonePage() {
       customerPhone: customerPhone.trim(),
       orderNotes,
     };
-    const saved = persistLocalDraft(user.id, snapshot, attempt);
+    const saved = persistLocalDraft(
+      user.id,
+      snapshot,
+      attempt,
+      new Date().toISOString(),
+    );
+    setLocalDraftSaved(saved);
     if (saved) {
       toast.success('Saved on this phone. It has NOT been sent to the kitchen.');
     } else {

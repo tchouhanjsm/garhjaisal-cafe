@@ -130,7 +130,7 @@ test.describe('Server App tableside ordering', () => {
       params: { table_id: table.id, type: 'dine_in', per_page: 5 },
     });
     const { orders } = await afterSend.json();
-    expect(orders).toHaveLength(1, 'local offline save must not create an order');
+    expect(orders, 'local offline save must not create an order').toHaveLength(1);
     expect(orders[0]?.special_instructions).toBe(note);
   });
 
