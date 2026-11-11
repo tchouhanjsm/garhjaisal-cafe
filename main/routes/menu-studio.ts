@@ -697,13 +697,13 @@ router.get('/audit/export', requirePermission('catalog.view'), (req: Request, re
     const limit = Number.isInteger(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 5000) : 5000;
     const rows = getDatabase()
       .prepare(
-        \`SELECT a.id, a.batch_id, a.product_id, p.name AS product_name,
-                a.actor_user_id, u.name AS actor_name, a.action,
-                a.before_json, a.after_json, a.created_at
-         FROM menu_studio_audit_log a
-         LEFT JOIN products p ON p.id = a.product_id
-         LEFT JOIN users u ON u.id = a.actor_user_id
-         ORDER BY a.id DESC LIMIT ?\`,
+        'SELECT a.id, a.batch_id, a.product_id, p.name AS product_name, ' +
+          'a.actor_user_id, u.name AS actor_name, a.action, ' +
+          'a.before_json, a.after_json, a.created_at ' +
+          'FROM menu_studio_audit_log a ' +
+          'LEFT JOIN products p ON p.id = a.product_id ' +
+          'LEFT JOIN users u ON u.id = a.actor_user_id ' +
+          'ORDER BY a.id DESC LIMIT ?',
       )
       .all(limit) as {
       id: number;
