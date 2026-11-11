@@ -154,9 +154,7 @@ test.describe('POS shared table state refresh', () => {
             data: { status: 'available' },
           })
           .catch(() => {});
-        await request
-          .post(`${BASE}/api/tables/${tableId}/deactivate`, { headers })
-          .catch(() => {});
+        await request.post(`${BASE}/api/tables/${tableId}/deactivate`, { headers }).catch(() => {});
       }
       if (originalBusiness) {
         await request
@@ -194,10 +192,9 @@ test.describe('POS shared table state refresh', () => {
         10,
       );
       productId = createdProduct.id;
-      const productResponse = await request.get(
-        `${BASE}/api/products/${createdProduct.id}`,
-        { headers },
-      );
+      const productResponse = await request.get(`${BASE}/api/products/${createdProduct.id}`, {
+        headers,
+      });
       expect(productResponse.status()).toBe(200);
       const { product } = (await productResponse.json()) as {
         product: Record<string, unknown> & { id: string; name: string };
@@ -306,9 +303,7 @@ test.describe('POS shared table state refresh', () => {
             data: { status: 'available' },
           })
           .catch(() => {});
-        await request
-          .post(`${BASE}/api/tables/${tableId}/deactivate`, { headers })
-          .catch(() => {});
+        await request.post(`${BASE}/api/tables/${tableId}/deactivate`, { headers }).catch(() => {});
       }
       if (originalBusiness) {
         await request
@@ -422,9 +417,7 @@ test.describe('POS shared table state refresh', () => {
             data: { status: 'available' },
           })
           .catch(() => {});
-        await request
-          .post(`${BASE}/api/tables/${tableId}/deactivate`, { headers })
-          .catch(() => {});
+        await request.post(`${BASE}/api/tables/${tableId}/deactivate`, { headers }).catch(() => {});
       }
       if (originalBusiness) {
         await request
