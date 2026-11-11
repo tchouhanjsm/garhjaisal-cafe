@@ -10,7 +10,7 @@ type CreatedTable = {
 };
 
 test.describe('POS shared table state refresh', () => {
-  test('shows a table occupied by an order created on another terminal', async ({
+  test('refreshes occupied table state in POS on focus', async ({
     page,
     request,
   }) => {
@@ -115,7 +115,7 @@ test.describe('POS shared table state refresh', () => {
     }
   });
 
-  test('reloads held cart details from another terminal before a table is selected', async ({
+  test('restores a held cart after POS focus refresh', async ({
     page,
     request,
   }) => {
