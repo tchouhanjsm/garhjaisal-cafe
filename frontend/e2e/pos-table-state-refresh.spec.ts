@@ -319,5 +319,120 @@ test.describe('POS shared table state refresh', () => {
           .catch(() => {});
       }
     }
+  test('polls for occupied table changes while POS remains visible', async ({ page, request }) => {
+    const headers = ownerAuth();
+    let originalBusiness: BusinessSettings | undefined;
+    let tableId: string | undefined;
+    let orderId: string | number | undefined;
+    let productId: string | undefined;
+
+    try {
+      const businessResponse = await request.get(`${BASE}/api/settings/business`, { headers });
+      expect(businessResponse.ok()).toBeTruthy();
+      originalBusiness = (await businessResponse.json()) as BusinessSettings;
+
+      const configured = await request.put(`${BASE}/api/settings/business`, {
+        headers,
+        data: { ...originalBusiness, billing_type: 'postpaid', tables_required: true },
+      });
+      expect(configured.ok()).toBeTruthy();
+
+      const tableNumber = `Polling${Date.now().toString().slice(-7)}`;
+      const createdTableResponse = await request.post(`${BASE}/api/tables`, {
+        headers,
+        data: { number: tableNumber, capacity: 2, floor: 'Ground', section: 'Main' },
+      });
+      expect(createdTableResponse.status()).toBe(201);
+      const createdTable = (await createdTableResponse.json()).table as CreatedTable;
+      tableId = createdTable.id;
+
+      const product = await createTrackedProduct(
+        { request },
+        `POS polling order ${Date.now()}`,
+        85,
+        10,
+      );
+      productId = product.id;
+
+      await login(page, 'owner');
+      const initialTables = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname === '/api/tables' &&
+          new URL(response.url()).searchParams.get('include_items') === '1',
+      );
+      await page.goto(`${BASE}/pos`);
+      await initialTables;
+      await expect(page.getByTestId('cart-table-button')).toBeVisible();
+
+      const createdOrderResponse = await request.post(`${BASE}/api/orders`, {
+        headers,
+        data: {
+          type: 'dine_in',
+          table_id: tableId,
+          guest_count: 2,
+          items: [{ product_id: product.id, quantity: 1 }],
+        },
+      });
+      expect(createdOrderResponse.status()).toBe(201);
+      const { order } = (await createdOrderResponse.json()) as {
+        order: { id: string | number; order_number: string };
+      };
+      orderId = order.id;
+
+      // Wait for a table request that starts after the remote order has committed.
+      const refreshRequest = await page.waitForRequest(
+        (request) =>
+          request.method() === 'GET' &&
+          new URL(request.url()).pathname === '/api/tables' &&
+          new URL(request.url()).searchParams.get('include_items') === '1',
+        { timeout: 25000 },
+      );
+      const refreshResponse = await refreshRequest.response();
+      expect(refreshResponse?.ok()).toBeTruthy();
+
+      await page.getByTestId('cart-table-button').click();
+      const picker = page.getByRole('heading', { name: /select table/i });
+      await expect(picker).toBeVisible();
+
+      const tableCard = page
+        .locator('.fixed.inset-0.z-50 button')
+        .filter({ hasText: tableNumber })
+        .first();
+      await expect(tableCard).toContainText(/occupied/i);
+      await expect(tableCard).toContainText(`#${order.order_number}`);
+    } finally {
+      if (orderId !== undefined) {
+        await request
+          .patch(`${BASE}/api/orders/${orderId}/status`, {
+            headers,
+            data: { status: 'cancelled', reason: 'E2E cleanup' },
+          })
+          .catch(() => {});
+      }
+      if (productId) {
+        await deleteProduct({ request }, productId).catch(() => {});
+      }
+      if (tableId) {
+        await request
+          .patch(`${BASE}/api/tables/${tableId}/status`, {
+            headers,
+            data: { status: 'available' },
+          })
+          .catch(() => {});
+        await request
+          .post(`${BASE}/api/tables/${tableId}/deactivate`, { headers })
+          .catch(() => {});
+      }
+      if (originalBusiness) {
+        await request
+          .put(`${BASE}/api/settings/business`, {
+            headers,
+            data: originalBusiness,
+          })
+          .catch(() => {});
+      }
+    }
+  });
   });
 });
