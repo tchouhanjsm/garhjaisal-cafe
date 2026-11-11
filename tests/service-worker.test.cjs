@@ -7,6 +7,9 @@ const serviceWorkerSource = fs.readFileSync(
   'utf8',
 );
 
+assert.ok(serviceWorkerSource.includes("  '/server-standalone',"), 'Server App route is precached for installed phones');
+assert.ok(serviceWorkerSource.includes("  '/server-app-manifest.json',"), 'Server App install manifest is precached');
+
 class TestCache {
   constructor() {
     this.entries = new Map();

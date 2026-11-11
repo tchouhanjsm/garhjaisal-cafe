@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import '../globals.css';
 import { DirectionalToaster } from '@/components/layout/DirectionalToaster';
@@ -9,6 +9,14 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Flo Server App',
   description: 'Tableside ordering for FloCafe',
+  manifest: '/server-app-manifest.json',
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Flo Server' },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#3248FF',
 };
 
 export default function ServerStandaloneLayout({

@@ -249,3 +249,48 @@ If printing still fails:
 
 The printer endpoints are in the [API reference](reference/api.md). They cover configured printers,
 detection, supported profiles, test printing, receipt printing, and kitchen tickets.
+
+
+## Windows hub and phone waiter workflow
+
+For a small hotel using a Windows counter PC and staff phones, keep the Windows PC as the local
+hub and printer host. The phones do not need to pair with the mini printer individually.
+
+1. Install and start FloCafe on the Windows PC. Keep it on the hotel's private Wi-Fi/LAN during
+   service; do not expose local API or printer ports to a public network.
+2. Enable **Server App** in Settings. Open its connection panel on the Windows PC and scan the QR
+   code from each phone while connected to the same private network.
+3. Sign in on each phone with that staff member's own Server App PIN. Choose **Add to Home Screen /
+   Install** so the separate **Flo Server** icon opens directly into tableside ordering. Open it
+   once while online to cache the app shell and current menu.
+4. Staff select a table, add items and modifiers, enter guest details or order notes, then tap
+   **Send to kitchen**. The phone sends the order to the Windows hub; configured KOT station routing
+   sends the ticket to the printer connected to, or reachable by, that hub.
+5. If Wi-Fi or the Windows hub becomes unreachable, the phone keeps the working ticket in that
+   staff member's local browser storage. The screen must say **not sent**; staff can copy the
+   formatted ticket note into the phone's Notes app or share it. Reconnect, refresh, review the
+   ticket, and explicitly send it. Saving offline never creates an order or claims that the kitchen
+   received a ticket. Do not clear browser data or uninstall the app while an unsent ticket remains.
+
+The local ticket is a recovery copy, not the system of record. The Windows database remains
+authoritative for orders, payments, kitchen status, and end-of-day reports. A paper notebook remains
+the fallback if the phone itself is unavailable.
+
+## Choosing mini-printer paper width
+
+The roll's physical width (commonly 58 mm, 76 mm impact, or 80 mm) is not the same thing as the
+number of printable text columns. In **Settings > Printers**, select the closest printer profile
+first, then match printable columns to the print head and font mode. Typical starting points:
+
+| Hardware | Profile | Starting printable width |
+| --- | --- | --- |
+| 58 mm thermal mini printer | Generic ESC/POS 58 mm | 32 columns |
+| 76 mm impact/dot-matrix printer (TM-U220 class) | 76 mm Impact | 32 columns |
+| 80 mm thermal mini printer | Generic ESC/POS 80 mm | 42 columns |
+| Wider 80 mm print head | Matching supported profile | 48 columns |
+
+Treat these as starting profiles, not universal guarantees. On the Windows hub, use **Detect** or
+select the exact Windows print queue, save its profile/width, then run **Test Print** and inspect
+margins, wrapping, and paper cut. For raw ESC/POS USB queues, Windows Print Processor must be
+**WinPrint** with datatype **RAW**. For driver-only queues, use Browser Print rather than raw
+ESC/POS bytes. Keep the verified test ticket and settings as the hotel's reference.
