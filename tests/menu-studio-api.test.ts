@@ -247,7 +247,9 @@ async function main() {
     );
     const exportedCsv = await exportResponse.text();
     assert(
-      exportedCsv.startsWith('id,sku,name,category_id,category_name,price,is_active,updated_at,flo_csv_encoding'),
+      exportedCsv.startsWith(
+        'id,sku,name,category_id,category_name,price,is_active,updated_at,flo_csv_encoding',
+      ),
       'Menu Studio CSV export includes stable identity and stale-write columns',
     );
     assert(
@@ -270,7 +272,8 @@ async function main() {
       )
       .get(formulaProductId) as any;
     const { toQuoteV1CsvRow, FLO_CSV_ENCODING_QUOTE_V1 } = require('../main/lib/csv');
-    const importHeader = 'id,sku,name,category_id,category_name,price,is_active,updated_at,flo_csv_encoding';
+    const importHeader =
+      'id,sku,name,category_id,category_name,price,is_active,updated_at,flo_csv_encoding';
     const previewCsv = [
       importHeader,
       toQuoteV1CsvRow([
@@ -364,7 +367,6 @@ async function main() {
       39,
       'duplicate preview leaves catalog unchanged',
     );
-
 
     const invalidCategoryCsv = [
       importHeader,

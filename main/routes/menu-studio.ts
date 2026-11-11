@@ -487,9 +487,7 @@ router.post('/csv/preview', requirePermission('catalog.manage'), (req: Request, 
 
       const actualColumnCount = malformedRowWidths.get(index);
       if (actualColumnCount !== undefined) {
-        fail(
-          'expected ' + headers.length + ' columns but found ' + actualColumnCount,
-        );
+        fail('expected ' + headers.length + ' columns but found ' + actualColumnCount);
         return;
       }
       if (!encoding.ok) {
