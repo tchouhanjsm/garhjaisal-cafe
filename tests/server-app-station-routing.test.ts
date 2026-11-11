@@ -229,7 +229,9 @@ async function main() {
         chunks.push(buf);
         const callback = typeof encodingOrCb === 'function' ? encodingOrCb : cb;
         if (failureMode === 'write') {
-          process.nextTick(() => this.emit('error', new Error('socket hang up after write started')));
+          process.nextTick(() =>
+            this.emit('error', new Error('socket hang up after write started')),
+          );
           return true;
         }
         if (callback) process.nextTick(callback);
@@ -414,7 +416,9 @@ async function main() {
     assert.equal(
       printKotWithItemsRes.status,
       200,
-      `Server App POST /api/printers/print-kot succeeds (got ${printKotWithItemsRes.status}: ${JSON.stringify(printKotWithItemsRes.body)})`,
+      `Server App POST /api/printers/print-kot succeeds (got ${printKotWithItemsRes.status}: ${JSON.stringify(
+        printKotWithItemsRes.body,
+      )})`,
     );
     assert.equal(printKotWithItemsRes.body.success, true);
     assert.deepEqual(

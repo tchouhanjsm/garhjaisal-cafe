@@ -1366,7 +1366,12 @@ function summarizeKotStationFailures(results: KotStationPrintOutcome[]): string 
   const submittedSummary = submitted.length
     ? `Dispatch completed for: ${submitted.join(', ')}.`
     : 'No station confirmed dispatch.';
-  return `KOT dispatch incomplete. ${submittedSummary} Failed station(s): ${failures}. Retry only stations marked safe_to_retry. For verify_before_retry, inspect the physical ticket before sending again.`;
+  return [
+    `KOT dispatch incomplete. ${submittedSummary}`,
+    `Failed station(s): ${failures}.`,
+    'Retry only stations marked safe_to_retry.',
+    'For verify_before_retry, inspect the physical ticket before sending again.',
+  ].join(' ');
 }
 
 // POST /api/printers/print-kot — print KOT via backend (desktop app).
