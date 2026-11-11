@@ -121,6 +121,14 @@ test.describe('POS shared table state refresh', () => {
       };
       expect(latestOrder.items).toHaveLength(2);
       await expect(page.getByTestId('cart-item')).toHaveCount(0);
+
+      const latestTableResponse = await request.get(`${BASE}/api/tables/${tableId}`, { headers });
+      expect(latestTableResponse.ok()).toBeTruthy();
+      const { table: latestTable } = (await latestTableResponse.json()) as {
+        table: { status: string; current_order?: { id: string | number } | null };
+      };
+      expect(latestTable.status).toBe('occupied');
+      expect(String(latestTable.current_order?.id)).toBe(String(orderId));
     } finally {
       if (orderId !== undefined) {
         await request
