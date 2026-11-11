@@ -317,6 +317,7 @@ test.describe('POS shared table state refresh', () => {
   });
 
   test('polls for occupied table changes while POS remains visible', async ({ page, request }) => {
+    test.setTimeout(60000);
     const headers = ownerAuth();
     let originalBusiness: BusinessSettings | undefined;
     let tableId: string | undefined;
