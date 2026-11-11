@@ -90,6 +90,37 @@ test.describe('POS shared table state refresh', () => {
         .first();
       await expect(tableCard).toContainText(/occupied/i);
       await expect(tableCard).toContainText(`#${order.order_number}`);
+
+      // A second terminal must be able to continue the existing postpaid order.
+      await tableCard.click();
+      await expect(page.getByRole('heading', { name: tableNumber, exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Add Items', exact: true }).click();
+
+      const productCard = page
+        .getByTestId('pos-product-card')
+        .filter({ hasText: product.name })
+        .first();
+      await expect(productCard).toBeVisible();
+      await productCard.click();
+
+      const appendButton = page.getByTestId('pos-append-existing-order-btn');
+      await expect(appendButton).toBeEnabled();
+      const appendResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          new URL(response.url()).pathname === `/api/orders/${orderId}/items`,
+      );
+      await appendButton.click();
+      const appended = await appendResponse;
+      expect(appended.status(), 'items are appended to the existing table order').toBe(200);
+
+      const latestOrderResponse = await request.get(`${BASE}/api/orders/${orderId}`, { headers });
+      expect(latestOrderResponse.ok()).toBeTruthy();
+      const { order: latestOrder } = (await latestOrderResponse.json()) as {
+        order: { items: Array<Record<string, unknown>> };
+      };
+      expect(latestOrder.items).toHaveLength(2);
+      await expect(page.getByTestId('cart-item')).toHaveCount(0);
     } finally {
       if (orderId !== undefined) {
         await request
