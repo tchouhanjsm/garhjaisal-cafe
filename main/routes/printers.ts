@@ -1326,6 +1326,7 @@ type KotStationPrintOutcome = {
   station_name: string;
   printer_name: string;
   item_count: number;
+  item_ids: Array<string | number>;
   dispatch_state: 'submitted' | 'failed';
   retry_safety: 'not_applicable' | 'safe_to_retry' | 'verify_before_retry';
   detail?: string;
@@ -1471,6 +1472,9 @@ router.post(
           station_name: group.stationName,
           printer_name: targetPrinter?.name || 'Configured printer',
           item_count: group.items.length,
+          item_ids: group.items
+            .map((item: any) => item?.id)
+            .filter((id: unknown): id is string | number => typeof id === 'string' || typeof id === 'number'),
           dispatch_state: result.ok ? 'submitted' : 'failed',
           retry_safety: result.ok
             ? 'not_applicable'

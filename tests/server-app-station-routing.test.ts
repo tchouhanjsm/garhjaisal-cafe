@@ -417,6 +417,18 @@ async function main() {
       `Server App POST /api/printers/print-kot succeeds (got ${printKotWithItemsRes.status}: ${JSON.stringify(printKotWithItemsRes.body)})`,
     );
     assert.equal(printKotWithItemsRes.body.success, true);
+    assert.deepEqual(
+      printKotWithItemsRes.body.station_results.map((result: { station_name: string }) => result.station_name),
+      ['Grill', 'Bar', 'Kitchen'],
+      'successful dispatch returns one structured outcome for each routed station',
+    );
+    assert(
+      printKotWithItemsRes.body.station_results.every(
+        (result: { item_count: number; item_ids: Array<string | number> }) =>
+          result.item_count === result.item_ids.length,
+      ),
+      'each station outcome identifies the exact routed order items',
+    );
 
     assertMultiStationRouting(recordedDispatches);
     console.log(
@@ -580,7 +592,7 @@ async function main() {
     }
     console.log('  ✓ Partial and uncertain KOT failures report station-level recovery safety');
 
-    // 6. Inactive station fallback: when Bar station (stn-bar) is marked inactive,
+    // 7. Inactive station fallback: when Bar station (stn-bar) is marked inactive,
     //    posting /api/printers/print-kot routes Grill items to GRILL_STATION_PRINTER and
     //    falls back both Bar (inactive station) and Dessert (unmapped) items to DEFAULT_KITCHEN_PRINTER.
     db.prepare("UPDATE kitchen_stations SET is_active = 0 WHERE id = 'stn-bar'").run();
