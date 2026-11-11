@@ -434,5 +434,4 @@ test.describe('POS shared table state refresh', () => {
       }
     }
   });
-  });
 });
