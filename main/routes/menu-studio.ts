@@ -804,10 +804,7 @@ router.get('/audit/export', requirePermission('catalog.view'), (req: Request, re
     res.setHeader('X-Menu-Studio-Audit-Page-Count', String(pageRows.length));
     res.setHeader('X-Menu-Studio-Audit-Total-Count', String(totalCount));
     if (hasMore && pageRows.length > 0) {
-      res.setHeader(
-        'X-Menu-Studio-Audit-Next-Before-Id',
-        String(pageRows[pageRows.length - 1].id),
-      );
+      res.setHeader('X-Menu-Studio-Audit-Next-Before-Id', String(pageRows[pageRows.length - 1].id));
     }
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="menu-studio-audit.csv"');
