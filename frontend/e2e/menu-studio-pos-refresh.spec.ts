@@ -1,11 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { E2E_BASE_URL } from './helpers/urls';
-import {
-  createTrackedProduct,
-  deleteProduct,
-  login,
-  ownerAuth,
-} from './ops-admin/helpers';
+import { createTrackedProduct, deleteProduct, login, ownerAuth } from './ops-admin/helpers';
 
 type CatalogProduct = {
   id: string;
