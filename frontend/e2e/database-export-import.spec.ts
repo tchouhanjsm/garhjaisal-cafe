@@ -128,18 +128,6 @@ test.describe('Database Settings JSON Export and Import', () => {
   }, testInfo) => {
     await signInAsOwner(page);
 
-    // Match the current app schema so this test exercises a normal merge import,
-    // not the separate protected legacy-schema restore flow.
-    const token = await page.evaluate(() => localStorage.getItem('token'));
-    expect(token).toBeTruthy();
-    const versionResponse = await page.request.get(`${BASE}/api/db/export`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    expect(versionResponse.ok()).toBeTruthy();
-    const exportedDatabase = await versionResponse.json();
-    const currentSchemaVersion = exportedDatabase.schema_version as string;
-    expect(currentSchemaVersion).toMatch(/^(?:0|[1-9]\d*)$/);
-
     await page.goto(`${BASE}/settings?tab=data`);
     await page.waitForLoadState('networkidle');
 
@@ -211,6 +199,17 @@ test.describe('Database Settings JSON Export and Import', () => {
     page,
   }) => {
     await signInAsOwner(page);
+
+    // Match the current schema to keep this test on the normal merge-import path.
+    const token = await page.evaluate(() => localStorage.getItem('token'));
+    expect(token).toBeTruthy();
+    const versionResponse = await page.request.get(`${BASE}/api/db/export`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(versionResponse.ok()).toBeTruthy();
+    const exportedDatabase = await versionResponse.json();
+    const currentSchemaVersion = exportedDatabase.schema_version as string;
+    expect(currentSchemaVersion).toMatch(/^(?:0|[1-9]\d*)$/);
 
     const runId = Math.random().toString(36).substring(2, 8);
     const uniqueProductId = `prod-e2e-${runId}`;
