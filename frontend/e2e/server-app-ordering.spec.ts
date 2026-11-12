@@ -261,7 +261,9 @@ test.describe('Server App tableside ordering', () => {
     await coffeeCard.click();
     await page.getByRole('button', { name: 'Current ticket' }).click();
     const note = 'Room 12 — guest arrives after sunset';
-    await page.getByPlaceholder('Order notes (optional)').first().fill(note);
+    const ticketNotes = page.getByPlaceholder('Order notes (optional)').last();
+    await expect(ticketNotes).toBeVisible();
+    await ticketNotes.fill(note);
 
     await context.setOffline(true);
     await expect(page.getByTestId('server-app-offline-banner')).toContainText(
