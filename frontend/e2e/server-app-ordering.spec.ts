@@ -329,8 +329,18 @@ test.describe('Server App tableside ordering', () => {
     });
     expect((await beforeSend.json()).orders).toHaveLength(0);
 
+    // Close the modal ticket drawer before using the header refresh action;
+    // its overlay intentionally prevents clicking controls behind it.
+    await page.keyboard.press('Escape');
+    await expect(copyTicketNote).toBeHidden();
+
     await context.setOffline(false);
-    await page.getByRole('button', { name: 'Refresh' }).click();
+    const refreshHub = page.getByRole('button', { name: 'Refresh' });
+    await expect(refreshHub).toBeVisible();
+    await refreshHub.click();
+
+    // Reopen the phone ticket after the Windows hub has refreshed the connection.
+    await page.getByRole('button', { name: 'Current ticket' }).click();
     const sendRestoredTicket = page.getByTestId('server-app-send-order').last();
     await expect(sendRestoredTicket).toBeVisible();
     await expect(sendRestoredTicket).toBeEnabled();
