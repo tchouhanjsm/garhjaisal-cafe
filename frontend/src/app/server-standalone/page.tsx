@@ -56,6 +56,7 @@ import type {
 } from '@/lib/types';
 import { cartItemToOrderItem } from '@/lib/cart-order-item';
 import {
+  formatServerAppManualTicketTemplate,
   formatServerAppTicketNote,
   getServerAppTimestamp,
   loadServerAppCatalog,
@@ -1452,6 +1453,39 @@ export default function ServerStandalonePage() {
 
   const activeTable = tables.find((table) => table.id === selectedTableId) || null;
 
+  async function copyTextToDevice(
+    text: string,
+    title: string,
+  ): Promise<'copied' | 'shared' | 'unavailable'> {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        textarea.remove();
+        if (!copied) throw new Error('Clipboard unavailable');
+      }
+      return 'copied';
+    } catch {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, text });
+          return 'shared';
+        } catch {
+          // Dismissing the share sheet does not fail the ticket.
+        }
+      }
+      return 'unavailable';
+    }
+  }
+
   async function copyTicketNote() {
     const note = formatServerAppTicketNote({
       tableName: activeTable?.name || (activeTable?.number ? String(activeTable.number) : undefined),
@@ -1462,32 +1496,25 @@ export default function ServerStandalonePage() {
       orderNotes,
       savedAt: getServerAppTimestamp(),
     });
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(note);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = note;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        const copied = document.execCommand('copy');
-        textarea.remove();
-        if (!copied) throw new Error('Clipboard unavailable');
-      }
+    const result = await copyTextToDevice(note, 'FloCafe ticket note');
+    if (result === 'copied') {
       toast.success('Ticket note copied. Paste it into Notes or share it with the team.');
-    } catch {
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: 'FloCafe ticket note', text: note });
-          return;
-        } catch {
-          // Dismissing the share sheet does not fail the ticket.
-        }
-      }
+    } else if (result === 'shared') {
+      toast.success('Ticket note ready to share.');
+    } else {
       toast.error('Copy is unavailable. Use the device Notes app as a manual fallback.');
+    }
+  }
+
+  async function copyManualTicketTemplate() {
+    const template = formatServerAppManualTicketTemplate(getServerAppTimestamp());
+    const result = await copyTextToDevice(template, 'FloCafe blank manual ticket');
+    if (result === 'copied') {
+      toast.success('Blank manual ticket copied. Save it in Notes before service.');
+    } else if (result === 'shared') {
+      toast.success('Blank manual ticket ready to save in Notes.');
+    } else {
+      toast.error('Template copy is unavailable. Use the manual ticket in the service guide.');
     }
   }
 
@@ -2059,6 +2086,16 @@ export default function ServerStandalonePage() {
             className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-border p-2 text-muted-foreground disabled:opacity-50"
           >
             <RefreshCw size={17} />
+          </button>
+          <button
+            type="button"
+            onClick={copyManualTicketTemplate}
+            aria-label="Copy blank Notes ticket template"
+            title="Copy blank Notes ticket template"
+            data-testid="server-app-copy-manual-ticket-template"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-border p-2 text-muted-foreground"
+          >
+            <Copy size={17} />
           </button>
           <button
             onClick={logout}

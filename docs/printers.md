@@ -161,7 +161,9 @@ handheld order-entry clients; they do not need a separate printer connection.
    Server App port directly to the public internet.
 3. Sign in on each phone with that staff member's Server App PIN/account and required
    permissions. In Chrome on Android, use **Install app / Add to Home screen**; on iPhone,
-   use Safari's **Add to Home Screen**. Keep the Windows hub awake while orders are being taken.
+   use Safari's **Add to Home Screen**. Before service, tap **Copy blank Notes ticket template**
+   in the Server App and save it as a reusable template in the phone's Notes app. Keep the
+   Windows hub awake while orders are being taken.
 4. In **Settings > Printers**, configure the Windows receipt/KOT printer. For a 58 mm mini
    thermal roll, select the **Generic ESC/POS 58mm** profile and start with **32 columns**.
    For an 80 mm roll, select the matching 80 mm profile and its default width. Use **Test
@@ -183,6 +185,11 @@ handheld order-entry clients; they do not need a separate printer connection.
 - A locally saved or copied ticket is not an order in FloCafe, does not reserve the table,
   and has not printed. Tell the kitchen verbally or hand over the note according to the
   restaurant's manual contingency process; never mark it as accepted by the system.
+- If the Server App itself cannot be opened or installed, open the pre-saved blank ticket in
+  the phone's native Notes app, duplicate it for each guest, and fill in table/room, guest count,
+  items, quantities, modifiers and preparation notes. Mark the note **NOT SENT TO KITCHEN**,
+  then show/tell the kitchen. When FloCafe returns, verify the table on the Windows hub and
+  enter the ticket once; do not assume the Notes copy was recorded or printed.
 - When the network returns, reconnect to the same Windows hub and press **Refresh**. Confirm
   the table is still available or inspect the current order before sending. Send the saved
   draft once; the app preserves the send-attempt identity to protect against a lost response.

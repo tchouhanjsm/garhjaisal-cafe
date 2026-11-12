@@ -84,6 +84,35 @@ test.describe('Server App tableside ordering', () => {
     const { table } = await tableRes.json();
 
     await openServerApp(page, serverToken);
+    await page.evaluate(() => {
+      const testWindow = window as Window & { __copiedManualTemplate?: string };
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (value: string) => {
+            testWindow.__copiedManualTemplate = value;
+          },
+        },
+      });
+    });
+    await page.getByTestId('server-app-copy-manual-ticket-template').click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as Window & { __copiedManualTemplate?: string }).__copiedManualTemplate || '',
+        ),
+      )
+      .toContain('STATUS: MANUAL NOTE — NOT SENT TO KITCHEN');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as Window & { __copiedManualTemplate?: string }).__copiedManualTemplate || '',
+        ),
+      )
+      .toContain('Verify the table/current order on the Windows hub');
+
     await expect(page.getByRole('button', { name: new RegExp(tableName) })).toBeVisible();
     await page.getByRole('button', { name: new RegExp(tableName) }).click();
     const search = page.getByTestId('pos-product-grid').getByPlaceholder('Search menu');

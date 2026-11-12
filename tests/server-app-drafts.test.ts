@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  formatServerAppManualTicketTemplate,
   formatServerAppTicketNote,
   getServerAppTimestamp,
   loadServerAppCatalog,
@@ -83,6 +84,13 @@ const draft = {
 };
 assert.equal(saveServerAppDraft(storage, user.id, draft), true);
 assert.deepEqual(loadServerAppDraft(storage, user.id), draft);
+
+const manualTemplate = formatServerAppManualTicketTemplate('2026-11-12T10:00:00.000Z');
+assert.match(manualTemplate, /STATUS: MANUAL NOTE — NOT SENT TO KITCHEN/);
+assert.match(manualTemplate, /TABLE \/ ROOM/);
+assert.match(manualTemplate, /MODIFIERS/);
+assert.match(manualTemplate, /not a FloCafe order, does not reserve a table, and has not printed/i);
+assert.match(manualTemplate, /Verify the table\/current order on the Windows hub, then enter and send once/i);
 
 const note = formatServerAppTicketNote({
   tableName: '1',

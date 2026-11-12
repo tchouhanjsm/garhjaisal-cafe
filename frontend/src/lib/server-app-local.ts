@@ -85,6 +85,43 @@ export function saveServerAppDraft<TLine>(storage: ServerAppLocalStorage, userId
   }
   return writeRecord(storage, { ...record, draft: draft! });
 }
+export function formatServerAppManualTicketTemplate(preparedAt?: string): string {
+  const lines = [
+    'FLO CAFE — MANUAL WAITER TICKET',
+    'STATUS: MANUAL NOTE — NOT SENT TO KITCHEN',
+  ];
+  if (preparedAt) lines.push(`Prepared: ${preparedAt}`);
+  lines.push(
+    '',
+    'TABLE / ROOM: ______________________________',
+    'GUEST NAME: _________________________________',
+    'GUEST COUNT: ______',
+    'PHONE / ROOM NUMBER: ________________________',
+    'STAFF: ______________________________________',
+    '',
+    'ITEMS (write quantity, modifiers and instructions)',
+    '1. ______________________________  QTY: ____',
+    '   MODIFIERS: ________________________________',
+    '   PREPARATION NOTE: _________________________',
+    '2. ______________________________  QTY: ____',
+    '   MODIFIERS: ________________________________',
+    '   PREPARATION NOTE: _________________________',
+    '3. ______________________________  QTY: ____',
+    '   MODIFIERS: ________________________________',
+    '   PREPARATION NOTE: _________________________',
+    '4. ______________________________  QTY: ____',
+    '   MODIFIERS: ________________________________',
+    '   PREPARATION NOTE: _________________________',
+    '',
+    'ORDER NOTES: _________________________________',
+    '',
+    'KITCHEN HANDOFF: Show this note to kitchen staff or tell them verbally.',
+    'IMPORTANT: This is not a FloCafe order, does not reserve a table, and has not printed.',
+    'WHEN FLOCAFE RETURNS: Verify the table/current order on the Windows hub, then enter and send once.',
+  );
+  return lines.join('\\n');
+}
+
 export function formatServerAppTicketNote(input: {
   tableName?: string; tableId?: string;
   draftLines: Array<{ quantity: number; product?: { name?: string }; variant?: { name?: string } | null; addons?: Array<{ name?: string; quantity?: number }>; special_instructions?: string }>;
