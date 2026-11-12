@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import '../globals.css';
 import { DirectionalToaster } from '@/components/layout/DirectionalToaster';
+import { ServerAppServiceWorker } from '@/components/layout/ServerAppServiceWorker';
 import { KdsHtmlLang } from '@/components/kds/KdsHtmlLang';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -25,6 +26,7 @@ export default function ServerStandaloneLayout({ children }: { children: React.R
       <body className={`${inter.className} h-full bg-slate-50 dark:bg-background`}>
         <KdsHtmlLang />
         <DirectionalToaster />
+        <ServerAppServiceWorker />
         {children}
       </body>
     </html>
