@@ -173,7 +173,9 @@ test.describe('Server App tableside ordering', () => {
       ],
     });
     expect(dispatchRequests[1]).not.toHaveProperty('items');
-    await expect(recovery.locator('[data-testid="kot-station-kitchen"]')).toContainText('Submitted');
+    await expect(recovery.locator('[data-testid="kot-station-kitchen"]')).toContainText(
+      'Submitted',
+    );
   });
 
   test('keeps an unsent ticket on the phone across offline reload, then sends it after reconnecting', async ({

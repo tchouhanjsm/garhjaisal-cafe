@@ -1258,7 +1258,9 @@ export default function ServerStandalonePage() {
       if (!isCurrent()) return;
       const status = axios.isAxiosError(printError) ? printError.response?.status : undefined;
       const payload = axios.isAxiosError(printError)
-        ? (printError.response?.data as { code?: unknown; station_results?: KotStationPrintOutcome[] } | undefined)
+        ? (printError.response?.data as
+            | { code?: unknown; station_results?: KotStationPrintOutcome[] }
+            | undefined)
         : undefined;
       if (status === 400 || (status === 403 && payload?.code === 'KOT_PRINTING_DISABLED')) return;
       if (Array.isArray(payload?.station_results) && payload.station_results.length > 0) {
@@ -1281,16 +1283,12 @@ export default function ServerStandalonePage() {
       setKotRecovery((current) => {
         if (!current || current.orderId !== orderId) return current;
         const byKey = new Map(
-          updates.map((result) => [
-            `${result.station_name}::${result.printer_id}`,
-            result,
-          ]),
+          updates.map((result) => [`${result.station_name}::${result.printer_id}`, result]),
         );
         return {
           ...current,
           results: current.results.map(
-            (result) =>
-              byKey.get(`${result.station_name}::${result.printer_id}`) ?? result,
+            (result) => byKey.get(`${result.station_name}::${result.printer_id}`) ?? result,
           ),
         };
       });
@@ -1340,14 +1338,13 @@ export default function ServerStandalonePage() {
           {
             ...station,
             retry_safety: 'verify_before_retry',
-            detail:
-              axios.isAxiosError(error)
-                ? (error.response?.data as { detail?: string; error?: string } | undefined)?.detail ||
-                  (error.response?.data as { error?: string } | undefined)?.error ||
-                  error.message
-                : error instanceof Error
-                  ? error.message
-                  : 'Retry result is unknown. Inspect the physical ticket before sending again.',
+            detail: axios.isAxiosError(error)
+              ? (error.response?.data as { detail?: string; error?: string } | undefined)?.detail ||
+                (error.response?.data as { error?: string } | undefined)?.error ||
+                error.message
+              : error instanceof Error
+                ? error.message
+                : 'Retry result is unknown. Inspect the physical ticket before sending again.',
           },
         ]);
       }
