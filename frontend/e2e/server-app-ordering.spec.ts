@@ -159,7 +159,10 @@ test.describe('Server App tableside ordering', () => {
     const grid = page.getByTestId('pos-product-grid');
     const search = grid.getByPlaceholder('Search menu');
     await search.fill('E2E Coffee');
-    const coffeeCard = grid.getByTestId('pos-product-card').filter({ hasText: 'E2E Coffee' }).first();
+    const coffeeCard = grid
+      .getByTestId('pos-product-card')
+      .filter({ hasText: 'E2E Coffee' })
+      .first();
     await expect(coffeeCard).toBeVisible();
     await coffeeCard.click();
     await page.getByRole('button', { name: 'Current ticket' }).click();
@@ -245,7 +248,10 @@ test.describe('Server App tableside ordering', () => {
     const grid = page.getByTestId('pos-product-grid');
     const search = grid.getByPlaceholder('Search menu');
     await search.fill('E2E Coffee');
-    const coffeeCard = grid.getByTestId('pos-product-card').filter({ hasText: 'E2E Coffee' }).first();
+    const coffeeCard = grid
+      .getByTestId('pos-product-card')
+      .filter({ hasText: 'E2E Coffee' })
+      .first();
     await expect(coffeeCard).toBeVisible();
     await coffeeCard.click();
     const note = 'Room 12 — guest arrives after sunset';
