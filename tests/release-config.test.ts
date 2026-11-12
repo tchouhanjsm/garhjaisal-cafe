@@ -258,6 +258,8 @@ function run() {
     'electron-builder must support channel update manifests',
   );
   assert.equal(build?.publish?.provider, 'github', 'build.publish must target GitHub releases');
+  assert.equal(build?.publish?.owner, 'tchouhanjsm', 'installed app updates must use this fork owner');
+  assert.equal(build?.publish?.repo, 'garhjaisal-cafe', 'installed app updates must use this fork release repository');
 
   const macTargets = (build?.mac?.target || []).map((target: any) => target.target);
   assert.ok(macTargets.includes('zip'), 'mac build target must include zip for electron-updater');

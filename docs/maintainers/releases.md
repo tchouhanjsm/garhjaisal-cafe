@@ -220,43 +220,48 @@ The candidate gate workflow consumes only a published beta, and only when given 
 candidate manifest asset ID and SHA-256. It verifies propagation and that stable Latest is
 unchanged. It does not publish or promote.
 
-## Local development and restaurant pilot profiles
+## Mac staging and remote production access
 
-Packaged installations keep the existing application data directory and single-instance behavior
-unless an operator deliberately launches a named profile with `FLO_PROFILE`.
+The hotel Windows machine is the authoritative production POS, SQLite database, and printer host.
+The Mac does not keep a second writable production database. The owner uses the Windows-hosted
+dashboard remotely; this avoids two production copies drifting apart.
 
-For local Mac development, use a separate profile name for each independent data set:
+For Mac development and staging, use the dedicated staging profile:
 
 ```sh
-# Development: isolated database, logs, backups and Electron session data
-FLO_PROFILE=development npm start
-
-# Garh Jaisal pilot: separate database, logs, backups and session data
-FLO_PROFILE=garh-jaisal-pilot npm start
+FLO_PROFILE=staging FLO_MATRIX_OFFLINE=1 npm run dev
 ```
 
-The profile is selected before Electron acquires its single-instance lock or initializes logging,
-SQLite, backups, or the local services. Profiles use separate data directories and separate
-single-instance lock names. Names are 1-32 lowercase letters/numbers/hyphens and cannot contain
-path separators. The existing unprofiled launch remains the default and must not be repointed at a
-profile database.
+This creates a local staging database, backups, logs and Electron session data below the staging
+profile's Electron user-data directory, including when Electron is unpackaged. The staging profile
+is created before Electron logging and SQLite initialize. `FLO_MATRIX_OFFLINE=1` keeps optional
+cloud registration, telemetry and update traffic off; orders, KDS, payment and report logic remain
+local. Use synthetic/test menu, staff and transactions. Never import the live restaurant database
+into staging. Unprofiled `npm run dev` retains the existing project-root `flo.db` behavior.
 
-The current local HTTP services still use the established ports (API 3001, KDS 3002, Server App
-3003). The profiles have independent data and process locks, but they are not designed to run
-simultaneously on the same machine because those service ports are shared. Stop one profile before
-starting the other. Do not change ports by ad-hoc shell overrides; port separation needs a coordinated
-server, renderer, discovery and mobile URL contract.
+Use the existing unprofiled packaged install data directory only for a local production install.
+For this rollout, the Mac production workspace should instead open the hotel dashboard through a
+private VPN connection to the Windows host's main web/API service (default local port 3001).
+The dashboard is served by that host, and its API client uses the browser's current origin, so menu
+writes and report reads go to the Windows SQLite database. Use a separate owner login and the
+existing backend permissions. Do not expose port 3001 directly to the public internet.
 
-To start the real restaurant pilot, launch the named profile once and complete first-run setup
-inside it. Configure the restaurant identity, country/currency, accountant-approved tax rules,
-menu, tables, staff and roles there. Do not copy the development database into the pilot profile.
-Use the built-in **Settings → Backup & Restore** workflow to create and verify a pilot backup.
+For Tailscale, keep the web service private to the tailnet and reverse-proxy the Windows loopback
+service using Tailscale Serve with HTTPS. Do not use Funnel. Keep KDS (3002) and the waiter Server
+App (3003) on the hotel LAN; do not publish those endpoints to the internet or tailnet unless an
+explicit operational need and separate access rule are approved. Windows Firewall should continue
+to limit LAN services to the hotel private network.
 
-The release build continues to be versioned by the root `package.json` version and the Windows
-NSIS installer remains part of the existing release workflow. A normal x64 macOS build is not
-evidence that a Windows installer was built or validated; Windows release artifacts must come
-from the Windows release runner and the owner must validate install, upgrade, rollback and
-SmartScreen behavior on the hotel's actual Windows machine.
+The local API, KDS and Server App use ports 3001/3002/3003 by default. The Electron app retains its
+normal single-instance behavior; profile names isolate data, not concurrently running desktop
+processes. Stop the local staging app before launching another local Electron instance.
+
+The updater's GitHub owner/repository must match the repository that receives the release assets.
+This fork publishes its release assets to `tchouhanjsm/garhjaisal-cafe`, and the electron-builder
+configuration embeds that same repository in installed update metadata. One signed/versioned tag
+builds Windows NSIS and macOS DMG/ZIP artifacts from the same source commit. Direct-download
+installations can discover the same stable release; Windows NSIS and macOS direct-download are
+the relevant in-app updater products (Store builds are store-managed).
 
 ## Tag and branch lifecycle
 

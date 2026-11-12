@@ -30,11 +30,17 @@ try {
   );
   const execution = spawnSync(process.execPath, [resolverPath], { encoding: 'utf8' });
   assert.equal(execution.status, 0, execution.stderr || 'profile resolver assertions pass');
-  assert.match(mainSource, /app\.setPath\('userData', localProfileDirectory\)/);
-  assert.match(mainSource, /requestSingleInstanceLock\(singleInstanceLockOptions\)/);
+  const logInitialization = mainSource.indexOf('log.initialize()');
+  const profileSelection = mainSource.indexOf('function resolveLocalProfileName');
+  const profilePathSelection = mainSource.indexOf("app.setPath('userData', profileDirectory)");
+  assert.ok(profileSelection >= 0 && profileSelection < logInitialization, 'profile resolves before log initialization');
+  assert.ok(profilePathSelection >= 0 && profilePathSelection < logInitialization, 'profile userData path is selected before log initialization');
+  assert.match(mainSource, /app\.setPath\('userData', path\.resolve\(process\.env\.FLO_E2E_USER_DATA_DIR\)\)/);
+  assert.match(mainSource, /app\.requestSingleInstanceLock\(\)/);
+  assert.doesNotMatch(mainSource, /singleInstanceLockOptions/, 'do not pretend requestSingleInstanceLock supports a named lock');
   assert.match(mainSource, /FLO_E2E_USER_DATA_DIR/);
   assert.match(mainSource, /FLO_PROFILE/);
-  assert.match(dbSource, /app\.getPath\('userData'\)/);
+  assert.match(dbSource, /const useUserData =[\s\S]*app\.isPackaged[\s\S]*process\.env\.FLO_PROFILE\?\.trim\(\)[\s\S]*process\.env\.FLO_E2E_USER_DATA_DIR/);
   assert.match(dbSource, /export function getBackupDir\(\): string[\s\S]*app\.getPath\('userData'\)/);
   console.log('Local profile isolation contract passed');
 } finally {

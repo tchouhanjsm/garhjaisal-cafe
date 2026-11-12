@@ -618,7 +618,12 @@ export function getDbPath(): string {
     path.basename(path.dirname(__dirname)) === 'dist'
       ? path.resolve(__dirname, '../..')
       : path.resolve(__dirname, '..');
-  const userDataPath = app.isPackaged ? app.getPath('userData') : projectRoot;
+  // Named local profiles and the native E2E harness use Electron userData even
+  // when unpackaged. Keep the legacy project-root DB for unprofiled development.
+  const useUserData =
+    app.isPackaged ||
+    Boolean(process.env.FLO_PROFILE?.trim() || process.env.FLO_E2E_USER_DATA_DIR);
+  const userDataPath = useUserData ? app.getPath('userData') : projectRoot;
   return path.join(userDataPath, 'flo.db');
 }
 
