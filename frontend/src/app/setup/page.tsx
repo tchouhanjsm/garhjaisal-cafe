@@ -37,15 +37,13 @@ import type { ProductAnalyticsLevel } from '@/components/analytics/ProductAnalyt
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useLocale, useTranslations, type AppConfig } from 'use-intl';
 import { LANGUAGES, getBrowserLanguage, type Language } from '@/lib/i18n';
-import { GARH_JAISAL_PROFILE } from '../../../../shared/deployment-profiles';
 import { useConfirm } from '@/hooks/use-confirm';
 import { RESTORE_FROM_FILE_EVENT } from '@/components/layout/MenuActionHandler';
 
-type SetupProfile = 'empty' | 'express' | 'demo' | 'garh-jaisal';
+type SetupProfile = 'empty' | 'express' | 'demo';
 type ServiceModel = 'qsr' | 'finedine';
 
 const SETUP_PROFILES: Array<{ value: SetupProfile; badge?: 'express' | null }> = [
-  { value: 'garh-jaisal' },
   { value: 'empty' },
   { value: 'express', badge: 'express' },
   { value: 'demo' },
@@ -60,11 +58,6 @@ const SETUP_PROFILE_KEYS = {
   empty: { label: 'emptyLabel', desc: 'emptyDesc', details: 'emptyDetails' },
   express: { label: 'expressLabel', desc: 'expressDesc', details: 'expressDetails' },
   demo: { label: 'demoLabel', desc: 'demoDesc', details: 'demoDetails' },
-  'garh-jaisal': {
-    label: 'garhJaisalLabel',
-    desc: 'garhJaisalDesc',
-    details: 'garhJaisalDetails',
-  },
 } as const satisfies Record<SetupProfile, { label: SetupKey; desc: SetupKey; details: SetupKey }>;
 
 const SERVICE_MODEL_KEYS = {
@@ -107,8 +100,8 @@ export default function SetupPage() {
   const [showConfirmMasterPin, setShowConfirmMasterPin] = useState(false);
   const [showApprovalPin, setShowApprovalPin] = useState(false);
   const [showConfirmApprovalPin, setShowConfirmApprovalPin] = useState(false);
-  const [profile, setProfile] = useState<SetupProfile>(GARH_JAISAL_PROFILE.id);
-  const [serviceModel, setServiceModel] = useState<ServiceModel>(GARH_JAISAL_PROFILE.serviceModel);
+  const [profile, setProfile] = useState<SetupProfile>('express');
+  const [serviceModel, setServiceModel] = useState<ServiceModel>('qsr');
   // Wizard language follows shared store to update translations immediately.
   const language = usePosSettingsStore((s) => s.language);
   const setStoreLanguage = usePosSettingsStore((s) => s.setLanguage);
@@ -116,19 +109,19 @@ export default function SetupPage() {
   // No default country: regional settings come only from what the owner
   // selects here (docs/reference/product-invariants.md, "Regional settings come from
   // signup, never from a fallback").
-  const [country, setCountry] = useState<string>(GARH_JAISAL_PROFILE.country);
-  const [currency, setCurrency] = useState<string>(GARH_JAISAL_PROFILE.currency);
+  const [country, setCountry] = useState<string>('');
+  const [currency, setCurrency] = useState<string>('');
   const [countryQuery, setCountryQuery] = useState<string>('');
   // The country profile timezone is only a suggested default, set once a
   // country is chosen below; the owner can override it for multi-timezone countries.
-  const [timezone, setTimezone] = useState<string>(GARH_JAISAL_PROFILE.timezone);
+  const [timezone, setTimezone] = useState<string>('');
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    business_name: GARH_JAISAL_PROFILE.businessName,
-    instagram_handle: GARH_JAISAL_PROFILE.instagramHandle,
+    business_name: '',
+    instagram_handle: '',
   });
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [productUpdates, setProductUpdates] = useState(false);
@@ -145,13 +138,13 @@ export default function SetupPage() {
   const [masterPinAvailable, setMasterPinAvailable] = useState<boolean | null>(null);
   const [masterPin, setMasterPin] = useState('');
   const [masterPinConfirm, setMasterPinConfirm] = useState('');
-  const masterPinValid = /^\d{6}$/.test(masterPin) && masterPin === masterPinConfirm;
+  const masterPinValid = /^\d{4}$/.test(masterPin) && masterPin === masterPinConfirm;
   const [ownerApprovalPin, setOwnerApprovalPin] = useState('');
   const [ownerApprovalPinConfirm, setOwnerApprovalPinConfirm] = useState('');
   const ownerApprovalPinValid =
-    /^\d{6}$/.test(ownerApprovalPin) && ownerApprovalPin === ownerApprovalPinConfirm;
+    /^\d{4,6}$/.test(ownerApprovalPin) && ownerApprovalPin === ownerApprovalPinConfirm;
 
-  const cloudEnabled = profile !== GARH_JAISAL_PROFILE.id;
+  const cloudEnabled = true;
   const [cloudServerUrl, setCloudServerUrl] = useState(DEFAULT_CLOUD_SERVER_URL);
 
   const isPasswordValid = validatePassword;
@@ -381,10 +374,6 @@ export default function SetupPage() {
         password: form.password,
         business_type: 'restaurant',
         business_name: form.business_name || undefined,
-        business_address:
-          profile === GARH_JAISAL_PROFILE.id ? GARH_JAISAL_PROFILE.businessAddress : undefined,
-        business_phone:
-          profile === GARH_JAISAL_PROFILE.id ? GARH_JAISAL_PROFILE.businessPhone : undefined,
         instagram_handle: form.instagram_handle.trim() || undefined,
         setup_profile: profile,
         service_model: serviceModel,
@@ -392,7 +381,7 @@ export default function SetupPage() {
         master_pin: masterPinAvailable ? masterPin : undefined,
         owner_approval_pin: ownerApprovalPin,
         owner_approval_pin_confirmation: ownerApprovalPinConfirm,
-        cloud_sync_enabled: cloudEnabled,
+        cloud_sync_enabled: true,
         cloud_server_url: cloudServerUrl.trim() || DEFAULT_CLOUD_SERVER_URL,
         email_product_updates: productUpdates,
         email_marketing: marketing,
@@ -652,12 +641,12 @@ export default function SetupPage() {
                           type={showMasterPin ? 'text' : 'password'}
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          maxLength={6}
+                          maxLength={4}
                           value={masterPin}
                           onChange={(e) =>
-                            setMasterPin(e.target.value.replace(/\D/g, '').slice(0, 6))
+                            setMasterPin(e.target.value.replace(/\D/g, '').slice(0, 4))
                           }
-                          placeholder="••••••"
+                          placeholder="••••"
                           className="text-center text-lg tracking-[0.5em] pe-10"
                         />
                         <button
@@ -678,12 +667,12 @@ export default function SetupPage() {
                           type={showConfirmMasterPin ? 'text' : 'password'}
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          maxLength={6}
+                          maxLength={4}
                           value={masterPinConfirm}
                           onChange={(e) =>
-                            setMasterPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 6))
+                            setMasterPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4))
                           }
-                          placeholder="••••••"
+                          placeholder="••••"
                           className="text-center text-lg tracking-[0.5em] pe-10"
                         />
                         <button
@@ -715,13 +704,13 @@ export default function SetupPage() {
                           type={showApprovalPin ? 'text' : 'password'}
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          minLength={6}
+                          minLength={4}
                           maxLength={6}
                           value={ownerApprovalPin}
                           onChange={(e) =>
                             setOwnerApprovalPin(e.target.value.replace(/\D/g, '').slice(0, 6))
                           }
-                          placeholder="••••••"
+                          placeholder="••••"
                           className="text-center text-lg tracking-[0.5em] pe-10"
                           required
                         />
@@ -751,7 +740,7 @@ export default function SetupPage() {
                               e.target.value.replace(/\D/g, '').slice(0, 6),
                             )
                           }
-                          placeholder="••••••"
+                          placeholder="••••"
                           className="text-center text-lg tracking-[0.5em] pe-10"
                           required
                         />

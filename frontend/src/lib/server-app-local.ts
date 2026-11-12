@@ -34,6 +34,7 @@ export interface ServerAppPersistedSendAttempt<TLine = unknown> {
     customerName: string;
     customerPhone: string;
     orderNotes: string;
+    roomNumber?: string;
   };
 }
 export interface ServerAppLocalDraft<TLine = unknown> {
@@ -43,6 +44,7 @@ export interface ServerAppLocalDraft<TLine = unknown> {
   customerName: string;
   customerPhone: string;
   orderNotes: string;
+  roomNumber?: string;
   savedAt: string;
   attempt?: ServerAppPersistedSendAttempt<TLine>;
 }
@@ -169,6 +171,7 @@ export function saveServerAppDraft<TLine>(
     !!draft &&
     (draft.draftLines.length > 0 ||
       Boolean(draft.orderNotes.trim()) ||
+      Boolean(draft.roomNumber?.trim()) ||
       Boolean(draft.customerName.trim()) ||
       Boolean(draft.customerPhone.trim()) ||
       Boolean(draft.attempt));
@@ -225,12 +228,14 @@ export function formatServerAppTicketNote(input: {
   customerName?: string;
   customerPhone?: string;
   orderNotes?: string;
+  roomNumber?: string;
   savedAt?: string;
 }): string {
   const lines = [
     'FLO CAFE — WAITER TICKET NOTE',
     `Table: ${input.tableName || input.tableId || 'Not selected'}`,
   ];
+  if (input.roomNumber?.trim()) lines.push(`Room: ${input.roomNumber.trim()}`);
   if (input.customerName?.trim()) lines.push(`Guest: ${input.customerName.trim()}`);
   if (input.customerPhone?.trim()) lines.push(`Phone: ${input.customerPhone.trim()}`);
   if (input.savedAt) lines.push(`Saved: ${input.savedAt}`);

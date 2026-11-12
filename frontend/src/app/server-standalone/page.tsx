@@ -185,6 +185,7 @@ type SendSnapshot = {
   customerName: string;
   customerPhone: string;
   orderNotes: string;
+  roomNumber: string;
 };
 
 function sendAttemptSignature(
@@ -193,9 +194,10 @@ function sendAttemptSignature(
   customerName: string,
   customerPhone: string,
   orderNotes: string,
+  roomNumber: string,
 ): string {
   const items = draft.map((line) => `${line.id}:${line.quantity}`).join('|');
-  return `${tableId}|${items}|${customerName.trim()}|${customerPhone.trim()}|${orderNotes.trim()}`;
+  return `${tableId}|${items}|${customerName.trim()}|${customerPhone.trim()}|${orderNotes.trim()}|${roomNumber.trim()}`;
 }
 
 export default function ServerStandalonePage() {
@@ -237,6 +239,7 @@ export default function ServerStandalonePage() {
   const [query, setQuery] = useState('');
   const [draft, setDraft] = useState<DraftLine[]>([]);
   const [orderNotes, setOrderNotes] = useState('');
+  const [roomNumber, setRoomNumber] = useState('');
   const [addonModalProduct, setAddonModalProduct] = useState<Product | null>(null);
   const [addonModalQuantity, setAddonModalQuantity] = useState(1);
   const [addonModalVariant, setAddonModalVariant] = useState<ProductVariant | null>(null);
@@ -289,6 +292,7 @@ export default function ServerStandalonePage() {
     customerName: '',
     customerPhone: '',
     orderNotes: '',
+    roomNumber: '',
   });
   const suspendedDraftRef = useRef<
     | (typeof liveDraftRef.current & {
@@ -322,6 +326,7 @@ export default function ServerStandalonePage() {
     setCustomerName(localDraft.customerName);
     setCustomerPhone(localDraft.customerPhone);
     setOrderNotes(localDraft.orderNotes);
+    setRoomNumber(localDraft.roomNumber || '');
     if (localDraft.attempt) {
       const restoredAttempt = localDraft.attempt as ServerAppPersistedSendAttempt<DraftLine>;
       sendAttemptRef.current = {
@@ -362,6 +367,7 @@ export default function ServerStandalonePage() {
       customerName: snapshot.customerName,
       customerPhone: snapshot.customerPhone,
       orderNotes: snapshot.orderNotes,
+      roomNumber: snapshot.roomNumber,
       savedAt,
       ...(savedAttempt ? { attempt: savedAttempt } : {}),
     });
@@ -374,8 +380,9 @@ export default function ServerStandalonePage() {
       customerName,
       customerPhone,
       orderNotes,
+      roomNumber,
     };
-  }, [selectedTableId, draft, customerName, customerPhone, orderNotes]);
+  }, [selectedTableId, draft, customerName, customerPhone, orderNotes, roomNumber]);
 
   const loadUser = useCallback(async () => {
     if (!api || sendInFlightRef.current) return;
@@ -518,12 +525,15 @@ export default function ServerStandalonePage() {
       if (pendingAttempt) {
         setCustomerName(pendingAttempt.customerName);
         setCustomerPhone(pendingAttempt.customerPhone);
+        setRoomNumber(pendingAttempt.roomNumber || '');
       } else if (order?.customer) {
+        setRoomNumber(order?.room_number || '');
         setCustomerName(order.customer.name || '');
         setCustomerPhone(order.customer.phone || '');
       } else {
         setCustomerName('');
         setCustomerPhone('');
+        setRoomNumber(order?.room_number || '');
       }
       if (suspended && !sendInFlightRef.current) suspendedDraftRef.current = null;
       setCustomerMatch(null);
@@ -635,6 +645,7 @@ export default function ServerStandalonePage() {
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       orderNotes,
+      roomNumber,
     };
     persistLocalDraft(userId, snapshot, sendAttemptRef.current, getServerAppTimestamp());
   }, [
@@ -652,7 +663,7 @@ export default function ServerStandalonePage() {
     if (!api || user || disabled || loading) return;
     let cancelled = false;
     api
-      .get('/api/auth/pin-users?scope=server-app')
+      .get('/api/auth/pin-users')
       .then((res) => {
         if (!cancelled && Array.isArray(res.data?.users)) {
           setPinUsers(res.data.users);
@@ -723,6 +734,7 @@ export default function ServerStandalonePage() {
       setPassword('');
       setDraft([]);
       setOrderNotes('');
+      setRoomNumber('');
       setCustomerName('');
       setCustomerPhone('');
       setCustomerMatch(null);
@@ -944,6 +956,7 @@ export default function ServerStandalonePage() {
       sendAttemptRef.current?.snapshot.tableId === tableId ? sendAttemptRef.current.snapshot : null;
     setCustomerName(pendingAttempt?.customerName ?? '');
     setCustomerPhone(pendingAttempt?.customerPhone ?? '');
+    setRoomNumber(pendingAttempt?.roomNumber || '');
     setCustomerMatch(null);
     setCustomerSearched(false);
     setSelectedTableId(tableId);
@@ -986,6 +999,7 @@ export default function ServerStandalonePage() {
       setCustomerName(suspended.customerName);
       setCustomerPhone(suspended.customerPhone);
       setOrderNotes(suspended.orderNotes);
+      setRoomNumber(suspended.roomNumber || '');
       sendAttemptRef.current = suspended.attempt;
     } else {
       if (suspended) {
@@ -1004,6 +1018,7 @@ export default function ServerStandalonePage() {
       setCustomerName('');
       setCustomerPhone('');
       setOrderNotes('');
+      setRoomNumber('');
       sendAttemptRef.current = null;
       restoreLocalDraftForUser(loggedInUser.id);
     }
@@ -1058,7 +1073,6 @@ export default function ServerStandalonePage() {
         user_id: selectedPinUser.id,
         pin,
         remember_me: rememberMe,
-        scope: 'server-app',
       });
       applyAuthenticatedSession(res.data.access_token, res.data.user);
     } catch (error: unknown) {
@@ -1408,6 +1422,7 @@ export default function ServerStandalonePage() {
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       orderNotes,
+      roomNumber: roomNumber.trim(),
     };
     // Nonce first via the LAN-safe helper: anything thrown after the
     // sending flag is set sticks the UI on Sending... forever.
@@ -1417,6 +1432,7 @@ export default function ServerStandalonePage() {
       candidateSnapshot.customerName,
       candidateSnapshot.customerPhone,
       candidateSnapshot.orderNotes,
+      candidateSnapshot.roomNumber,
     );
     if (sendAttemptRef.current?.signature !== signature) {
       sendAttemptRef.current = {
@@ -1480,6 +1496,7 @@ export default function ServerStandalonePage() {
             table_id: requestTableId,
             customer_id: customerId,
             type: 'dine_in',
+            room_number: snapshot.roomNumber || undefined,
             special_instructions: specialInstructions,
             items,
           },
@@ -1500,10 +1517,12 @@ export default function ServerStandalonePage() {
           });
           suspended.draft = remaining;
           if (suspended.orderNotes === snapshot.orderNotes) suspended.orderNotes = '';
+          if (suspended.roomNumber === snapshot.roomNumber) suspended.roomNumber = '';
           suspended.attempt = null;
           if (activeUserIdRef.current === requestOwner) {
             setDraft(remaining);
             setOrderNotes(suspended.orderNotes);
+            setRoomNumber(suspended.roomNumber || '');
             if (sendAttemptRef.current?.nonce === nonce) sendAttemptRef.current = null;
           }
         }
@@ -1522,6 +1541,9 @@ export default function ServerStandalonePage() {
         }),
       );
       setOrderNotes((currentNotes) => (currentNotes === snapshot.orderNotes ? '' : currentNotes));
+      setRoomNumber((currentRoom) =>
+        currentRoom === snapshot.roomNumber ? '' : currentRoom,
+      );
       if (selectedTableIdRef.current === snapshot.tableId) {
         setCurrentOrder(rawOrder as unknown as Order);
         orderLoadedTableIdRef.current = snapshot.tableId;
@@ -1648,6 +1670,7 @@ export default function ServerStandalonePage() {
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       orderNotes,
+      roomNumber,
     };
     const saved = persistLocalDraft(user.id, snapshot, attempt, getServerAppTimestamp());
     setLocalDraftSaved(saved);
@@ -2117,8 +2140,19 @@ export default function ServerStandalonePage() {
         )}
       </div>
 
-      {(draft.length > 0 || !browserOnline || hubReachable === false || orderNotes.length > 0) && (
-        <div className="mt-3">
+      {(draft.length > 0 || !browserOnline || hubReachable === false || orderNotes.length > 0 || roomNumber.length > 0) && (
+        <div className="mt-3 space-y-2">
+          <input
+            data-testid="server-app-room-number-input"
+            type="text"
+            value={roomNumber}
+            disabled={sending}
+            onChange={(event) => setRoomNumber(event.target.value.slice(0, 32))}
+            placeholder="Hotel room number (optional)"
+            aria-label="Hotel room number"
+            maxLength={32}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none disabled:opacity-50"
+          />
           <textarea
             value={orderNotes}
             disabled={sending}

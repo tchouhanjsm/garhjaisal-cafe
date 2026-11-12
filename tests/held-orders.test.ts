@@ -83,6 +83,7 @@ async function main() {
         customerId: 1,
         guestCount: 2,
         orderNotes: 'Test Note',
+        roomNumber: '204',
       },
       headers: authHeader,
     });
@@ -107,6 +108,7 @@ async function main() {
     assertEqualOrThrow(held.tableId, tableId, 'Table ID matches');
     assertEqualOrThrow(held.guestCount, 2, 'Guest count matches');
     assertEqualOrThrow(held.orderNotes, 'Test Note', 'Notes match');
+    assertEqualOrThrow(held.roomNumber, '204', 'Room number is retained on held order');
     assertOrThrow(Array.isArray(held.items), 'Items is an array');
     assertEqualOrThrow(held.items[0].product.name, 'Latte', 'Items parsed correctly');
     console.log('  ✓ GET /held-orders retrieves held order');

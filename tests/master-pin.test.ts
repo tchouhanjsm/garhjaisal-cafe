@@ -54,22 +54,22 @@ function main() {
   assert.equal(isMasterPinSet(), false, 'no PIN is set initially');
   console.log('   ✓ starts unset with encryption available');
 
-  setMasterPin('1234');
+  setMasterPin('123456');
   assert.equal(isMasterPinSet(), true, 'PIN is set after setMasterPin');
-  assert.equal(verifyMasterPin('1234'), true, 'correct PIN verifies');
-  assert.equal(verifyMasterPin('9999'), false, 'wrong PIN does not verify');
+  assert.equal(verifyMasterPin('123456'), true, 'correct PIN verifies');
+  assert.equal(verifyMasterPin('999999'), false, 'wrong PIN does not verify');
   console.log('   ✓ setMasterPin() + verifyMasterPin() round-trip correctly');
 
   const rawFile = fs.readFileSync(path.join(testDir, 'master-pin.enc'), 'utf8');
   assert.ok(
-    !rawFile.includes('1234'),
+    !rawFile.includes('123456'),
     'the raw PIN is never stored in plaintext, even under the mock encryptor',
   );
   console.log('   ✓ the stored blob never contains the plaintext PIN');
 
-  resetMasterPin('5678');
-  assert.equal(verifyMasterPin('1234'), false, 'old PIN is invalidated after reset');
-  assert.equal(verifyMasterPin('5678'), true, 'new PIN verifies after reset');
+  resetMasterPin('567890');
+  assert.equal(verifyMasterPin('123456'), false, 'old PIN is invalidated after reset');
+  assert.equal(verifyMasterPin('567890'), true, 'new PIN verifies after reset');
   console.log('   ✓ resetMasterPin() overwrites the old PIN without requiring it');
 
   // ── rate limiting ─────────────────────────────────────────────────────
@@ -82,11 +82,11 @@ function main() {
   console.log('   ✓ checkMasterPinRateLimit() locks out after 5 attempts');
 
   // ── authorizeMasterPin: single entry point ───────────────────────────
-  resetMasterPin('4321'); // fresh blob, unrelated rate-limit key below
-  let result = authorizeMasterPin('4321', 'test:auth-ok');
+  resetMasterPin('432198'); // fresh blob, unrelated rate-limit key below
+  let result = authorizeMasterPin('432198', 'test:auth-ok');
   assert.equal(result.ok, true, 'correct PIN authorizes');
 
-  result = authorizeMasterPin('0000', 'test:auth-bad');
+  result = authorizeMasterPin('000000', 'test:auth-bad');
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.status, 403, 'wrong PIN returns 403');
   console.log('   ✓ authorizeMasterPin() authorizes correct PIN, rejects wrong PIN with 403');
@@ -99,18 +99,18 @@ function main() {
     if (!r.ok) assert.equal(r.status, 403, 'missing PIN returns 403');
   }
   // Now 1 valid PIN attempt on the same key should succeed
-  const validRes = authorizeMasterPin('4321', missingKey);
+  const validRes = authorizeMasterPin('432198', missingKey);
   assert.equal(validRes.ok, true, 'missing PIN calls did not consume rate limit attempts');
   console.log('   ✓ missing/malformed PIN does not consume rate limit attempts');
 
   // 5 wrong attempts lock out key with 429
   const lockoutKey = 'test:lockout';
   for (let i = 0; i < 4; i++) {
-    const r = authorizeMasterPin('0000', lockoutKey);
+    const r = authorizeMasterPin('000000', lockoutKey);
     assert.equal(r.ok, false);
     if (!r.ok) assert.equal(r.status, 403, 'wrong PIN attempt 1-4 returns 403');
   }
-  const r5 = authorizeMasterPin('0000', lockoutKey);
+  const r5 = authorizeMasterPin('000000', lockoutKey);
   assert.equal(r5.ok, false);
   if (!r5.ok) assert.equal(r5.status, 429, '5th wrong PIN attempt returns 429 lockout');
   console.log('   ✓ 5th wrong attempt triggers 429 lockout');
@@ -130,7 +130,7 @@ function main() {
   encryptionAvailable = true;
 
   // ── requireMasterPin middleware: shared IP budget & x-master-pin header ──
-  resetMasterPin('4321');
+  resetMasterPin('432198');
   resetMasterPinRateLimit('master-pin:127.0.0.1');
 
   function runMiddleware(reqOverrides: Record<string, any>) {
@@ -166,7 +166,7 @@ function main() {
   // Accepts x-master-pin header when body has no master_pin
   const headerOk = runMiddleware({
     path: '/download',
-    headers: { 'x-master-pin': '4321' },
+    headers: { 'x-master-pin': '432198' },
     body: undefined,
   });
   assert.equal(headerOk.nextCalled, true, 'requireMasterPin accepts valid x-master-pin header');
@@ -174,7 +174,7 @@ function main() {
   // Never accepts query parameter master_pin
   const queryAttempt = runMiddleware({
     path: '/download',
-    query: { master_pin: '4321' },
+    query: { master_pin: '432198' },
     body: undefined,
   });
   assert.equal(queryAttempt.nextCalled, false, 'requireMasterPin rejects query string master_pin');
@@ -185,24 +185,24 @@ function main() {
 
   // Shared budget across routes, filename params, trailing slashes, casing, and equivalent IPs
   const attempts = [
-    { ip: '127.0.0.1', baseUrl: '/api/db', path: '/backup', body: { master_pin: '0000' } },
+    { ip: '127.0.0.1', baseUrl: '/api/db', path: '/backup', body: { master_pin: '000000' } },
     {
       ip: '::ffff:127.0.0.1',
       baseUrl: '/api/db-tools',
       path: '/initialize/',
-      body: { master_pin: '0000' },
+      body: { master_pin: '000000' },
     },
     {
       ip: '::FFFF:127.0.0.1',
       baseUrl: '/api/db-tools',
       path: '/backups/fake1.db/delete',
-      body: { master_pin: '0000' },
+      body: { master_pin: '000000' },
     },
     {
       ip: '::1',
       baseUrl: '/api/db-tools',
       path: '/BACKUPS/fake2.db/DELETE',
-      headers: { 'x-master-pin': '0000' },
+      headers: { 'x-master-pin': '000000' },
     },
   ];
   for (let i = 0; i < attempts.length; i++) {
@@ -214,7 +214,7 @@ function main() {
     ip: '0:0:0:0:0:0:0:1',
     baseUrl: '/api/db',
     path: '/download',
-    headers: { 'x-master-pin': '0000' },
+    headers: { 'x-master-pin': '000000' },
   });
   assert.equal(fifth.nextCalled, false);
   assert.equal(fifth.statusCode, 429, '5th failed attempt across routes/IPs returns 429');

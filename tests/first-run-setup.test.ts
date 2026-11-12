@@ -217,8 +217,8 @@ async function main() {
         country: 'CA',
         currency: 'CAD',
         timezone: 'America/Vancouver',
-        owner_approval_pin: '5678',
-        owner_approval_pin_confirmation: '5679',
+        owner_approval_pin: '567890',
+        owner_approval_pin_confirmation: '567891',
       }),
     });
     assert.equal(
