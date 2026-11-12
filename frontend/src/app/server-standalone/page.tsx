@@ -399,70 +399,73 @@ export default function ServerStandalonePage() {
     });
   }, [api]);
 
-  const loadAll = useCallback(async (options?: { allowWhileSending?: boolean }) => {
-    if (!api) return;
-    if (sendInFlightRef.current && !options?.allowWhileSending) return;
-    const session = authSessionSeqRef.current;
-    const token = localStorage.getItem(TOKEN_KEY);
-    const ownerId = activeUserIdRef.current;
-    try {
-      const [categoriesRes, productsRes, tablesRes] = await Promise.all([
-        api.get('/api/categories', { params: { active: 'true' } }),
-        api.get('/api/products', { params: { active: 'true' } }),
-        api.get('/api/tables', { params: { active: 'true' } }),
-      ]);
-      if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY))
-          return;
+  const loadAll = useCallback(
+    async (options?: { allowWhileSending?: boolean }) => {
+      if (!api) return;
       if (sendInFlightRef.current && !options?.allowWhileSending) return;
-      const loadedCategories = categoriesRes.data.categories || [];
-      const loadedProducts = productsRes.data.products || [];
-      const loadedTables = tablesRes.data.tables || [];
-      setCategories(loadedCategories);
-      setProducts(loadedProducts);
-      setTables(loadedTables);
-      setTablesLoaded(true);
-      setHubReachable(true);
-      setUsingCachedCatalog(false);
-      if (ownerId) {
-        saveServerAppCatalog(window.localStorage, ownerId, {
-          categories: loadedCategories,
-          products: loadedProducts,
-          tables: loadedTables.map((table: Table) => ({
-            id: table.id,
-            name: table.name,
-            number: table.number,
-            status: table.status,
-            activeOrder: table.activeOrder
-              ? { id: table.activeOrder.id, order_number: table.activeOrder.order_number }
-              : null,
-            current_order: table.current_order
-              ? { id: table.current_order.id, order_number: table.current_order.order_number }
-              : null,
-          })),
-        });
-      }
-      if (!selectedTableIdRef.current && loadedTables[0]) {
-        selectedTableIdRef.current = loadedTables[0].id;
-        setSelectedTableId(loadedTables[0].id);
-      }
-    } catch (error) {
-      setHubReachable(false);
-      const cached = ownerId ? loadServerAppCatalog(window.localStorage, ownerId) : null;
-      if (!cached) throw error;
-      if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY))
+      const session = authSessionSeqRef.current;
+      const token = localStorage.getItem(TOKEN_KEY);
+      const ownerId = activeUserIdRef.current;
+      try {
+        const [categoriesRes, productsRes, tablesRes] = await Promise.all([
+          api.get('/api/categories', { params: { active: 'true' } }),
+          api.get('/api/products', { params: { active: 'true' } }),
+          api.get('/api/tables', { params: { active: 'true' } }),
+        ]);
+        if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY))
           return;
-      setCategories(cached.categories as Category[]);
-      setProducts(cached.products as Product[]);
-      setTables(cached.tables as Table[]);
-      setTablesLoaded(true);
-      setUsingCachedCatalog(true);
-      if (!selectedTableIdRef.current && cached.tables[0]) {
-        const firstTable = cached.tables[0] as Table;
-        selectedTableIdRef.current = firstTable.id;
-        setSelectedTableId(firstTable.id);
+        if (sendInFlightRef.current && !options?.allowWhileSending) return;
+        const loadedCategories = categoriesRes.data.categories || [];
+        const loadedProducts = productsRes.data.products || [];
+        const loadedTables = tablesRes.data.tables || [];
+        setCategories(loadedCategories);
+        setProducts(loadedProducts);
+        setTables(loadedTables);
+        setTablesLoaded(true);
+        setHubReachable(true);
+        setUsingCachedCatalog(false);
+        if (ownerId) {
+          saveServerAppCatalog(window.localStorage, ownerId, {
+            categories: loadedCategories,
+            products: loadedProducts,
+            tables: loadedTables.map((table: Table) => ({
+              id: table.id,
+              name: table.name,
+              number: table.number,
+              status: table.status,
+              activeOrder: table.activeOrder
+                ? { id: table.activeOrder.id, order_number: table.activeOrder.order_number }
+                : null,
+              current_order: table.current_order
+                ? { id: table.current_order.id, order_number: table.current_order.order_number }
+                : null,
+            })),
+          });
+        }
+        if (!selectedTableIdRef.current && loadedTables[0]) {
+          selectedTableIdRef.current = loadedTables[0].id;
+          setSelectedTableId(loadedTables[0].id);
+        }
+      } catch (error) {
+        setHubReachable(false);
+        const cached = ownerId ? loadServerAppCatalog(window.localStorage, ownerId) : null;
+        if (!cached) throw error;
+        if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY))
+          return;
+        setCategories(cached.categories as Category[]);
+        setProducts(cached.products as Product[]);
+        setTables(cached.tables as Table[]);
+        setTablesLoaded(true);
+        setUsingCachedCatalog(true);
+        if (!selectedTableIdRef.current && cached.tables[0]) {
+          const firstTable = cached.tables[0] as Table;
+          selectedTableIdRef.current = firstTable.id;
+          setSelectedTableId(firstTable.id);
+        }
       }
-    }
-  }, [api]);
+    },
+    [api],
+  );
 
   function cancelPendingCustomerLookup() {
     clearTimeout(phoneDebounceRef.current);

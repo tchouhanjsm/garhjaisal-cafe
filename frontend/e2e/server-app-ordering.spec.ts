@@ -84,9 +84,7 @@ test.describe('Server App tableside ordering', () => {
     const { table } = await tableRes.json();
 
     await openServerApp(page, serverToken);
-    await page.waitForFunction(() =>
-      Boolean(navigator.serviceWorker?.controller),
-    );
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller));
     await page.evaluate(() => {
       const testWindow = window as Window & { __copiedManualTemplate?: string };
       Object.defineProperty(navigator, 'clipboard', {
