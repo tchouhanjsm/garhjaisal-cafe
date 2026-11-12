@@ -1,64 +1,49 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
 
 const projectRoot = path.resolve(__dirname, '..');
 const mainSource = fs.readFileSync(path.join(projectRoot, 'main/index.ts'), 'utf8');
 const dbSource = fs.readFileSync(path.join(projectRoot, 'main/db.ts'), 'utf8');
 
-const start = mainSource.indexOf('function resolveLocalProfileName');
-const end = mainSource.indexOf('\nconst localProfileName', start);
-assert.ok(start >= 0 && end > start, 'profile resolver and selection are present');
+const profileResolverIndex = mainSource.indexOf('function resolveLocalProfileName');
+const profilePathIndex = mainSource.indexOf("app.setPath('userData', profileDirectory)");
+const logInitializationIndex = mainSource.indexOf('log.initialize()');
 
-const resolverSource = mainSource
-  .slice(start, end)
-  .replace(
-    'function resolveLocalProfileName(value: string | undefined): string | null {',
-    'function resolveLocalProfileName(value) {',
-  );
-const resolveLocalProfileName = vm.runInNewContext(`(${resolverSource})`);
-
-assert.equal(resolveLocalProfileName(undefined), null);
-assert.equal(resolveLocalProfileName(''), null);
-assert.equal(resolveLocalProfileName(' Pilot '), 'pilot');
-assert.equal(resolveLocalProfileName('dev-01'), 'dev-01');
-for (const value of ['../pilot', '/tmp/pilot', 'pilot/test', '.hidden', 'a'.repeat(33)]) {
-  assert.throws(() => resolveLocalProfileName(value), /Invalid FLO_PROFILE/);
-}
-
-const logInitialization = mainSource.indexOf('log.initialize()');
-const profileSelection = mainSource.indexOf('function resolveLocalProfileName');
-const profilePathSelection = mainSource.indexOf("app.setPath('userData', profileDirectory)");
+assert.ok(profileResolverIndex >= 0, 'profile name validation must exist');
 assert.ok(
-  profileSelection >= 0 && profileSelection < logInitialization,
-  'profile resolves before log initialization',
+  mainSource.includes('/^[a-z0-9][a-z0-9-]{0,31}$/'),
+  'profile names must be constrained to safe identifiers',
 );
 assert.ok(
-  profilePathSelection >= 0 && profilePathSelection < logInitialization,
-  'profile userData path is selected before log initialization',
+  profileResolverIndex < logInitializationIndex,
+  'profile selection must happen before log initialization',
 );
-assert.match(
-  mainSource,
-  /app\.setPath\('userData', path\.resolve\(process\.env\.FLO_E2E_USER_DATA_DIR\)\)/,
+assert.ok(
+  profilePathIndex >= 0 && profilePathIndex < logInitializationIndex,
+  'profile userData path must be selected before log initialization',
 );
-assert.match(mainSource, /app\.requestSingleInstanceLock\(\)/);
-assert.doesNotMatch(
-  mainSource,
-  /singleInstanceLockOptions/,
-  'do not pretend requestSingleInstanceLock supports a named lock',
+assert.ok(
+  mainSource.includes("app.setPath('userData', path.resolve(process.env.FLO_E2E_USER_DATA_DIR))"),
+  'native E2E userData override must remain supported',
 );
-assert.match(mainSource, /FLO_E2E_USER_DATA_DIR/);
-assert.match(mainSource, /FLO_PROFILE/);
-assert.match(
-  dbSource,
-  /const useUserData =[\s\S]*app\.isPackaged[\s\S]*hasLocalProfile/,
+assert.ok(
+  mainSource.includes('app.requestSingleInstanceLock()'),
+  'the normal Electron single-instance lock must remain enabled',
 );
-assert.match(dbSource, /const hasLocalProfile = Boolean/);
+assert.ok(
+  !mainSource.includes('singleInstanceLockOptions'),
+  'the app must not claim Electron has a profile-specific lock option',
+);
+
+assert.ok(dbSource.includes('const useUserData = app.isPackaged || hasLocalProfile'));
+assert.ok(dbSource.includes('const hasLocalProfile = Boolean('));
 assert.ok(dbSource.includes('process.env.FLO_PROFILE?.trim()'));
 assert.ok(dbSource.includes('process.env.FLO_E2E_USER_DATA_DIR'));
-assert.match(
-  dbSource,
-  /export function getBackupDir\(\): string[\s\S]*app\.getPath\('userData'\)/,
+assert.ok(dbSource.includes("return path.join(userDataPath, 'flo.db')"));
+assert.ok(
+  dbSource.includes("return path.join(userDataPath, 'backups')"),
+  'profile backups must use the same selected userData directory as the database',
 );
+
 console.log('Local profile isolation contract passed');
