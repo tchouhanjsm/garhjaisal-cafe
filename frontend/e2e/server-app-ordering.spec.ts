@@ -122,7 +122,9 @@ test.describe('Server App tableside ordering', () => {
     await page.getByPlaceholder('Order notes (optional)').first().fill(note);
 
     await context.setOffline(true);
-    await expect(page.getByTestId('server-app-offline-banner')).toContainText('saved on this phone');
+    await expect(page.getByTestId('server-app-offline-banner')).toContainText(
+      'saved on this phone',
+    );
     await page.getByTestId('server-app-save-offline').click();
     await expect
       .poll(() =>

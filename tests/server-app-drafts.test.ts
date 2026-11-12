@@ -87,6 +87,10 @@ assert.deepEqual(loadServerAppDraft(storage, user.id), draft);
 
 const manualTemplate = formatServerAppManualTicketTemplate('2026-11-12T10:00:00.000Z');
 assert.match(manualTemplate, /STATUS: MANUAL NOTE — NOT SENT TO KITCHEN/);
+assert.ok(
+  manualTemplate.includes('\nTABLE / ROOM:'),
+  'the blank manual ticket is copied as real multiline text',
+);
 assert.match(manualTemplate, /TABLE \/ ROOM/);
 assert.match(manualTemplate, /MODIFIERS/);
 assert.match(manualTemplate, /not a FloCafe order, does not reserve a table, and has not printed/i);

@@ -411,7 +411,8 @@ export default function ServerStandalonePage() {
         api.get('/api/products', { params: { active: 'true' } }),
         api.get('/api/tables', { params: { active: 'true' } }),
       ]);
-      if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY)) return;
+      if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY))
+          return;
       if (sendInFlightRef.current && !options?.allowWhileSending) return;
       const loadedCategories = categoriesRes.data.categories || [];
       const loadedProducts = productsRes.data.products || [];
@@ -448,7 +449,8 @@ export default function ServerStandalonePage() {
       setHubReachable(false);
       const cached = ownerId ? loadServerAppCatalog(window.localStorage, ownerId) : null;
       if (!cached) throw error;
-      if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY)) return;
+      if (session !== authSessionSeqRef.current || token !== localStorage.getItem(TOKEN_KEY))
+          return;
       setCategories(cached.categories as Category[]);
       setProducts(cached.products as Product[]);
       setTables(cached.tables as Table[]);
@@ -567,9 +569,10 @@ export default function ServerStandalonePage() {
             const ownerId = tokenUserId(rememberedToken);
             const canUseLocalSession =
               Boolean(ownerId) && (!window.navigator.onLine || !error.response);
-            const cachedUser = canUseLocalSession && ownerId
-              ? loadServerAppLocalUser(window.localStorage, ownerId)
-              : null;
+            const cachedUser =
+              canUseLocalSession && ownerId
+                ? loadServerAppLocalUser(window.localStorage, ownerId)
+                : null;
             if (!cachedUser) return;
             activeUserIdRef.current = cachedUser.id;
             setUser(cachedUser);
@@ -624,7 +627,16 @@ export default function ServerStandalonePage() {
       orderNotes,
     };
     persistLocalDraft(userId, snapshot, sendAttemptRef.current, getServerAppTimestamp());
-  }, [userId, selectedTableId, tables, currentOrder, draft, customerName, customerPhone, orderNotes]);
+  }, [
+    userId,
+    selectedTableId,
+    tables,
+    currentOrder,
+    draft,
+    customerName,
+    customerPhone,
+    orderNotes,
+  ]);
 
   useEffect(() => {
     if (!api || user || disabled || loading) return;
@@ -1488,7 +1500,8 @@ export default function ServerStandalonePage() {
 
   async function copyTicketNote() {
     const note = formatServerAppTicketNote({
-      tableName: activeTable?.name || (activeTable?.number ? String(activeTable.number) : undefined),
+      tableName:
+        activeTable?.name || (activeTable?.number ? String(activeTable.number) : undefined),
       tableId: selectedTableId,
       draftLines: draft,
       customerName,
@@ -1523,21 +1536,20 @@ export default function ServerStandalonePage() {
     const attempt = sendAttemptRef.current;
     const snapshot: SendSnapshot = {
       tableId: selectedTableId,
-      tableName: activeTable?.name || (activeTable?.number ? String(activeTable.number) : undefined),
+      tableName:
+        activeTable?.name || (activeTable?.number ? String(activeTable.number) : undefined),
       orderId: currentOrder?.id ?? null,
       orderCustomer: currentOrder?.customer ?? null,
       existingItemIds: new Set((currentOrder?.items || []).map((item) => item.id)),
-      draftLines: draft.map((line) => ({ ...line, addons: line.addons.map((addon) => ({ ...addon })) })),
+      draftLines: draft.map((line) => ({
+        ...line,
+        addons: line.addons.map((addon) => ({ ...addon })),
+      })),
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       orderNotes,
     };
-    const saved = persistLocalDraft(
-      user.id,
-      snapshot,
-      attempt,
-      getServerAppTimestamp(),
-    );
+    const saved = persistLocalDraft(user.id, snapshot, attempt, getServerAppTimestamp());
     setLocalDraftSaved(saved);
     if (saved) {
       toast.success('Saved on this phone. It has NOT been sent to the kitchen.');
@@ -2049,14 +2061,20 @@ export default function ServerStandalonePage() {
             : draft.length === 0 && !orderNotes.trim()) ||
           sending
         }
-        data-testid={hubReachable === true && browserOnline ? 'server-app-send-order' : 'server-app-save-offline'}
+        data-testid={
+          hubReachable === true && browserOnline
+            ? 'server-app-send-order'
+            : 'server-app-save-offline'
+        }
         className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand font-semibold text-white disabled:opacity-50"
       >
         {hubReachable === true && browserOnline ? <Send size={17} /> : <Smartphone size={17} />}
         {sending
           ? t('sending')
           : hubReachable === true && browserOnline
-            ? currentOrder ? t('addToOrder') : t('sendToKitchen')
+            ? currentOrder
+              ? t('addToOrder')
+              : t('sendToKitchen')
             : 'Save on this phone — not sent'}
       </button>
     </>
@@ -2117,7 +2135,8 @@ export default function ServerStandalonePage() {
           <div className="min-w-0 flex-1">
             <p className="font-semibold">Offline — this ticket is saved on this phone only.</p>
             <p className="text-xs">
-              It has not reached the Windows hub or kitchen printer. Reconnect and refresh before sending.
+              It has not reached the Windows hub or kitchen printer. Reconnect and refresh before
+              sending.
               {usingCachedCatalog
                 ? ' The menu and table list are the last saved copy; availability may have changed.'
                 : ''}
