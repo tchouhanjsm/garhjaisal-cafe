@@ -442,30 +442,26 @@ async function main() {
         VALUES (?, ?, 'takeaway', 'completed', ?, ?, ?, ?, ?)
       `);
       const olderOrderId = Number(
-        insertOrder
-          .run(
-            'ORD-INSIGHTS-OLDER-BILL',
-            cashierId,
-            300,
-            300,
-            paidOnOct9,
-            paidOnOct9,
-            paidOnOct9,
-          )
-          .lastInsertRowid,
+        insertOrder.run(
+          'ORD-INSIGHTS-OLDER-BILL',
+          cashierId,
+          300,
+          300,
+          paidOnOct9,
+          paidOnOct9,
+          paidOnOct9,
+        ).lastInsertRowid,
       );
       const cohortOrderId = Number(
-        insertOrder
-          .run(
-            'ORD-INSIGHTS-COHORT-BILL',
-            cashierId,
-            100,
-            100,
-            paidOnOct10,
-            paidOnOct10,
-            paidOnOct10,
-          )
-          .lastInsertRowid,
+        insertOrder.run(
+          'ORD-INSIGHTS-COHORT-BILL',
+          cashierId,
+          100,
+          100,
+          paidOnOct10,
+          paidOnOct10,
+          paidOnOct10,
+        ).lastInsertRowid,
       );
       const insertBill = db.prepare(`
         INSERT INTO bills (
@@ -475,30 +471,26 @@ async function main() {
         VALUES (?, ?, ?, ?, 0, 'paid', ?, ?, ?)
       `);
       const olderBillId = Number(
-        insertBill
-          .run(
-            'BILL-INSIGHTS-OLDER',
-            olderOrderId,
-            300,
-            300,
-            paidOnOct9,
-            paidOnOct9,
-            paidOnOct9,
-          )
-          .lastInsertRowid,
+        insertBill.run(
+          'BILL-INSIGHTS-OLDER',
+          olderOrderId,
+          300,
+          300,
+          paidOnOct9,
+          paidOnOct9,
+          paidOnOct9,
+        ).lastInsertRowid,
       );
       const cohortBillId = Number(
-        insertBill
-          .run(
-            'BILL-INSIGHTS-COHORT',
-            cohortOrderId,
-            100,
-            100,
-            paidOnOct10,
-            paidOnOct10,
-            paidOnOct10,
-          )
-          .lastInsertRowid,
+        insertBill.run(
+          'BILL-INSIGHTS-COHORT',
+          cohortOrderId,
+          100,
+          100,
+          paidOnOct10,
+          paidOnOct10,
+          paidOnOct10,
+        ).lastInsertRowid,
       );
       const insertRefund = db.prepare(`
         INSERT INTO refunds (
@@ -553,8 +545,7 @@ async function main() {
         VALUES ('ORD-INSIGHTS-YESTERDAY', ?, 'takeaway', 'completed', 1000, 1000, ?, ?, ?)
       `);
       const yesterdayOrderId = Number(
-        insertYesterdayOrder
-          .run(cashierId, yesterdayPaidAt, yesterdayPaidAt, yesterdayPaidAt)
+        insertYesterdayOrder.run(cashierId, yesterdayPaidAt, yesterdayPaidAt, yesterdayPaidAt)
           .lastInsertRowid,
       );
       db.prepare(`
