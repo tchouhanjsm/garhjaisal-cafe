@@ -22,17 +22,17 @@ const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flo-profile-contract-'));
 const resolverPath = path.join(tempDir, 'resolver.cjs');
 
 try {
-  const resolverScript = String.raw`
-const assert = require('node:assert/strict');
-${resolverSource}
-assert.equal(resolveLocalProfileName(undefined), null);
-assert.equal(resolveLocalProfileName(''), null);
-assert.equal(resolveLocalProfileName(' Pilot '), 'pilot');
-assert.equal(resolveLocalProfileName('dev-01'), 'dev-01');
-for (const value of ['../pilot', '/tmp/pilot', 'pilot/test', '.hidden', 'a'.repeat(33)]) {
-  assert.throws(() => resolveLocalProfileName(value), /Invalid FLO_PROFILE/);
-}
-`;
+  const resolverScript = [
+    "const assert = require('node:assert/strict');",
+    resolverSource,
+    "assert.equal(resolveLocalProfileName(undefined), null);",
+    "assert.equal(resolveLocalProfileName(''), null);",
+    "assert.equal(resolveLocalProfileName(' Pilot '), 'pilot');",
+    "assert.equal(resolveLocalProfileName('dev-01'), 'dev-01');",
+    "for (const value of ['../pilot', '/tmp/pilot', 'pilot/test', '.hidden', 'a'.repeat(33)]) {",
+    "  assert.throws(() => resolveLocalProfileName(value), /Invalid FLO_PROFILE/);",
+    "}",
+  ].join(String.fromCharCode(10));
   fs.writeFileSync(resolverPath, resolverScript);
 
   const execution = spawnSync(process.execPath, [resolverPath], { encoding: 'utf8' });
