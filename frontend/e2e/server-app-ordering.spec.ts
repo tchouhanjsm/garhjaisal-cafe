@@ -84,6 +84,9 @@ test.describe('Server App tableside ordering', () => {
     const { table } = await tableRes.json();
 
     await openServerApp(page, serverToken);
+    await page.waitForFunction(() =>
+      Boolean(navigator.serviceWorker?.controller),
+    );
     await page.evaluate(() => {
       const testWindow = window as Window & { __copiedManualTemplate?: string };
       Object.defineProperty(navigator, 'clipboard', {
@@ -299,12 +302,16 @@ test.describe('Server App tableside ordering', () => {
 
       const header = page.locator('header');
       const refreshButton = header.getByRole('button', { name: 'Refresh' });
+      const manualTemplateButton = header.getByRole('button', {
+        name: 'Copy blank Notes ticket template',
+      });
       const logoutButton = header.getByRole('button', { name: 'Logout' });
       await expect(refreshButton).toBeVisible();
+      await expect(manualTemplateButton).toBeVisible();
       await expect(logoutButton).toBeVisible();
-      await expect(header.getByRole('button')).toHaveCount(2);
+      await expect(header.getByRole('button')).toHaveCount(3);
 
-      for (const button of [refreshButton, logoutButton]) {
+      for (const button of [refreshButton, manualTemplateButton, logoutButton]) {
         const box = await button.boundingBox();
         expect(box).not.toBeNull();
         expect(box!.width).toBeGreaterThanOrEqual(44);

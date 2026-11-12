@@ -93,8 +93,14 @@ assert.ok(
 );
 assert.match(manualTemplate, /TABLE \/ ROOM/);
 assert.match(manualTemplate, /MODIFIERS/);
-assert.match(manualTemplate, /not a FloCafe order, does not reserve a table, and has not printed/i);
-assert.match(manualTemplate, /Verify the table\/current order on the Windows hub, then enter and send once/i);
+assert.match(
+  manualTemplate,
+  /not a FloCafe order, does not reserve a table, and has not printed/i,
+);
+assert.match(
+  manualTemplate,
+  /Verify the table\/current order on the Windows hub, then enter and send once/i,
+);
 
 const note = formatServerAppTicketNote({
   tableName: '1',
