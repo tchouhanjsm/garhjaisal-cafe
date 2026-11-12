@@ -481,7 +481,7 @@ router.post(
             };
           }
 
-          if (!/^\d{4,6}$/.test(rawPin)) {
+          if (!/^\d{6}$/.test(rawPin)) {
             const attemptsRemaining = incrementFailedLogin(pinRateKey);
             recordAuthAudit(db, {
               userId,

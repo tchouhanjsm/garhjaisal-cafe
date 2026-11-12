@@ -316,7 +316,7 @@ router.post('/', requireStaffWrite, authRateLimit(), (req: Request, res: Respons
 
     if (hasNonEmptyPin(pin) && !isValidPin(pin)) {
       captureStaffValidation('fc.backend.staff.create.validation', 'pin_invalid');
-      return res.status(400).json({ error: 'PIN must be between 4 and 6 numeric digits' });
+      return res.status(400).json({ error: 'PIN must be exactly 6 numeric digits' });
     }
 
     const db = getDatabase();

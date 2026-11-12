@@ -53,7 +53,7 @@ export function MasterPinPrompt({ open, mode, title, description, currentPinRequ
     setError(null);
 
     if (mode === 'set' && currentPinRequired && !ACCEPTED_PIN_REGEX.test(currentPin)) {
-      setError(t('pinFourDigits'));
+      setError(t('masterPinCurrentInvalid'));
       return;
     }
     if (!(mode === 'set' ? NEW_PIN_REGEX : ACCEPTED_PIN_REGEX).test(pin)) {

@@ -1065,7 +1065,7 @@ export default function ServerStandalonePage() {
 
   async function handlePinLogin(event?: FormEvent) {
     event?.preventDefault();
-    if (!api || !selectedPinUser || pin.length < 4 || loginLoading) return;
+    if (!api || !selectedPinUser || pin.length < 6 || loginLoading) return;
     setPinError('');
     setLoginLoading(true);
     try {
@@ -1073,6 +1073,7 @@ export default function ServerStandalonePage() {
         user_id: selectedPinUser.id,
         pin,
         remember_me: rememberMe,
+        scope: 'server-app',
       });
       applyAuthenticatedSession(res.data.access_token, res.data.user);
     } catch (error: unknown) {

@@ -205,7 +205,7 @@ function LoginContent() {
 
   const handlePinLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPinUser || pin.length < 4) return;
+    if (!selectedPinUser || pin.length < 6) return;
     setLoading(true);
     setPinError(null);
     try {
@@ -400,7 +400,7 @@ function LoginContent() {
                         setPin(e.target.value.replace(/\D/g, '').slice(0, 6));
                         if (pinError) setPinError(null);
                       }}
-                      placeholder="••••"
+                      placeholder="••••••"
                       className="text-center tracking-widest text-lg font-mono"
                     />
                   </div>

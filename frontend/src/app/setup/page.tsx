@@ -37,13 +37,15 @@ import type { ProductAnalyticsLevel } from '@/components/analytics/ProductAnalyt
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useLocale, useTranslations, type AppConfig } from 'use-intl';
 import { LANGUAGES, getBrowserLanguage, type Language } from '@/lib/i18n';
+import { GARH_JAISAL_PROFILE } from '../../../../shared/deployment-profiles';
 import { useConfirm } from '@/hooks/use-confirm';
 import { RESTORE_FROM_FILE_EVENT } from '@/components/layout/MenuActionHandler';
 
-type SetupProfile = 'empty' | 'express' | 'demo';
+type SetupProfile = 'empty' | 'express' | 'demo' | 'garh-jaisal';
 type ServiceModel = 'qsr' | 'finedine';
 
 const SETUP_PROFILES: Array<{ value: SetupProfile; badge?: 'express' | null }> = [
+  { value: 'garh-jaisal' },
   { value: 'empty' },
   { value: 'express', badge: 'express' },
   { value: 'demo' },
@@ -58,6 +60,11 @@ const SETUP_PROFILE_KEYS = {
   empty: { label: 'emptyLabel', desc: 'emptyDesc', details: 'emptyDetails' },
   express: { label: 'expressLabel', desc: 'expressDesc', details: 'expressDetails' },
   demo: { label: 'demoLabel', desc: 'demoDesc', details: 'demoDetails' },
+  'garh-jaisal': {
+    label: 'garhJaisalLabel',
+    desc: 'garhJaisalDesc',
+    details: 'garhJaisalDetails',
+  },
 } as const satisfies Record<SetupProfile, { label: SetupKey; desc: SetupKey; details: SetupKey }>;
 
 const SERVICE_MODEL_KEYS = {
@@ -100,8 +107,8 @@ export default function SetupPage() {
   const [showConfirmMasterPin, setShowConfirmMasterPin] = useState(false);
   const [showApprovalPin, setShowApprovalPin] = useState(false);
   const [showConfirmApprovalPin, setShowConfirmApprovalPin] = useState(false);
-  const [profile, setProfile] = useState<SetupProfile>('express');
-  const [serviceModel, setServiceModel] = useState<ServiceModel>('qsr');
+  const [profile, setProfile] = useState<SetupProfile>(GARH_JAISAL_PROFILE.id);
+  const [serviceModel, setServiceModel] = useState<ServiceModel>(GARH_JAISAL_PROFILE.serviceModel);
   // Wizard language follows shared store to update translations immediately.
   const language = usePosSettingsStore((s) => s.language);
   const setStoreLanguage = usePosSettingsStore((s) => s.setLanguage);
@@ -109,19 +116,19 @@ export default function SetupPage() {
   // No default country: regional settings come only from what the owner
   // selects here (docs/reference/product-invariants.md, "Regional settings come from
   // signup, never from a fallback").
-  const [country, setCountry] = useState<string>('');
-  const [currency, setCurrency] = useState<string>('');
+  const [country, setCountry] = useState<string>(GARH_JAISAL_PROFILE.country);
+  const [currency, setCurrency] = useState<string>(GARH_JAISAL_PROFILE.currency);
   const [countryQuery, setCountryQuery] = useState<string>('');
   // The country profile timezone is only a suggested default, set once a
   // country is chosen below; the owner can override it for multi-timezone countries.
-  const [timezone, setTimezone] = useState<string>('');
+  const [timezone, setTimezone] = useState<string>(GARH_JAISAL_PROFILE.timezone);
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    business_name: '',
-    instagram_handle: '',
+    business_name: GARH_JAISAL_PROFILE.businessName,
+    instagram_handle: GARH_JAISAL_PROFILE.instagramHandle,
   });
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [productUpdates, setProductUpdates] = useState(false);
@@ -144,7 +151,7 @@ export default function SetupPage() {
   const ownerApprovalPinValid =
     /^\d{4,6}$/.test(ownerApprovalPin) && ownerApprovalPin === ownerApprovalPinConfirm;
 
-  const cloudEnabled = true;
+  const cloudEnabled = profile !== GARH_JAISAL_PROFILE.id;
   const [cloudServerUrl, setCloudServerUrl] = useState(DEFAULT_CLOUD_SERVER_URL);
 
   const isPasswordValid = validatePassword;

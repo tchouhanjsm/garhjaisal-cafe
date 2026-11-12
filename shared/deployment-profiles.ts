@@ -22,14 +22,5 @@ export const GARH_JAISAL_PROFILE = {
   paymentMethods: ['UPI'],
   rolePermissionOverrides: [
     { role: 'manager', permissionId: 'reports.financial.view' },
-    { role: 'server', permissionId: 'pos.use' },
-    { role: 'server', permissionId: 'payments.take' },
-    { role: 'server', permissionId: 'bills.read' },
-    { role: 'server', permissionId: 'bills.generate' },
-    { role: 'server', permissionId: 'bills.print' },
-    { role: 'server', permissionId: 'cash.shifts.view' },
-    { role: 'server', permissionId: 'cash.shifts.open' },
-    { role: 'server', permissionId: 'cash.shifts.close' },
-    { role: 'server', permissionId: 'cash.movements.manage' },
   ],
 } as const;
