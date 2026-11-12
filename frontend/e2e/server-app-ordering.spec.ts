@@ -58,7 +58,9 @@ test.describe('Server App tableside ordering', () => {
     await search.press('Enter');
 
     const note = 'Window seat, birthday';
-    await page.getByPlaceholder('Order notes (optional)').first().fill(note);
+    const ticketNotes = page.getByPlaceholder('Order notes (optional)').last();
+    await expect(ticketNotes).toBeVisible();
+    await ticketNotes.fill(note);
     await page.getByRole('button', { name: 'Send to kitchen' }).first().click();
     await expect(page.getByText('Order sent').first()).toBeVisible();
 
@@ -265,7 +267,9 @@ test.describe('Server App tableside ordering', () => {
     await expect(page.getByTestId('server-app-offline-banner')).toContainText(
       'saved on this phone',
     );
-    await page.getByTestId('server-app-save-offline').click();
+    const saveOffline = page.getByTestId('server-app-save-offline').last();
+    await expect(saveOffline).toBeVisible();
+    await saveOffline.click();
     await expect
       .poll(() =>
         page.evaluate(() => {
@@ -282,8 +286,11 @@ test.describe('Server App tableside ordering', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('server-app-offline-banner')).toBeVisible();
     await page.getByRole('button', { name: 'Current ticket' }).click();
-    await expect(page.getByPlaceholder('Order notes (optional)').first()).toHaveValue(note);
-    await expect(page.getByTestId('server-app-copy-ticket-note')).toBeVisible();
+    const restoredTicketNotes = page.getByPlaceholder('Order notes (optional)').last();
+    await expect(restoredTicketNotes).toBeVisible();
+    await expect(restoredTicketNotes).toHaveValue(note);
+    const copyTicketNote = page.getByTestId('server-app-copy-ticket-note').last();
+    await expect(copyTicketNote).toBeVisible();
 
     // Verify the emergency Notes handoff copies a clearly unsent ticket, not an
     // order confirmation. The clipboard is stubbed so this assertion is deterministic.
@@ -298,7 +305,7 @@ test.describe('Server App tableside ordering', () => {
         },
       });
     });
-    await page.getByTestId('server-app-copy-ticket-note').click();
+    await copyTicketNote.click();
     await expect
       .poll(() =>
         page.evaluate(
@@ -322,8 +329,10 @@ test.describe('Server App tableside ordering', () => {
 
     await context.setOffline(false);
     await page.getByRole('button', { name: 'Refresh' }).click();
-    await expect(page.getByTestId('server-app-send-order')).toBeEnabled();
-    await page.getByTestId('server-app-send-order').click();
+    const sendRestoredTicket = page.getByTestId('server-app-send-order').last();
+    await expect(sendRestoredTicket).toBeVisible();
+    await expect(sendRestoredTicket).toBeEnabled();
+    await sendRestoredTicket.click();
     await expect(page.getByText('Order sent').first()).toBeVisible();
 
     const afterSend = await page.request.get(`${E2E_BASE_URL}/api/orders`, {
