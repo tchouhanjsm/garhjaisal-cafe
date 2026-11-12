@@ -66,8 +66,7 @@ try {
     /const useUserData =[\s\S]*app\.isPackaged[\s\S]*hasLocalProfile/,
   );
   assert.match(dbSource, /const hasLocalProfile = Boolean/);
-  assert.match(dbSource, /process\.env\.FLO_E2E_USER_DATA_DIR/);
-  assert.match(dbSource, /process\\.env\\.FLO_E2E_USER_DATA_DIR/);
+  assert.ok(dbSource.includes('process.env.FLO_E2E_USER_DATA_DIR'));
   assert.match(
     dbSource,
     /export function getBackupDir\(\): string[\s\S]*app\.getPath\('userData'\)/,
