@@ -160,6 +160,8 @@ const isMsixBuild =
 const isStoreBuild = isMasBuild || isMsixBuild;
 const UNPACKED_DEV_MARKER = 'flo-unpacked-dev.marker';
 
+let gotSingleInstanceLock = false;
+
 // Select an isolated local profile before any service, log file, database, backup,
 // or single-instance lock is initialized. The default install path is unchanged.
 // Profile names are deliberately constrained to a short safe identifier; callers
@@ -805,8 +807,6 @@ function requestRuntimeRelaunch(reason: string): void {
 const requestRuntimeRelaunchOnce = createRelaunchGate(requestRuntimeRelaunch);
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-
-let gotSingleInstanceLock = false;
 
 if (!gotSingleInstanceLock) {
   console.log('[Lock] Another instance is already running. Quitting.');
