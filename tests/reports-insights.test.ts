@@ -39,6 +39,8 @@ const {
   closeDatabase,
   now,
   localDateInTimezone,
+  dayBoundsInTimezone,
+  tenantBusinessDayStartTime,
   parseDbTimestamp,
 } = require('../main/db');
 const { getJWTSecret } = require('../main/routes/auth');
@@ -427,6 +429,143 @@ async function main() {
 
     console.log('\n3. AOV');
     assertEqual(body.aov, 150, 'AOV is (100+200)/2 = 150');
+
+    console.log('\n3a. AOV uses the paid-bill cohort, not refunds issued during the report window');
+    {
+      const paidOnOct9 = dbTimestamp(new Date('2026-10-09T06:00:00.000Z'));
+      const paidOnOct10 = dbTimestamp(new Date('2026-10-10T06:00:00.000Z'));
+      const refundedOnOct10 = dbTimestamp(new Date('2026-10-10T07:00:00.000Z'));
+      const refundedOnOct11 = dbTimestamp(new Date('2026-10-11T07:00:00.000Z'));
+      const insertOrder = db.prepare(`
+        INSERT INTO orders (
+          order_number, user_id, type, status, subtotal, total,
+          created_at, updated_at, completed_at
+        )
+        VALUES (?, ?, 'takeaway', 'completed', ?, ?, ?, ?, ?)
+      `);
+      const olderOrderId = Number(
+        insertOrder.run(
+          'ORD-INSIGHTS-OLDER-BILL',
+          cashierId,
+          300,
+          300,
+          paidOnOct9,
+          paidOnOct9,
+          paidOnOct9,
+        ).lastInsertRowid,
+      );
+      const cohortOrderId = Number(
+        insertOrder.run(
+          'ORD-INSIGHTS-COHORT-BILL',
+          cashierId,
+          100,
+          100,
+          paidOnOct10,
+          paidOnOct10,
+          paidOnOct10,
+        ).lastInsertRowid,
+      );
+      const insertBill = db.prepare(`
+        INSERT INTO bills (
+          bill_number, order_id, total, paid_amount, balance, payment_status,
+          paid_at, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, 0, 'paid', ?, ?, ?)
+      `);
+      const olderBillId = Number(
+        insertBill.run(
+          'BILL-INSIGHTS-OLDER',
+          olderOrderId,
+          300,
+          300,
+          paidOnOct9,
+          paidOnOct9,
+          paidOnOct9,
+        ).lastInsertRowid,
+      );
+      const cohortBillId = Number(
+        insertBill.run(
+          'BILL-INSIGHTS-COHORT',
+          cohortOrderId,
+          100,
+          100,
+          paidOnOct10,
+          paidOnOct10,
+          paidOnOct10,
+        ).lastInsertRowid,
+      );
+      const insertRefund = db.prepare(`
+        INSERT INTO refunds (
+          bill_id, order_item_id, amount_cents, method, reason, shift_id,
+          approved_by, created_by, created_at
+        )
+        VALUES (?, NULL, ?, 'cash', ?, NULL, ?, ?, ?)
+      `);
+      // This refund was issued inside Oct 10 but belongs to an Oct 9 paid bill.
+      insertRefund.run(
+        olderBillId,
+        20_000,
+        'Refund issued during report day',
+        ownerId,
+        ownerId,
+        refundedOnOct10,
+      );
+      // This refund was issued on Oct 11 but belongs to the Oct 10 paid-bill cohort.
+      insertRefund.run(
+        cohortBillId,
+        5_000,
+        'Refund issued after sale day',
+        ownerId,
+        ownerId,
+        refundedOnOct11,
+      );
+
+      const cohortReport = await request(app)
+        .get('/api/reports/insights?start_date=2026-10-10&end_date=2026-10-10')
+        .set('Authorization', `Bearer ${ownerToken}`);
+      assertEqual(cohortReport.status, 200, 'explicit paid-bill cohort report returns 200');
+      assertEqual(
+        cohortReport.body.aov,
+        50,
+        'Oct 10 AOV is ₹100 paid less ₹50 refunded on its bill cohort; ' +
+          'the Oct 9 bill refund is excluded',
+      );
+    }
+
+    console.log('\n3b. days=1 includes today and excludes yesterday');
+    {
+      const businessStart = tenantBusinessDayStartTime(db);
+      const todayLocal = localDateInTimezone(new Date(), 'Asia/Kolkata', businessStart);
+      const yesterdayValue = new Date(todayLocal + 'T00:00:00.000Z');
+      yesterdayValue.setUTCDate(yesterdayValue.getUTCDate() - 1);
+      const yesterdayDate = yesterdayValue.toISOString().slice(0, 10);
+      const yesterdayPaidAt = dayBoundsInTimezone(yesterdayDate, 'Asia/Kolkata', businessStart)[0];
+      const insertYesterdayOrder = db.prepare(`
+        INSERT INTO orders (
+          order_number, user_id, type, status, subtotal, total,
+          created_at, updated_at, completed_at
+        )
+        VALUES ('ORD-INSIGHTS-YESTERDAY', ?, 'takeaway', 'completed', 1000, 1000, ?, ?, ?)
+      `);
+      const yesterdayOrderId = Number(
+        insertYesterdayOrder.run(cashierId, yesterdayPaidAt, yesterdayPaidAt, yesterdayPaidAt)
+          .lastInsertRowid,
+      );
+      db.prepare(`
+        INSERT INTO bills (
+          bill_number, order_id, total, paid_amount, balance, payment_status,
+          paid_at, created_at, updated_at
+        )
+        VALUES ('BILL-INSIGHTS-YESTERDAY', ?, 1000, 1000, 0, 'paid', ?, ?, ?)
+      `).run(yesterdayOrderId, yesterdayPaidAt, yesterdayPaidAt, yesterdayPaidAt);
+
+      const oneDayReport = await request(app)
+        .get('/api/reports/insights?days=1')
+        .set('Authorization', `Bearer ${ownerToken}`);
+      assertEqual(oneDayReport.status, 200, 'one-day rolling report returns 200');
+      assertEqual(oneDayReport.body.windowDays, 1, 'days=1 reports exactly one business date');
+      assertEqual(oneDayReport.body.aov, 150, 'days=1 AOV excludes yesterday paid bills');
+    }
 
     console.log('\n4. Avg prep time');
     assertEqual(body.avgPrepTimeMinutes, 15, 'avg prep time is (10+20)/2 = 15 minutes');
