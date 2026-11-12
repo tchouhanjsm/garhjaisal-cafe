@@ -220,6 +220,44 @@ The candidate gate workflow consumes only a published beta, and only when given 
 candidate manifest asset ID and SHA-256. It verifies propagation and that stable Latest is
 unchanged. It does not publish or promote.
 
+## Local development and restaurant pilot profiles
+
+Packaged installations keep the existing application data directory and single-instance behavior
+unless an operator deliberately launches a named profile with `FLO_PROFILE`.
+
+For local Mac development, use a separate profile name for each independent data set:
+
+```sh
+# Development: isolated database, logs, backups and Electron session data
+FLO_PROFILE=development npm start
+
+# Garh Jaisal pilot: separate database, logs, backups and session data
+FLO_PROFILE=garh-jaisal-pilot npm start
+```
+
+The profile is selected before Electron acquires its single-instance lock or initializes logging,
+SQLite, backups, or the local services. Profiles use separate data directories and separate
+single-instance lock names. Names are 1-32 lowercase letters/numbers/hyphens and cannot contain
+path separators. The existing unprofiled launch remains the default and must not be repointed at a
+profile database.
+
+The current local HTTP services still use the established ports (API 3001, KDS 3002, Server App
+3003). The profiles have independent data and process locks, but they are not designed to run
+simultaneously on the same machine because those service ports are shared. Stop one profile before
+starting the other. Do not change ports by ad-hoc shell overrides; port separation needs a coordinated
+server, renderer, discovery and mobile URL contract.
+
+To start the real restaurant pilot, launch the named profile once and complete first-run setup
+inside it. Configure the restaurant identity, country/currency, accountant-approved tax rules,
+menu, tables, staff and roles there. Do not copy the development database into the pilot profile.
+Use the built-in **Settings → Backup & Restore** workflow to create and verify a pilot backup.
+
+The release build continues to be versioned by the root `package.json` version and the Windows
+NSIS installer remains part of the existing release workflow. A normal x64 macOS build is not
+evidence that a Windows installer was built or validated; Windows release artifacts must come
+from the Windows release runner and the owner must validate install, upgrade, rollback and
+SmartScreen behavior on the hotel's actual Windows machine.
+
 ## Tag and branch lifecycle
 
 Beta-prep branches are temporary working branches. Release tags and GitHub Releases are the

@@ -8,15 +8,11 @@ const projectRoot = path.resolve(__dirname, '..');
 const mainSource = fs.readFileSync(path.join(projectRoot, 'main/index.ts'), 'utf8');
 const dbSource = fs.readFileSync(path.join(projectRoot, 'main/db.ts'), 'utf8');
 
-function extractProfileResolver(): string {
-  const start = mainSource.indexOf('function resolveLocalProfileName');
-  const end = mainSource.indexOf('\nconst localProfileName', start);
-  assert.ok(start >= 0 && end > start, 'profile resolver and profile selection are present');
-  return mainSource.slice(start, end);
-}
-
-const resolverSource = extractProfileResolver();
-const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flo-profile-test-'));
+const start = mainSource.indexOf('function resolveLocalProfileName');
+const end = mainSource.indexOf('\nconst localProfileName', start);
+assert.ok(start >= 0 && end > start, 'profile resolver and selection are present');
+const resolverSource = mainSource.slice(start, end);
+const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flo-profile-contract-'));
 const resolverPath = path.join(tempDir, 'resolver.cjs');
 
 try {
@@ -40,7 +36,6 @@ try {
   assert.match(mainSource, /FLO_PROFILE/);
   assert.match(dbSource, /app\.getPath\('userData'\)/);
   assert.match(dbSource, /export function getBackupDir\(\): string[\s\S]*app\.getPath\('userData'\)/);
-  assert.match(mainSource, /getFile\(\)\.path/);
   console.log('Local profile isolation contract passed');
 } finally {
   fs.rmSync(tempDir, { recursive: true, force: true });

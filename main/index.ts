@@ -788,15 +788,16 @@ function resolveLocalProfileName(value: string | undefined): string | null {
 }
 
 const localProfileName = resolveLocalProfileName(process.env.FLO_PROFILE);
+const defaultUserDataPath = app.getPath('userData');
 const localProfileDirectory = localProfileName
-  ? path.join(app.getPath('userData'), 'profiles', localProfileName)
+  ? path.join(defaultUserDataPath, 'profiles', localProfileName)
   : null;
 
 if (process.env.FLO_E2E_USER_DATA_DIR) {
   // Native E2E continues to own its explicit disposable directory.
   app.setPath('userData', path.resolve(process.env.FLO_E2E_USER_DATA_DIR));
 } else if (localProfileDirectory) {
-  // app.setPath also scopes Electron session data and electron-log's default file path.
+  // app.setPath scopes Electron session data and electron-log's file path too.
   fs.mkdirSync(localProfileDirectory, { recursive: true });
   app.setPath('userData', localProfileDirectory);
 } else if (process.platform === 'linux') {
