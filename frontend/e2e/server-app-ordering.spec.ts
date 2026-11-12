@@ -16,7 +16,16 @@ async function openServerApp(page: Page, serverToken: string): Promise<void> {
     },
     [TOKEN_KEY, serverToken],
   );
+  // The standalone Server App owns its service-worker registration. Wait for
+  // activation before reloading so the reloaded page is actually controlled.
+  await page.evaluate(async () => {
+    if (!('serviceWorker' in navigator)) {
+      throw new Error('Service workers are unavailable in this browser context');
+    }
+    await navigator.serviceWorker.ready;
+  });
   await page.reload();
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller));
 }
 
 test.describe('Server App tableside ordering', () => {
@@ -147,10 +156,15 @@ test.describe('Server App tableside ordering', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openServerApp(page, serverToken);
     await page.getByRole('button', { name: new RegExp(tableName) }).click();
-    const search = page.getByTestId('pos-product-grid').getByPlaceholder('Search menu');
+    const grid = page.getByTestId('pos-product-grid');
+    const search = grid.getByPlaceholder('Search menu');
     await search.fill('E2E Coffee');
-    await search.press('Enter');
-    await page.getByRole('button', { name: 'Send to kitchen' }).first().click();
+    const coffeeCard = grid.getByTestId('pos-product-card').filter({ hasText: 'E2E Coffee' }).first();
+    await expect(coffeeCard).toBeVisible();
+    await coffeeCard.click();
+    const sendOrder = page.getByTestId('server-app-send-order');
+    await expect(sendOrder).toBeEnabled();
+    await sendOrder.click();
     await expect(page.getByText('Order sent').first()).toBeVisible();
 
     const recovery = page.getByTestId('kot-dispatch-recovery-modal');
@@ -226,9 +240,12 @@ test.describe('Server App tableside ordering', () => {
 
     await expect(page.getByRole('button', { name: new RegExp(tableName) })).toBeVisible();
     await page.getByRole('button', { name: new RegExp(tableName) }).click();
-    const search = page.getByTestId('pos-product-grid').getByPlaceholder('Search menu');
+    const grid = page.getByTestId('pos-product-grid');
+    const search = grid.getByPlaceholder('Search menu');
     await search.fill('E2E Coffee');
-    await search.press('Enter');
+    const coffeeCard = grid.getByTestId('pos-product-card').filter({ hasText: 'E2E Coffee' }).first();
+    await expect(coffeeCard).toBeVisible();
+    await coffeeCard.click();
     const note = 'Room 12 — guest arrives after sunset';
     await page.getByPlaceholder('Order notes (optional)').first().fill(note);
 
