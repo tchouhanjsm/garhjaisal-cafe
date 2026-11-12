@@ -363,8 +363,7 @@ export default function ServerStandalonePage() {
       savedAt,
       ...(savedAttempt ? { attempt: savedAttempt } : {}),
     });
-    setLocalDraftSaved(saved && hasWork);
-    return saved;
+    return saved && (!hasWork || saved);
   }
 
   useEffect(() => {
@@ -1322,13 +1321,13 @@ export default function ServerStandalonePage() {
     }
     const activeAttempt = sendAttemptRef.current;
     if (activeAttempt) {
-      persistLocalDraft(
+      const savedLocally = persistLocalDraft(
         requestOwner,
         activeAttempt.snapshot,
         activeAttempt,
         getServerAppTimestamp(),
       );
-      setLocalDraftSaved(true);
+      setLocalDraftSaved(savedLocally);
     }
     const { nonce, snapshot } = sendAttemptRef.current;
     const requestTableId = snapshot.requestTableId ?? snapshot.tableId;

@@ -159,9 +159,9 @@ handheld order-entry clients; they do not need a separate printer connection.
    Windows computer's LAN address in the router, allow FloCafe through Windows Defender
    Firewall on **Private networks**, and avoid guest Wi-Fi/client isolation. Do not expose the
    Server App port directly to the public internet.
-3. Sign in on each phone with a staff account that has Server App permissions. In Chrome on
-   Android, use **Install app / Add to Home screen**; on iPhone, use Safari's **Add to Home
-   Screen**. Keep the Windows hub awake while orders are being taken.
+3. Sign in on each phone with that staff member's Server App PIN/account and required
+   permissions. In Chrome on Android, use **Install app / Add to Home screen**; on iPhone,
+   use Safari's **Add to Home Screen**. Keep the Windows hub awake while orders are being taken.
 4. In **Settings > Printers**, configure the Windows receipt/KOT printer. For a 58 mm mini
    thermal roll, select the **Generic ESC/POS 58mm** profile and start with **32 columns**.
    For an 80 mm roll, select the matching 80 mm profile and its default width. Use **Test
@@ -296,31 +296,6 @@ If printing still fails:
 
 The printer endpoints are in the [API reference](reference/api.md). They cover configured printers,
 detection, supported profiles, test printing, receipt printing, and kitchen tickets.
-
-## Windows hub and phone waiter workflow
-
-For a small hotel using a Windows counter PC and staff phones, keep the Windows PC as the local
-hub and printer host. The phones do not need to pair with the mini printer individually.
-
-1. Install and start FloCafe on the Windows PC. Keep it on the hotel's private Wi-Fi/LAN during
-   service; do not expose local API or printer ports to a public network.
-2. Enable **Server App** in Settings. Open its connection panel on the Windows PC and scan the QR
-   code from each phone while connected to the same private network.
-3. Sign in on each phone with that staff member's own Server App PIN. Choose **Add to Home Screen /
-   Install** so the separate **Flo Server** icon opens directly into tableside ordering. Open it
-   once while online to cache the app shell and current menu.
-4. Staff select a table, add items and modifiers, enter guest details or order notes, then tap
-   **Send to kitchen**. The phone sends the order to the Windows hub; configured KOT station routing
-   sends the ticket to the printer connected to, or reachable by, that hub.
-5. If Wi-Fi or the Windows hub becomes unreachable, the phone keeps the working ticket in that
-   staff member's local browser storage. The screen must say **not sent**; staff can copy the
-   formatted ticket note into the phone's Notes app or share it. Reconnect, refresh, review the
-   ticket, and explicitly send it. Saving offline never creates an order or claims that the kitchen
-   received a ticket. Do not clear browser data or uninstall the app while an unsent ticket remains.
-
-The local ticket is a recovery copy, not the system of record. The Windows database remains
-authoritative for orders, payments, kitchen status, and end-of-day reports. A paper notebook remains
-the fallback if the phone itself is unavailable.
 
 ## Choosing mini-printer paper width
 
