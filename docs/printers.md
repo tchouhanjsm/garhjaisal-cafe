@@ -147,6 +147,53 @@ the station list, and print on the default kitchen printer.
 KOT printing can be disabled for the business. When it is disabled, neither automatic nor manual KOT
 print requests are sent.
 
+## Windows hub and phone waiter workflow
+
+Use the Windows computer as the restaurant's local hub and printer host. Staff phones are
+handheld order-entry clients; they do not need a separate printer connection.
+
+1. On Windows, start FloCafe and enable **Server App** in Settings. Open **Settings > Mobile
+   Access** and scan the displayed QR code from each staff phone. The QR points to the
+   Windows computer's local network address and the configured Server App port.
+2. Keep the Windows computer and phones on the same trusted private Wi-Fi/LAN. Reserve the
+   Windows computer's LAN address in the router, allow FloCafe through Windows Defender
+   Firewall on **Private networks**, and avoid guest Wi-Fi/client isolation. Do not expose the
+   Server App port directly to the public internet.
+3. Sign in on each phone with a staff account that has Server App permissions. In Chrome on
+   Android, use **Install app / Add to Home screen**; on iPhone, use Safari's **Add to Home
+   Screen**. Keep the Windows hub awake while orders are being taken.
+4. In **Settings > Printers**, configure the Windows receipt/KOT printer. For a 58 mm mini
+   thermal roll, select the **Generic ESC/POS 58mm** profile and start with **32 columns**.
+   For an 80 mm roll, select the matching 80 mm profile and its default width. Use **Test
+   Print** and send a sample KOT before service; change the column count only when the sample
+   proves that the hardware's printable area supports it.
+5. Under **Settings > Operations > Kitchen Stations**, route menu categories to the right
+   printer. The Windows hub dispatches each phone's KOT to the configured station printer.
+   Staff should use the **Send to kitchen** action once and wait for confirmation before
+   tapping again.
+
+### When the phone loses Wi-Fi or the Windows hub is unavailable
+
+- The Server App can reopen its cached shell and, when previously loaded, the last saved
+  catalog/table snapshot. The table availability in that snapshot may be stale.
+- Staff can continue building a ticket and choose **Save on this phone — not sent**. The
+  draft is stored in that phone's browser storage for the signed-in staff account only.
+- Use **Copy ticket note to this device** to copy/share a plain-text ticket into Notes or the
+  phone's share sheet. The note is explicitly marked **NOT SENT TO KITCHEN**.
+- A locally saved or copied ticket is not an order in FloCafe, does not reserve the table,
+  and has not printed. Tell the kitchen verbally or hand over the note according to the
+  restaurant's manual contingency process; never mark it as accepted by the system.
+- When the network returns, reconnect to the same Windows hub and press **Refresh**. Confirm
+  the table is still available or inspect the current order before sending. Send the saved
+  draft once; the app preserves the send-attempt identity to protect against a lost response.
+  If the table/order has changed, resolve that with the front desk before sending.
+- Do not re-key or resend a ticket that the hub already confirmed. For an uncertain printer
+  result, inspect the physical ticket first.
+
+The intended operating model is **Windows hub = source of truth and printer host; phone =
+tableside order capture; local phone draft/Notes = clearly marked emergency fallback only**.
+The app does not silently queue offline tickets for later kitchen dispatch.
+
 ## Troubleshooting
 
 ### Quick checks

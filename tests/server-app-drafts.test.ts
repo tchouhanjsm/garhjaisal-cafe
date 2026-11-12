@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   formatServerAppTicketNote,
+  getServerAppTimestamp,
   loadServerAppCatalog,
   loadServerAppDraft,
   loadServerAppLocalUser,
@@ -26,6 +27,11 @@ class MemoryStorage {
 }
 
 const storage = new MemoryStorage();
+assert.match(
+  getServerAppTimestamp(),
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+  'the Server App timestamp helper returns a UTC ISO timestamp',
+);
 const user = {
   id: 'staff-1',
   name: 'Waiter One',

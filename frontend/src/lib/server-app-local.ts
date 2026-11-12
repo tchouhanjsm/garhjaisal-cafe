@@ -1,3 +1,7 @@
+export function getServerAppTimestamp(): string {
+  return new Date().toISOString();
+}
+
 export interface ServerAppLocalStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;

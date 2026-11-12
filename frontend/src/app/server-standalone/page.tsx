@@ -57,6 +57,7 @@ import type {
 import { cartItemToOrderItem } from '@/lib/cart-order-item';
 import {
   formatServerAppTicketNote,
+  getServerAppTimestamp,
   loadServerAppCatalog,
   loadServerAppDraft,
   loadServerAppLocalUser,
@@ -90,7 +91,7 @@ type Order = {
   table_id?: string | null;
   status: string;
   items?: OrderItem[];
-  customer?: { id: string; name: string; phone?: string } | null;
+  customer?: { id?: string; name: string; phone?: string } | null;
 };
 type DraftLine = CartItem;
 type ServerAppInfo = {
@@ -314,14 +315,14 @@ export default function ServerStandalonePage() {
     setCustomerPhone(localDraft.customerPhone);
     setOrderNotes(localDraft.orderNotes);
     if (localDraft.attempt) {
-      const saved = localDraft.attempt as ServerAppPersistedSendAttempt<DraftLine>;
+      const restoredAttempt = localDraft.attempt as ServerAppPersistedSendAttempt<DraftLine>;
       sendAttemptRef.current = {
-        signature: saved.signature,
-        nonce: saved.nonce,
+        signature: restoredAttempt.signature,
+        nonce: restoredAttempt.nonce,
         snapshot: {
-          ...saved.snapshot,
+          ...restoredAttempt.snapshot,
           existingItemIds: new Set(
-            saved.snapshot.existingItemIds.map(Number).filter(Number.isFinite),
+            restoredAttempt.snapshot.existingItemIds.map(Number).filter(Number.isFinite),
           ),
         },
       };
@@ -346,6 +347,12 @@ export default function ServerStandalonePage() {
           },
         }
       : undefined;
+    const hasWork =
+      snapshot.draftLines.length > 0 ||
+      Boolean(snapshot.orderNotes.trim()) ||
+      Boolean(snapshot.customerName.trim()) ||
+      Boolean(snapshot.customerPhone.trim()) ||
+      Boolean(savedAttempt);
     const saved = saveServerAppDraft(window.localStorage, ownerId, {
       tableId: snapshot.tableId,
       tableName: snapshot.tableName,
@@ -356,6 +363,8 @@ export default function ServerStandalonePage() {
       savedAt,
       ...(savedAttempt ? { attempt: savedAttempt } : {}),
     });
+    setLocalDraftSaved(saved && hasWork);
+    return saved;
   }
 
   useEffect(() => {
@@ -621,7 +630,7 @@ export default function ServerStandalonePage() {
       customerPhone: customerPhone.trim(),
       orderNotes,
     };
-    persistLocalDraft(userId, snapshot, sendAttemptRef.current, new Date().toISOString());
+    persistLocalDraft(userId, snapshot, sendAttemptRef.current, getServerAppTimestamp());
   }, [userId, selectedTableId, tables, currentOrder, draft, customerName, customerPhone, orderNotes]);
 
   useEffect(() => {
@@ -1317,7 +1326,7 @@ export default function ServerStandalonePage() {
         requestOwner,
         activeAttempt.snapshot,
         activeAttempt,
-        new Date().toISOString(),
+        getServerAppTimestamp(),
       );
       setLocalDraftSaved(true);
     }
@@ -1459,7 +1468,7 @@ export default function ServerStandalonePage() {
       customerName,
       customerPhone,
       orderNotes,
-      savedAt: new Date().toISOString(),
+      savedAt: getServerAppTimestamp(),
     });
     try {
       if (navigator.clipboard?.writeText) {
@@ -1508,7 +1517,7 @@ export default function ServerStandalonePage() {
       user.id,
       snapshot,
       attempt,
-      new Date().toISOString(),
+      getServerAppTimestamp(),
     );
     setLocalDraftSaved(saved);
     if (saved) {
