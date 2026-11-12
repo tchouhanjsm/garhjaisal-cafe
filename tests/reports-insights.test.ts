@@ -539,11 +539,7 @@ async function main() {
       const yesterdayValue = new Date(todayLocal + 'T00:00:00.000Z');
       yesterdayValue.setUTCDate(yesterdayValue.getUTCDate() - 1);
       const yesterdayDate = yesterdayValue.toISOString().slice(0, 10);
-      const yesterdayPaidAt = dayBoundsInTimezone(
-        yesterdayDate,
-        'Asia/Kolkata',
-        businessStart,
-      )[0];
+      const yesterdayPaidAt = dayBoundsInTimezone(yesterdayDate, 'Asia/Kolkata', businessStart)[0];
       const insertYesterdayOrder = db.prepare(`
         INSERT INTO orders (
           order_number, user_id, type, status, subtotal, total,
