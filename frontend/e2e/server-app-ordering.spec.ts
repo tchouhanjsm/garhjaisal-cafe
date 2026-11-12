@@ -68,6 +68,114 @@ test.describe('Server App tableside ordering', () => {
     ).toBeTruthy();
   });
 
+  test('shows station-level KOT recovery on the phone and retries only the safe failed station', async ({
+    page,
+  }) => {
+    const managerToken = getE2eToken('e2e-manager', 'manager@flo.local', 'manager');
+    const serverToken = getE2eToken('e2e-server', 'server@flo.local', 'server');
+    const headers = { Authorization: `Bearer ${managerToken}` };
+    const tableName = `Phone KOT ${Date.now()}`;
+    const tableRes = await page.request.post(`${E2E_BASE_URL}/api/tables`, {
+      headers,
+      data: { number: tableName, capacity: 2 },
+    });
+    expect(tableRes.ok()).toBeTruthy();
+
+    const dispatchRequests: Array<Record<string, unknown>> = [];
+    await page.route('**/api/printers/print-kot', async (route) => {
+      const requestBody = route.request().postDataJSON() as Record<string, unknown>;
+      dispatchRequests.push(requestBody);
+      if (dispatchRequests.length === 1) {
+        await route.fulfill({
+          status: 502,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: false,
+            error: 'KOT dispatch incomplete',
+            detail: 'KOT dispatch incomplete. Grill failed before connection.',
+            station_results: [
+              {
+                station_name: 'Grill',
+                printer_id: 'printer-grill',
+                printer_name: 'Grill Mini',
+                item_count: 1,
+                item_ids: [701],
+                dispatch_state: 'failed',
+                retry_safety: 'safe_to_retry',
+                detail: 'Network error: connect ECONNREFUSED 192.0.2.10:9100',
+              },
+              {
+                station_name: 'Kitchen',
+                printer_id: 'printer-kitchen',
+                printer_name: 'Kitchen Mini',
+                item_count: 1,
+                item_ids: [702],
+                dispatch_state: 'submitted',
+                retry_safety: 'not_applicable',
+              },
+            ],
+            recovery: {
+              safe_to_retry_stations: ['Grill'],
+              verify_before_retry_stations: [],
+            },
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          warnings: [],
+          station_results: [
+            {
+              station_name: 'Grill',
+              printer_id: 'printer-grill',
+              printer_name: 'Grill Mini',
+              item_count: 1,
+              item_ids: [701],
+              dispatch_state: 'submitted',
+              retry_safety: 'not_applicable',
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openServerApp(page, serverToken);
+    await page.getByRole('button', { name: new RegExp(tableName) }).click();
+    const search = page.getByTestId('pos-product-grid').getByPlaceholder('Search menu');
+    await search.fill('E2E Coffee');
+    await search.press('Enter');
+    await page.getByRole('button', { name: 'Send to kitchen' }).first().click();
+    await expect(page.getByText('Order sent').first()).toBeVisible();
+
+    const recovery = page.getByTestId('kot-dispatch-recovery-modal');
+    await expect(recovery).toBeVisible();
+    await expect(recovery).toContainText('1 submitted');
+    await expect(recovery).toContainText('1 need attention');
+    await expect(recovery.getByTestId('retry-kot-grill')).toBeVisible();
+    await expect(recovery.getByTestId('retry-kot-kitchen')).toHaveCount(0);
+
+    await recovery.getByTestId('retry-kot-grill').click();
+    await expect(recovery.locator('[data-testid="kot-station-grill"]')).toContainText('Submitted');
+    expect(dispatchRequests).toHaveLength(2);
+    expect(dispatchRequests[1]).toMatchObject({
+      retryStations: [
+        {
+          station_name: 'Grill',
+          printer_id: 'printer-grill',
+          item_ids: [701],
+        },
+      ],
+    });
+    expect(dispatchRequests[1]).not.toHaveProperty('items');
+    await expect(recovery.locator('[data-testid="kot-station-kitchen"]')).toContainText('Submitted');
+  });
+
   test('keeps an unsent ticket on the phone across offline reload, then sends it after reconnecting', async ({
     page,
     context,

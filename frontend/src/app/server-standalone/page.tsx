@@ -43,6 +43,8 @@ import AddonModal from '@/components/pos/AddonModal';
 import ProductGrid from '@/components/pos/ProductGrid';
 import type { PosCategorySort, PosItemSort } from '@/lib/pos-sort';
 import MoveTableModal from '@/components/tables/MoveTableModal';
+import { KotDispatchRecoveryModal } from '@/components/pos/KotDispatchRecoveryModal';
+import type { KotStationPrintOutcome } from '@/hooks/usePrinter';
 import { ROLE_LABEL_KEYS } from '@/lib/i18n-enums';
 import { tenantCan } from '@/lib/permissions';
 import type {
@@ -256,6 +258,11 @@ export default function ServerStandalonePage() {
   const [browserOnline, setBrowserOnline] = useState(true);
   const [usingCachedCatalog, setUsingCachedCatalog] = useState(false);
   const [localDraftSaved, setLocalDraftSaved] = useState(false);
+  const [kotRecovery, setKotRecovery] = useState<{
+    orderId: number;
+    results: KotStationPrintOutcome[];
+  } | null>(null);
+  const [retryingKotStations, setRetryingKotStations] = useState<string[]>([]);
   // Synchronous re-entry guard: `sending` state updates too late to stop a second click fired before the first render.
   const sendInFlightRef = useRef(false);
   // Nonce and frozen target snapshot for the pending send attempt, paired with a signature of what defines it.
@@ -1250,11 +1257,103 @@ export default function ServerStandalonePage() {
     } catch (printError: unknown) {
       if (!isCurrent()) return;
       const status = axios.isAxiosError(printError) ? printError.response?.status : undefined;
-      const errorCode = axios.isAxiosError(printError)
-        ? (printError.response?.data as { code?: unknown } | undefined)?.code
+      const payload = axios.isAxiosError(printError)
+        ? (printError.response?.data as { code?: unknown; station_results?: KotStationPrintOutcome[] } | undefined)
         : undefined;
-      if (status === 400 || (status === 403 && errorCode === 'KOT_PRINTING_DISABLED')) return;
+      if (status === 400 || (status === 403 && payload?.code === 'KOT_PRINTING_DISABLED')) return;
+      if (Array.isArray(payload?.station_results) && payload.station_results.length > 0) {
+        setKotRecovery({ orderId, results: payload.station_results });
+      }
       toastApiError(printError, t('kotPrintFailed'), apiErrorT);
+    }
+  }
+
+  async function retryKotStation(station: KotStationPrintOutcome) {
+    if (!api || !kotRecovery || station.retry_safety !== 'safe_to_retry') return;
+    const orderId = kotRecovery.orderId;
+    const stationKey = `${station.station_name}::${station.printer_id}`;
+    if (retryingKotStations.includes(stationKey)) return;
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+    setRetryingKotStations((current) => [...current, stationKey]);
+
+    const mergeResults = (updates: KotStationPrintOutcome[]) => {
+      setKotRecovery((current) => {
+        if (!current || current.orderId !== orderId) return current;
+        const byKey = new Map(
+          updates.map((result) => [
+            `${result.station_name}::${result.printer_id}`,
+            result,
+          ]),
+        );
+        return {
+          ...current,
+          results: current.results.map(
+            (result) =>
+              byKey.get(`${result.station_name}::${result.printer_id}`) ?? result,
+          ),
+        };
+      });
+    };
+
+    try {
+      const response = await api.post(
+        '/api/printers/print-kot',
+        {
+          orderId,
+          retryStations: [
+            {
+              station_name: station.station_name,
+              printer_id: station.printer_id,
+              item_ids: station.item_ids,
+            },
+          ],
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const updatedStation = response.data?.station_results?.find(
+        (result: KotStationPrintOutcome) =>
+          result.station_name === station.station_name &&
+          String(result.printer_id) === String(station.printer_id),
+      );
+      mergeResults([
+        updatedStation || {
+          ...station,
+          dispatch_state: 'submitted',
+          retry_safety: 'not_applicable',
+          detail: undefined,
+          failure_class: undefined,
+          code: undefined,
+          correlation_id: undefined,
+          stage: undefined,
+        },
+      ]);
+      toast.success(`${station.station_name} KOT sent successfully.`);
+    } catch (error: unknown) {
+      const payload = axios.isAxiosError(error)
+        ? (error.response?.data as { station_results?: KotStationPrintOutcome[] } | undefined)
+        : undefined;
+      if (Array.isArray(payload?.station_results) && payload.station_results.length > 0) {
+        mergeResults(payload.station_results);
+      } else {
+        mergeResults([
+          {
+            ...station,
+            retry_safety: 'verify_before_retry',
+            detail:
+              axios.isAxiosError(error)
+                ? (error.response?.data as { detail?: string; error?: string } | undefined)?.detail ||
+                  (error.response?.data as { error?: string } | undefined)?.error ||
+                  error.message
+                : error instanceof Error
+                  ? error.message
+                  : 'Retry result is unknown. Inspect the physical ticket before sending again.',
+          },
+        ]);
+      }
+      toastApiError(error, t('kotPrintFailed'), apiErrorT);
+    } finally {
+      setRetryingKotStations((current) => current.filter((key) => key !== stationKey));
     }
   }
 
@@ -2331,6 +2430,13 @@ export default function ServerStandalonePage() {
           }}
         />
       )}
+      <KotDispatchRecoveryModal
+        open={kotRecovery !== null}
+        results={kotRecovery?.results ?? []}
+        retryingStationKeys={retryingKotStations}
+        onRetry={retryKotStation}
+        onClose={() => setKotRecovery(null)}
+      />
     </div>
   );
 }
