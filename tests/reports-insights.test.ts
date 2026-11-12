@@ -39,6 +39,8 @@ const {
   closeDatabase,
   now,
   localDateInTimezone,
+  dayBoundsInTimezone,
+  tenantBusinessDayStartTime,
   parseDbTimestamp,
 } = require('../main/db');
 const { getJWTSecret } = require('../main/routes/auth');
@@ -532,11 +534,16 @@ async function main() {
 
     console.log('\n3b. days=1 includes today and excludes yesterday');
     {
-      const todayLocal = localDateInTimezone(new Date(), 'Asia/Kolkata');
+      const businessStart = tenantBusinessDayStartTime(db);
+      const todayLocal = localDateInTimezone(new Date(), 'Asia/Kolkata', businessStart);
       const yesterdayValue = new Date(todayLocal + 'T00:00:00.000Z');
       yesterdayValue.setUTCDate(yesterdayValue.getUTCDate() - 1);
       const yesterdayDate = yesterdayValue.toISOString().slice(0, 10);
-      const yesterdayPaidAt = dbTimestamp(new Date(yesterdayDate + 'T06:00:00.000Z'));
+      const yesterdayPaidAt = dayBoundsInTimezone(
+        yesterdayDate,
+        'Asia/Kolkata',
+        businessStart,
+      )[0];
       const insertYesterdayOrder = db.prepare(`
         INSERT INTO orders (
           order_number, user_id, type, status, subtotal, total,
