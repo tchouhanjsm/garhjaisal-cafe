@@ -32,7 +32,7 @@ try {
     "for (const value of ['../pilot', '/tmp/pilot', 'pilot/test', '.hidden', 'a'.repeat(33)]) {",
     "  assert.throws(() => resolveLocalProfileName(value), /Invalid FLO_PROFILE/);",
     "}",
-  ].join('\\n');
+  ].join(String.fromCharCode(10));
   fs.writeFileSync(resolverPath, resolverScript);
 
   const execution = spawnSync(process.execPath, [resolverPath], { encoding: 'utf8' });
