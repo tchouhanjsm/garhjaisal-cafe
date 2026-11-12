@@ -89,7 +89,7 @@ function hasNonEmptyPin(pin: unknown): boolean {
 }
 
 function isValidPin(pin: unknown): boolean {
-  return /^\d{4,6}$/.test(String(pin));
+  return /^\d{6}$/.test(String(pin));
 }
 
 function normalizeStaffEmail(email: unknown): string {
