@@ -855,8 +855,8 @@ export default function CartPanel({
             type="text"
             value={cart.roomNumber}
             onChange={(e) => cart.setRoomNumber(e.target.value)}
-            placeholder="Room no. (optional)"
-            aria-label="Hotel room number"
+            placeholder={t('roomNumberPlaceholder')}
+            aria-label={t('roomNumberLabel')}
             maxLength={32}
             disabled={Boolean(existingOrder)}
             className="w-full h-7 px-2 text-xs border border-border bg-muted/40 rounded-md focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand disabled:opacity-60"

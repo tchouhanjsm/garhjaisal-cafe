@@ -51,6 +51,7 @@ export function buildKotPrintData(order: any, items: any[], stationName: string)
       orderNumber: String(order?.order_number ?? ''),
       createdAt: String(order?.created_at ?? ''),
       tableName: String(order?.table?.name ?? ''),
+      roomNumber: String(order?.room_number ?? '').trim(),
       orderType: String(order?.type ?? '').trim(),
       customerName: String(order?.customer?.name ?? order?.customer_name ?? '').trim(),
       orderNotes:
@@ -238,6 +239,15 @@ function kotHeaderLines(
         options.capabilities,
       )
     : null;
+  const roomNumber = header.roomNumber
+    ? thermalSafeText(
+        `Room: ${header.roomNumber.text}`,
+        `Room: ${thermalSafeMetadataValue(header.roomNumber.text, options.language, options.arabicShaping, options.capabilities)}`,
+        options.language,
+        options.arabicShaping,
+        options.capabilities,
+      )
+    : null;
   const orderType = header.orderType
     ? (() => {
         const localized = `${labelOf(header.orderType.label)}: ${header.orderType.value.text}`;
@@ -320,6 +330,19 @@ function kotHeaderLines(
       ),
     );
     sourceLines?.push(formatTableLabel(header.table!.label, header.table!.name.text));
+    sourceControlLines?.push(lines.at(-1) ?? '');
+  }
+  if (roomNumber) {
+    lines.push(
+      truncateShapedLine(
+        roomNumber,
+        cols,
+        options.arabicShaping,
+        options.language,
+        options.capabilities,
+      ),
+    );
+    sourceLines?.push(`Room: ${header.roomNumber!.text}`);
     sourceControlLines?.push(lines.at(-1) ?? '');
   }
   if (orderType) {

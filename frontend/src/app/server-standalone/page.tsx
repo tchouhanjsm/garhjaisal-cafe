@@ -1632,6 +1632,7 @@ export default function ServerStandalonePage() {
       customerName,
       customerPhone,
       orderNotes,
+      roomNumber,
       savedAt: getServerAppTimestamp(),
     });
     const result = await copyTextToDevice(note, 'FloCafe ticket note');
@@ -2151,8 +2152,8 @@ export default function ServerStandalonePage() {
             value={roomNumber}
             disabled={sending}
             onChange={(event) => setRoomNumber(event.target.value.slice(0, 32))}
-            placeholder="Hotel room number (optional)"
-            aria-label="Hotel room number"
+            placeholder={tPos('roomNumberPlaceholder')}
+            aria-label={tPos('roomNumberLabel')}
             maxLength={32}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none disabled:opacity-50"
           />
@@ -2171,7 +2172,7 @@ export default function ServerStandalonePage() {
         </div>
       )}
 
-      {(draft.length > 0 || orderNotes.trim()) && (
+      {(draft.length > 0 || orderNotes.trim() || roomNumber.trim()) && (
         <button
           type="button"
           onClick={copyTicketNote}

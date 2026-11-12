@@ -973,6 +973,8 @@
     "orderHeld": "Order held for {tableName}",
     "orderHeldFor": "Order held for {table}",
     "orderNotesPlaceholder": "Order notes (optional)",
+    "roomNumberLabel": "Hotel room number",
+    "roomNumberPlaceholder": "Room no. (optional)",
     "orderNumber": "Order #{number}",
     "orderPaid": "Order #{number} paid!",
     "orderPaidWithPoints": "Order #{number} paid! {points} loyalty points credited.",
