@@ -342,7 +342,8 @@
     "test:product-variants-orders": "node tests/run-electron-node-test.cjs tests/product-variants-orders.test.ts",
     "test:variant-pos-surface": "ts-node --transpile-only -P tests/tsconfig.json tests/variant-pos-surface.test.ts",
     "test:product-variants-screen": "ts-node --transpile-only -P tests/tsconfig.json tests/product-variants-screen.test.ts",
-    "test:printer-text-size": "ts-node --transpile-only -P tests/tsconfig.json tests/printer-text-size.test.ts && node tests/run-electron-node-test.cjs tests/migration-printer-text-size.test.ts"
+    "test:printer-text-size": "ts-node --transpile-only -P tests/tsconfig.json tests/printer-text-size.test.ts && node tests/run-electron-node-test.cjs tests/migration-printer-text-size.test.ts",
+    "test:local-profile-isolation": "node tests/local-profile-isolation.test.cjs"
   },
   "author": {
     "name": "Flo",

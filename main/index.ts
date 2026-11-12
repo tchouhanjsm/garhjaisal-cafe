@@ -772,17 +772,44 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 let gotSingleInstanceLock = false;
 
-// Single-instance lock: prevent duplicate app instances.
+// Select an isolated local profile before any service, log file, database, backup,
+// or single-instance lock is initialized. The default install path is unchanged.
+// Profile names are deliberately constrained to a short safe identifier; callers
+// cannot supply arbitrary filesystem paths.
+function resolveLocalProfileName(value: string | undefined): string | null {
+  if (value === undefined || value.trim() === '') return null;
+  const normalized = value.trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(normalized)) {
+    throw new Error(
+      'Invalid FLO_PROFILE. Use 1-32 lowercase letters, numbers or hyphens; it must start with a letter or number.',
+    );
+  }
+  return normalized;
+}
+
+const localProfileName = resolveLocalProfileName(process.env.FLO_PROFILE);
+const localProfileDirectory = localProfileName
+  ? path.join(app.getPath('userData'), 'profiles', localProfileName)
+  : null;
+
 if (process.env.FLO_E2E_USER_DATA_DIR) {
-  // Use isolated profile directory in E2E tests.
+  // Native E2E continues to own its explicit disposable directory.
   app.setPath('userData', path.resolve(process.env.FLO_E2E_USER_DATA_DIR));
+} else if (localProfileDirectory) {
+  // app.setPath also scopes Electron session data and electron-log's default file path.
+  fs.mkdirSync(localProfileDirectory, { recursive: true });
+  app.setPath('userData', localProfileDirectory);
 } else if (process.platform === 'linux') {
   // Set explicit paths on Linux to avoid temporary mount directories.
   app.name = 'flo-desktop';
   app.setPath('userData', path.join(os.homedir(), '.config', 'flo-desktop'));
 }
 
-gotSingleInstanceLock = app.requestSingleInstanceLock();
+const singleInstanceLockOptions = localProfileName
+  ? { name: `flo-desktop-${localProfileName}` }
+  : undefined;
+
+gotSingleInstanceLock = app.requestSingleInstanceLock(singleInstanceLockOptions);
 if (!gotSingleInstanceLock) {
   console.log('[Lock] Another instance is already running. Quitting.');
   app.quit();
