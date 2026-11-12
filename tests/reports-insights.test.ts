@@ -428,7 +428,7 @@ async function main() {
     console.log('\n3. AOV');
     assertEqual(body.aov, 150, 'AOV is (100+200)/2 = 150');
 
-    console.log('\\n3a. AOV uses the paid-bill cohort, not refunds issued during the report window');
+    console.log('\n3a. AOV uses the paid-bill cohort, not refunds issued during the report window');
     {
       const paidOnOct9 = dbTimestamp(new Date('2026-10-09T06:00:00.000Z'));
       const paidOnOct10 = dbTimestamp(new Date('2026-10-10T06:00:00.000Z'));
@@ -465,7 +465,7 @@ async function main() {
       );
     }
 
-    console.log('\\n3b. days=1 includes today and excludes yesterday');
+    console.log('\n3b. days=1 includes today and excludes yesterday');
     {
       const todayLocal = localDateInTimezone(new Date(), 'Asia/Kolkata');
       const yesterdayValue = new Date(todayLocal + 'T00:00:00.000Z');
