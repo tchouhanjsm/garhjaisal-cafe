@@ -162,7 +162,9 @@ test.describe('Server App tableside ordering', () => {
     const coffeeCard = grid.getByTestId('pos-product-card').filter({ hasText: 'E2E Coffee' }).first();
     await expect(coffeeCard).toBeVisible();
     await coffeeCard.click();
+    await page.getByRole('button', { name: 'Current ticket' }).click();
     const sendOrder = page.getByTestId('server-app-send-order');
+    await expect(sendOrder).toBeVisible();
     await expect(sendOrder).toBeEnabled();
     await sendOrder.click();
     await expect(page.getByText('Order sent').first()).toBeVisible();
