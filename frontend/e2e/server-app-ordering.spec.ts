@@ -254,6 +254,7 @@ test.describe('Server App tableside ordering', () => {
       .first();
     await expect(coffeeCard).toBeVisible();
     await coffeeCard.click();
+    await page.getByRole('button', { name: 'Current ticket' }).click();
     const note = 'Room 12 — guest arrives after sunset';
     await page.getByPlaceholder('Order notes (optional)').first().fill(note);
 
@@ -277,6 +278,7 @@ test.describe('Server App tableside ordering', () => {
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('server-app-offline-banner')).toBeVisible();
+    await page.getByRole('button', { name: 'Current ticket' }).click();
     await expect(page.getByPlaceholder('Order notes (optional)').first()).toHaveValue(note);
     await expect(page.getByTestId('server-app-copy-ticket-note')).toBeVisible();
 
