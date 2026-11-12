@@ -1078,33 +1078,36 @@ router.get('/insights', requirePermission('reports.view'), (req: Request, res: R
       // hour/day-of-week bucketing below.
       const today = reportToday();
       const startDateValue = new Date(`${today}T00:00:00Z`);
-      startDateValue.setUTCDate(startDateValue.getUTCDate() - days);
+      // The window includes today, so N days starts N - 1 dates before today.
+      // An exclusive end bound also prevents future-dated records entering the
+      // rolling dashboard while keeping every metric on the same business-day range.
+      startDateValue.setUTCDate(startDateValue.getUTCDate() - (days - 1));
       const startDate = startDateValue.toISOString().slice(0, 10);
       [windowStart] = reportDayBounds(startDate);
+      [, windowEnd] = reportDayBounds(today);
     }
 
-    // AOV — same revenue basis ("paid bills") as the existing daily-stats tile.
-    const revenue = (
-      windowEnd
-        ? db
-            .prepare(`
-          SELECT COUNT(*) as billCount,
-            COALESCE(SUM(paid_amount), 0)
-            - COALESCE((SELECT SUM(CAST(amount_cents AS REAL)) / ? FROM refunds WHERE created_at >= ? AND created_at < ?), 0) as total
-          FROM bills
-          WHERE paid_at >= ? AND paid_at < ?
-        `)
-            .get(minorFactor, windowStart, windowEnd, windowStart, windowEnd)
-        : db
-            .prepare(`
-          SELECT COUNT(*) as billCount,
-            COALESCE(SUM(paid_amount), 0)
-            - COALESCE((SELECT SUM(CAST(amount_cents AS REAL)) / ? FROM refunds WHERE created_at >= ?), 0) as total
-          FROM bills
-          WHERE paid_at >= ?
-        `)
-            .get(minorFactor, windowStart, windowStart)
-    ) as { billCount: number; total: number };
+    // AOV follows the financial-summary paid-bill cohort: refunds are attributed
+    // to the original bill's paid_at business date, not the later refund issue date.
+    // Cash drawer expected figures and Daily Sales exports intentionally use their
+    // own cash-out / refund-issued date contracts.
+    const revenue = db
+      .prepare(`
+        SELECT COUNT(*) as billCount,
+          COALESCE(SUM(paid_bill.paid_amount), 0)
+          - COALESCE((
+            SELECT SUM(CAST(r.amount_cents AS REAL)) / ?
+            FROM refunds r
+            JOIN bills refunded_bill ON refunded_bill.id = r.bill_id
+            WHERE refunded_bill.paid_at >= ? AND refunded_bill.paid_at < ?
+          ), 0) as total
+        FROM bills paid_bill
+        WHERE paid_bill.paid_at >= ? AND paid_bill.paid_at < ?
+      `)
+      .get(minorFactor, windowStart, windowEnd, windowStart, windowEnd) as {
+      billCount: number;
+      total: number;
+    };
     const aov = revenue.billCount > 0 ? revenue.total / revenue.billCount : 0;
 
     // Kitchen velocity — substitutes for "best cook", which isn't derivable:
