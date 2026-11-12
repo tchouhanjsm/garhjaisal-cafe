@@ -66,6 +66,7 @@ try {
     /const useUserData =[\s\S]*app\.isPackaged[\s\S]*hasLocalProfile/,
   );
   assert.match(dbSource, /const hasLocalProfile = Boolean/);
+  assert.ok(dbSource.includes('process.env.FLO_PROFILE?.trim()'));
   assert.ok(dbSource.includes('process.env.FLO_E2E_USER_DATA_DIR'));
   assert.match(
     dbSource,
