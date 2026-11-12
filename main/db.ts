@@ -10380,6 +10380,15 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       }
     },
   },
+  {
+    version: 128,
+    name: 'add_held_order_room_number',
+    up: () => {
+      if (!getColumns(db, 'held_orders').includes('room_number')) {
+        db.exec('ALTER TABLE held_orders ADD COLUMN room_number TEXT DEFAULT NULL');
+      }
+    },
+  },
 ];
 
 export function backfillWhatsAppMessageAttempts(

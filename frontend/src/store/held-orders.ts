@@ -11,6 +11,7 @@ export interface HeldOrder {
   customerId: number | string | null;
   guestCount: number;
   orderNotes: string;
+  roomNumber?: string;
   /** Charge choices saved with the cart; a hold written by an older build has none. */
   waivedChargeIds?: string[];
   optedInChargeIds?: string[];
@@ -28,6 +29,7 @@ interface HeldOrdersState {
     orderNotes?: string,
     waivedChargeIds?: string[],
     optedInChargeIds?: string[],
+    roomNumber?: string,
   ) => Promise<void>;
   restoreOrder: (tableId: string) => Promise<HeldOrder | null>;
   removeHeldOrder: (tableId: string, expectedHeldOrderId?: string) => Promise<boolean>;
@@ -127,6 +129,7 @@ export const createHeldOrdersStore = (apiClient: HeldOrdersApiClient = api) =>
         orderNotes = '',
         waivedChargeIds: string[] = [],
         optedInChargeIds: string[] = [],
+        roomNumber = '',
       ) => {
         try {
           const expectedHeldOrderId = get().orders[tableId]?.id ?? null;
@@ -138,6 +141,7 @@ export const createHeldOrdersStore = (apiClient: HeldOrdersApiClient = api) =>
               customerId,
               guestCount,
               orderNotes,
+              roomNumber,
               waivedChargeIds,
               optedInChargeIds,
               expectedHeldOrderId,
@@ -165,6 +169,7 @@ export const createHeldOrdersStore = (apiClient: HeldOrdersApiClient = api) =>
                 customerId,
                 guestCount,
                 orderNotes,
+                roomNumber,
                 waivedChargeIds: [...waivedChargeIds],
                 optedInChargeIds: [...optedInChargeIds],
                 heldAt: new Date().toISOString(),

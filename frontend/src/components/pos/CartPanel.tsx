@@ -849,6 +849,19 @@ export default function CartPanel({
         data-testid="cart-footer"
         className="px-2.5 py-1 border-t border-border dark:border-border bg-card space-y-1"
       >
+        {cart.orderType === 'dine_in' && (
+          <input
+            data-testid="pos-room-number-input"
+            type="text"
+            value={cart.roomNumber}
+            onChange={(e) => cart.setRoomNumber(e.target.value)}
+            placeholder="Room no. (optional)"
+            aria-label="Hotel room number"
+            maxLength={32}
+            disabled={Boolean(existingOrder)}
+            className="w-full h-7 px-2 text-xs border border-border bg-muted/40 rounded-md focus:outline-none focus:ring-1 focus:ring-brand/30 focus:border-brand disabled:opacity-60"
+          />
+        )}
         {/* Order Notes (shown only when non-empty or toggled open) */}
         {(cart.orderNotes.length > 0 || orderNotesExpanded) && (
           <div className="relative flex items-center">

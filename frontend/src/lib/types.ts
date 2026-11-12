@@ -199,6 +199,8 @@ export interface Order {
   id: number;
   order_number: string;
   table_id: string | null;
+  /** Optional hotel room reference; never a payment or room-account entry. */
+  room_number?: string | null;
   customer_id: number | string | null;
   /** Address confirmed for this delivery; printed in full on the courier slip. */
   delivery_address?: string | null;
