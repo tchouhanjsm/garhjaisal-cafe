@@ -166,7 +166,9 @@ test.describe('Server App tableside ordering', () => {
     await expect(coffeeCard).toBeVisible();
     await coffeeCard.click();
     await page.getByRole('button', { name: 'Current ticket' }).click();
-    const sendOrder = page.getByTestId('server-app-send-order');
+    // Both desktop panel and mobile drawer render the same ticket action.
+    // At phone width the drawer's action is the visible (last) matching node.
+    const sendOrder = page.getByTestId('server-app-send-order').last();
     await expect(sendOrder).toBeVisible();
     await expect(sendOrder).toBeEnabled();
     await sendOrder.click();
@@ -212,6 +214,7 @@ test.describe('Server App tableside ordering', () => {
     expect(tableRes.ok()).toBeTruthy();
     const { table } = await tableRes.json();
 
+    await page.setViewportSize({ width: 390, height: 844 });
     await openServerApp(page, serverToken);
     await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller));
     await page.evaluate(() => {
