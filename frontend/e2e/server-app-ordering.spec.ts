@@ -113,6 +113,35 @@ test.describe('Server App tableside ordering', () => {
     await expect(page.getByPlaceholder('Order notes (optional)').first()).toHaveValue(note);
     await expect(page.getByTestId('server-app-copy-ticket-note')).toBeVisible();
 
+    // Verify the emergency Notes handoff copies a clearly unsent ticket, not an
+    // order confirmation. The clipboard is stubbed so this assertion is deterministic.
+    await page.evaluate(() => {
+      const testWindow = window as Window & { __copiedTicketNote?: string };
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (value: string) => {
+            testWindow.__copiedTicketNote = value;
+          },
+        },
+      });
+    });
+    await page.getByTestId('server-app-copy-ticket-note').click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as Window & { __copiedTicketNote?: string }).__copiedTicketNote || '',
+        ),
+      )
+      .toContain('STATUS: NOT SENT TO KITCHEN');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as Window & { __copiedTicketNote?: string }).__copiedTicketNote || '',
+        ),
+      )
+      .toContain(note);
+
     const beforeSend = await page.request.get(`${E2E_BASE_URL}/api/orders`, {
       headers,
       params: { table_id: table.id, type: 'dine_in', per_page: 5 },

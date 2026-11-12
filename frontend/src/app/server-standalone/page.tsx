@@ -347,13 +347,7 @@ export default function ServerStandalonePage() {
           },
         }
       : undefined;
-    const hasWork =
-      snapshot.draftLines.length > 0 ||
-      Boolean(snapshot.orderNotes.trim()) ||
-      Boolean(snapshot.customerName.trim()) ||
-      Boolean(snapshot.customerPhone.trim()) ||
-      Boolean(savedAttempt);
-    const saved = saveServerAppDraft(window.localStorage, ownerId, {
+    return saveServerAppDraft(window.localStorage, ownerId, {
       tableId: snapshot.tableId,
       tableName: snapshot.tableName,
       draftLines: snapshot.draftLines,
@@ -363,7 +357,6 @@ export default function ServerStandalonePage() {
       savedAt,
       ...(savedAttempt ? { attempt: savedAttempt } : {}),
     });
-    return saved && (!hasWork || saved);
   }
 
   useEffect(() => {
