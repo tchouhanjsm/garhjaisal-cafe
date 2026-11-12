@@ -124,6 +124,11 @@ jobs:
 
       # Authoritative formatting gate: the whole touched file, against the pull request base
       # (or the pushed range), so legacy formatting debt outside the change stays out of scope.
+      - name: Temporary Oxfmt diagnostic
+        run: |
+          npx oxfmt --write -- tests/reports-insights.test.ts
+          git --no-pager diff --no-ext-diff --unified=3 -- tests/reports-insights.test.ts
+
       - name: Frontend lint, formatting, and lint warning budget
         run: |
           (cd frontend && npm run lint) &
