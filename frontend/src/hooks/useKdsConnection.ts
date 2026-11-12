@@ -247,7 +247,7 @@ export function useKdsConnection(options: UseKdsConnectionOptions): UseKdsConnec
   const loginPath = endpoints?.login ?? LOGIN_ENDPOINT;
   const pinUsersPath =
     endpoints?.pinUsers ??
-    (loginPath.startsWith('/api/') ? '/api/auth/pin-users' : '/auth/pin-users?scope=kds');
+    (loginPath.startsWith('/api/') ? '/api/auth/pin-users?scope=kds' : '/auth/pin-users?scope=kds');
   const pinLoginPath =
     endpoints?.pinLogin ??
     (loginPath.startsWith('/api/') ? '/api/auth/pin-login' : '/auth/pin-login');
@@ -765,6 +765,7 @@ export function useKdsConnection(options: UseKdsConnectionOptions): UseKdsConnec
           user_id: userId,
           pin,
           rememberMe,
+          scope: 'kds',
         });
 
         if (generation !== sessionGenerationRef.current) return;

@@ -65,7 +65,7 @@ export default function KdsStandalonePage() {
   // Standalone KDS server endpoint routes overriding dashboard defaults.
   const standaloneEndpoints = {
     login: '/api/auth/login',
-    pinUsers: '/api/auth/pin-users',
+    pinUsers: '/api/auth/pin-users?scope=kds',
     pinLogin: '/api/auth/pin-login',
     me: '/api/auth/me',
     logout: '/api/auth/logout',

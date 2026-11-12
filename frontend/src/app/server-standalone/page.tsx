@@ -652,7 +652,7 @@ export default function ServerStandalonePage() {
     if (!api || user || disabled || loading) return;
     let cancelled = false;
     api
-      .get('/api/auth/pin-users')
+      .get('/api/auth/pin-users?scope=server-app')
       .then((res) => {
         if (!cancelled && Array.isArray(res.data?.users)) {
           setPinUsers(res.data.users);
@@ -1058,6 +1058,7 @@ export default function ServerStandalonePage() {
         user_id: selectedPinUser.id,
         pin,
         remember_me: rememberMe,
+        scope: 'server-app',
       });
       applyAuthenticatedSession(res.data.access_token, res.data.user);
     } catch (error: unknown) {

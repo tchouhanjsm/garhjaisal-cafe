@@ -116,7 +116,7 @@ function LoginContent() {
       })
       .catch(() => {});
 
-    fetch('/api/auth/pin-users')
+    fetch('/api/auth/pin-users?scope=pos')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (active && Array.isArray(data?.users)) {
