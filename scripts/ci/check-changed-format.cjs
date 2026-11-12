@@ -163,7 +163,7 @@ function runCheck(pkg, files) {
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
   if (result.status !== 0) throw new Error(output || `oxfmt write failed with exit ${result.status}`);
   const diff = spawnSync('git', ['diff', '--', ...files], {
-    cwd: invocation.cwd,
+    cwd: process.cwd(),
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   });
