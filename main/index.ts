@@ -160,6 +160,44 @@ const isMsixBuild =
 const isStoreBuild = isMasBuild || isMsixBuild;
 const UNPACKED_DEV_MARKER = 'flo-unpacked-dev.marker';
 
+let gotSingleInstanceLock = false;
+
+// Select an isolated local profile before any service, log file, database, backup,
+// or single-instance lock is initialized. The default install path is unchanged.
+// Profile names are deliberately constrained to a short safe identifier; callers
+// cannot supply arbitrary filesystem paths.
+function resolveLocalProfileName(value: string | undefined): string | null {
+  if (value === undefined || value.trim() === '') return null;
+  const normalized = value.trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(normalized)) {
+    throw new Error(
+      'Invalid FLO_PROFILE. Use 1-32 lowercase letters, numbers or hyphens; it must start with a letter or number.',
+    );
+  }
+  return normalized;
+}
+
+const localProfileName = resolveLocalProfileName(process.env.FLO_PROFILE);
+if (process.env.FLO_E2E_USER_DATA_DIR) {
+  // Native E2E owns its explicit disposable directory and takes precedence.
+  app.setPath('userData', path.resolve(process.env.FLO_E2E_USER_DATA_DIR));
+} else if (process.platform === 'linux') {
+  // Preserve the existing Linux default, then place named profiles below it.
+  app.name = 'flo-desktop';
+  const defaultUserDataPath = path.join(os.homedir(), '.config', 'flo-desktop');
+  const selectedUserDataPath = localProfileName
+    ? path.join(defaultUserDataPath, 'profiles', localProfileName)
+    : defaultUserDataPath;
+  if (localProfileName) fs.mkdirSync(selectedUserDataPath, { recursive: true });
+  app.setPath('userData', selectedUserDataPath);
+} else if (localProfileName) {
+  const profileDirectory = path.join(app.getPath('userData'), 'profiles', localProfileName);
+  fs.mkdirSync(profileDirectory, { recursive: true });
+  app.setPath('userData', profileDirectory);
+}
+
+gotSingleInstanceLock = app.requestSingleInstanceLock();
+
 log.initialize();
 log.transports.file.level = 'info';
 log.transports.console.level = 'debug';
@@ -770,19 +808,6 @@ const requestRuntimeRelaunchOnce = createRelaunchGate(requestRuntimeRelaunch);
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
-let gotSingleInstanceLock = false;
-
-// Single-instance lock: prevent duplicate app instances.
-if (process.env.FLO_E2E_USER_DATA_DIR) {
-  // Use isolated profile directory in E2E tests.
-  app.setPath('userData', path.resolve(process.env.FLO_E2E_USER_DATA_DIR));
-} else if (process.platform === 'linux') {
-  // Set explicit paths on Linux to avoid temporary mount directories.
-  app.name = 'flo-desktop';
-  app.setPath('userData', path.join(os.homedir(), '.config', 'flo-desktop'));
-}
-
-gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   console.log('[Lock] Another instance is already running. Quitting.');
   app.quit();

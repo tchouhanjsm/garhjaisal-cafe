@@ -220,6 +220,49 @@ The candidate gate workflow consumes only a published beta, and only when given 
 candidate manifest asset ID and SHA-256. It verifies propagation and that stable Latest is
 unchanged. It does not publish or promote.
 
+## Mac staging and remote production access
+
+The hotel Windows machine is the authoritative production POS, SQLite database, and printer host.
+The Mac does not keep a second writable production database. The owner uses the Windows-hosted
+dashboard remotely; this avoids two production copies drifting apart.
+
+For Mac development and staging, use the dedicated staging profile:
+
+```sh
+FLO_PROFILE=staging FLO_MATRIX_OFFLINE=1 npm run dev
+```
+
+This creates a local staging database, backups, logs and Electron session data below the staging
+profile's Electron user-data directory, including when Electron is unpackaged. The staging profile
+is created before Electron logging and SQLite initialize. `FLO_MATRIX_OFFLINE=1` keeps optional
+cloud registration, telemetry and update traffic off; orders, KDS, payment and report logic remain
+local. Use synthetic/test menu, staff and transactions. Never import the live restaurant database
+into staging. Unprofiled `npm run dev` retains the existing project-root `flo.db` behavior.
+
+Use the existing unprofiled packaged install data directory only for a local production install.
+For this rollout, the Mac production workspace should instead open the hotel dashboard through a
+private VPN connection to the Windows host's main web/API service (default local port 3001).
+The dashboard is served by that host, and its API client uses the browser's current origin, so menu
+writes and report reads go to the Windows SQLite database. Use a separate owner login and the
+existing backend permissions. Do not expose port 3001 directly to the public internet.
+
+For Tailscale, keep the web service private to the tailnet and reverse-proxy the Windows loopback
+service using Tailscale Serve with HTTPS. Do not use Funnel. Keep KDS (3002) and the waiter Server
+App (3003) on the hotel LAN; do not publish those endpoints to the internet or tailnet unless an
+explicit operational need and separate access rule are approved. Windows Firewall should continue
+to limit LAN services to the hotel private network.
+
+The local API, KDS and Server App use ports 3001/3002/3003 by default. The Electron app retains its
+normal single-instance behavior; profile names isolate data, not concurrently running desktop
+processes. Stop the local staging app before launching another local Electron instance.
+
+The updater's GitHub owner/repository must match the repository that receives the release assets.
+This fork publishes its release assets to `tchouhanjsm/garhjaisal-cafe`, and the electron-builder
+configuration embeds that same repository in installed update metadata. One signed/versioned tag
+builds Windows NSIS and macOS DMG/ZIP artifacts from the same source commit. Direct-download
+installations can discover the same stable release; Windows NSIS and macOS direct-download are
+the relevant in-app updater products (Store builds are store-managed).
+
 ## Tag and branch lifecycle
 
 Beta-prep branches are temporary working branches. Release tags and GitHub Releases are the
