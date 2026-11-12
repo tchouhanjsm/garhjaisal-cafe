@@ -159,10 +159,6 @@ export default function StaffPage() {
       toast.error(tSetup('errorPasswordRequirementsNotMet'));
       return;
     }
-    if (form.pin && !/^\d{6}$/.test(form.pin)) {
-      toast.error(t('pinMustBeSixDigits'));
-      return;
-    }
     try {
       if (editingStaff) {
         await api.put(`/staff/${editingStaff.id}`, {
@@ -461,6 +457,7 @@ export default function StaffPage() {
                     }
                     className="w-full px-3 py-2 pe-10 border rounded-lg outline-none focus:ring-2 focus:ring-brand"
                     maxLength={6}
+                    minLength={6}
                     pattern="[0-9]*"
                     inputMode="numeric"
                   />

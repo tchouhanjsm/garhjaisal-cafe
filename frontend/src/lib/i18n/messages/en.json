@@ -2833,7 +2833,7 @@
     "passwordPlaceholder": "Password",
     "pinHint": "6-digit PIN for quick sign-in and owner/manager approvals",
     "pinPlaceholderAdd": "PIN (6 digits)",
-    "pinPlaceholderEdit": "New PIN (leave empty to keep)",
+    "pinPlaceholderEdit": "New 6-digit PIN (leave empty to keep)",
     "pinMustBeSixDigits": "PIN must be exactly 6 digits",
     "pinSet": "✓ PIN set",
     "reactivate": "Reactivate",

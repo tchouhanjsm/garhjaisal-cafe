@@ -188,6 +188,13 @@ export function buildKotBytes(
       `Table: ${thermalSafeMetadataValue(tableName, language, arabicShaping, opts.capabilities)}`,
     );
   }
+  if (order.room_number?.trim()) {
+    const roomNumber = order.room_number.trim();
+    writeKotHeaderText(
+      `Room: ${roomNumber}`,
+      `Room: ${thermalSafeMetadataValue(roomNumber, language, arabicShaping, opts.capabilities)}`,
+    );
+  }
 
   const orderType = resolveOrderType(order.type, language);
   const localizedOrderType = `${label('print.kot.type')}: ${orderType}`;
