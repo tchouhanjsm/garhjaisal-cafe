@@ -1322,6 +1322,59 @@ export function routeItemsToStations(
   return result;
 }
 
+type KotStationPrintOutcome = {
+  station_name: string;
+  printer_id: string | number;
+  printer_name: string;
+  item_count: number;
+  item_ids: Array<string | number>;
+  dispatch_state: 'submitted' | 'failed';
+  retry_safety: 'not_applicable' | 'safe_to_retry' | 'verify_before_retry';
+  detail?: string;
+  failure_class?: string;
+  code?: string;
+  correlation_id?: string;
+  stage?: string;
+};
+
+// Only connection failures that prove no socket was established can be retried
+// without risking a duplicate physical ticket.
+function isKotPrintDefinitelyNotSent(detail?: string): boolean {
+  const value = String(detail || '')
+    .trim()
+    .toLowerCase();
+  return (
+    value.includes('timed out connecting to ') ||
+    /network error:\s*connect (?:econnrefused|ehostunreach|enetunreach|eaddrnotavail)\b/.test(value)
+  );
+}
+
+function summarizeKotStationFailures(results: KotStationPrintOutcome[]): string {
+  const submitted = results
+    .filter((result) => result.dispatch_state === 'submitted')
+    .map((result) => result.station_name);
+  const failed = results.filter((result) => result.dispatch_state === 'failed');
+  const failures = failed
+    .map((result) => {
+      const detail = result.detail || 'Printer dispatch failed';
+      const recovery =
+        result.retry_safety === 'safe_to_retry'
+          ? 'no connection was established; retry is safe'
+          : 'delivery is uncertain; inspect the physical ticket before retrying';
+      return `${result.station_name} (${result.printer_name}): ${detail} — ${recovery}`;
+    })
+    .join('; ');
+  const submittedSummary = submitted.length
+    ? `Dispatch completed for: ${submitted.join(', ')}.`
+    : 'No station confirmed dispatch.';
+  return [
+    `KOT dispatch incomplete. ${submittedSummary}`,
+    `Failed station(s): ${failures}.`,
+    'Retry only stations marked safe_to_retry.',
+    'For verify_before_retry, inspect the physical ticket before sending again.',
+  ].join(' ');
+}
+
 // POST /api/printers/print-kot — print KOT via backend (desktop app).
 // Uses `sales` so the waiter terminal's "server" role can print its own orders.
 router.post(
@@ -1395,60 +1448,176 @@ router.post(
         if (customer) order.customer = { name: customer.name };
       }
 
-      // Specific station prints one ticket; unassigned item overrides route by station.
-      let success = true;
-      const warnings: NonNullable<Awaited<ReturnType<typeof printKOTDetailed>>['warnings']> = [];
-      let failure: Awaited<ReturnType<typeof printKOTDetailed>> | null = null;
+      // Keep outcomes station-scoped: a partial failure must never imply that all
+      // printers failed, and must never trigger a blind replay to successful stations.
       const kotSourceItems = (Array.isArray(items) ? items : orderItems).filter((item: any) =>
         isKotItemPending(item?.status),
       );
-
-      if (stationName) {
-        const station = stationName || 'Kitchen';
-        if (kotSourceItems.length > 0) {
-          const result = await printKOTDetailed(
-            order,
-            kotSourceItems,
-            station,
-            useUnicode,
-            undefined,
-            getHttpRequestSignal(req),
-            arabicShapingOverride,
-            kotLanguage,
-          );
-          success = result.ok;
-          failure = result.ok ? null : result;
-          warnings.push(...(result.warnings || []));
+      let stationGroups = routeItemsToStations(db, kotSourceItems).filter(
+        (group) => group.items.length > 0,
+      );
+      if (req.body?.retryStations !== undefined) {
+        const retryStations: unknown = req.body.retryStations;
+        if (!Array.isArray(retryStations) || retryStations.length === 0 || stationName) {
+          return res.status(400).json({
+            error:
+              'retryStations must be a non-empty array and cannot be combined with stationName',
+            code: 'KOT_RETRY_REQUEST_INVALID',
+          });
         }
-      } else {
-        const groups = routeItemsToStations(db, kotSourceItems).filter((g) => g.items.length > 0);
-        for (const group of groups) {
-          const result = await printKOTDetailed(
-            order,
-            group.items,
-            group.stationName,
-            useUnicode,
-            group.printer || undefined,
-            getHttpRequestSignal(req),
-            arabicShapingOverride,
-            kotLanguage,
+
+        const pendingItemsById = new Map(
+          orderItems
+            .filter((item: any) => item?.id != null && isKotItemPending(item?.status))
+            .map((item: any) => [String(item.id), item]),
+        );
+        const seenStationNames = new Set<string>();
+        const seenItemIds = new Set<string>();
+        const retryGroups: ReturnType<typeof routeItemsToStations> = [];
+
+        for (const retryRequest of retryStations) {
+          const requestedStationName =
+            typeof retryRequest?.station_name === 'string' ? retryRequest.station_name.trim() : '';
+          const requestedPrinterId = retryRequest?.printer_id;
+          const hasValidPrinterId =
+            (typeof requestedPrinterId === 'string' || typeof requestedPrinterId === 'number') &&
+            String(requestedPrinterId).trim() !== '';
+          const requestedItemIds: unknown[] = Array.isArray(retryRequest?.item_ids)
+            ? retryRequest.item_ids
+            : [];
+          if (
+            !requestedStationName ||
+            !hasValidPrinterId ||
+            requestedItemIds.length === 0 ||
+            seenStationNames.has(requestedStationName) ||
+            requestedItemIds.some(
+              (id) =>
+                (typeof id !== 'string' && typeof id !== 'number') ||
+                String(id).trim() === '' ||
+                seenItemIds.has(String(id)),
+            )
+          ) {
+            return res.status(400).json({
+              error: 'Each retry station must have a unique name and unique, non-empty item IDs',
+              code: 'KOT_RETRY_REQUEST_INVALID',
+            });
+          }
+
+          const normalizedItemIds = requestedItemIds.map(String);
+          normalizedItemIds.forEach((id) => seenItemIds.add(id));
+          seenStationNames.add(requestedStationName);
+          const retryItems = normalizedItemIds.map((id) => pendingItemsById.get(id));
+          if (retryItems.some((item) => !item)) {
+            return res.status(409).json({
+              error:
+                'One or more KOT items are no longer pending on this order. Refresh before retrying.',
+              code: 'KOT_RETRY_ITEMS_CHANGED',
+            });
+          }
+
+          const routedRetryGroups = routeItemsToStations(db, retryItems).filter(
+            (group) => group.items.length > 0,
           );
-          success = success && result.ok;
-          warnings.push(...(result.warnings || []));
-          if (!result.ok && !failure) failure = result;
+          const routedGroup = routedRetryGroups[0];
+          const defaultPrinterId = (printer as { id?: string | number }).id;
+          const routedPrinterId =
+            (routedGroup?.printer as { id?: string | number } | null | undefined)?.id ??
+            defaultPrinterId;
+          const routedItemIds = new Set(
+            routedGroup?.items.map((item: any) => String(item?.id)) ?? [],
+          );
+          if (
+            routedRetryGroups.length !== 1 ||
+            routedGroup.stationName !== requestedStationName ||
+            String(routedPrinterId) !== String(requestedPrinterId) ||
+            routedItemIds.size !== normalizedItemIds.length ||
+            normalizedItemIds.some((id) => !routedItemIds.has(id))
+          ) {
+            return res.status(409).json({
+              error:
+                'KOT station routing changed since the failed print. Refresh and review the order before retrying.',
+              code: 'KOT_RETRY_ROUTING_CHANGED',
+            });
+          }
+
+          retryGroups.push(routedGroup);
+        }
+        stationGroups = retryGroups;
+      } else if (stationName) {
+        stationGroups = [];
+        if (kotSourceItems.length > 0) {
+          stationGroups.push({
+            stationName: String(stationName || 'Kitchen'),
+            printer,
+            items: kotSourceItems,
+          });
         }
       }
 
-      if (success) {
-        res.json({ success: true, warnings });
+      const warnings: NonNullable<Awaited<ReturnType<typeof printKOTDetailed>>['warnings']> = [];
+      const stationResults: KotStationPrintOutcome[] = [];
+      for (const group of stationGroups) {
+        const targetPrinter = group.printer || printer;
+        const result = await printKOTDetailed(
+          order,
+          group.items,
+          group.stationName,
+          useUnicode,
+          group.printer || undefined,
+          getHttpRequestSignal(req),
+          arabicShapingOverride,
+          kotLanguage,
+        );
+        warnings.push(...(result.warnings || []));
+        stationResults.push({
+          station_name: group.stationName,
+          printer_id: targetPrinter?.id,
+          printer_name: targetPrinter?.name || 'Configured printer',
+          item_count: group.items.length,
+          item_ids: group.items
+            .map((item: any) => item?.id)
+            .filter(
+              (id: unknown): id is string | number =>
+                typeof id === 'string' || typeof id === 'number',
+            ),
+          dispatch_state: result.ok ? 'submitted' : 'failed',
+          retry_safety: result.ok
+            ? 'not_applicable'
+            : isKotPrintDefinitelyNotSent(result.detail)
+              ? 'safe_to_retry'
+              : 'verify_before_retry',
+          detail: result.detail,
+          failure_class: result.failureClass,
+          code: result.code,
+          correlation_id: result.correlationId,
+          stage: result.stage,
+        });
+      }
+
+      const failedResults = stationResults.filter((result) => result.dispatch_state === 'failed');
+      if (failedResults.length === 0) {
+        res.json({ success: true, warnings, station_results: stationResults });
       } else {
+        const firstFailure = failedResults[0];
+        const detail = summarizeKotStationFailures(stationResults);
         res.status(502).json({
-          error: failure?.detail || 'KOT print failed. Check printer connection.',
-          detail: failure?.detail,
-          failure_class: failure?.failureClass,
-          code: failure?.code,
-          correlation_id: failure?.correlationId,
-          stage: failure?.stage,
+          success: false,
+          error: detail,
+          detail,
+          failure_class: firstFailure.failure_class,
+          code: firstFailure.code,
+          correlation_id: firstFailure.correlation_id,
+          stage: firstFailure.stage,
+          warnings,
+          station_results: stationResults,
+          recovery: {
+            safe_to_retry_stations: failedResults
+              .filter((result) => result.retry_safety === 'safe_to_retry')
+              .map((result) => result.station_name),
+            verify_before_retry_stations: failedResults
+              .filter((result) => result.retry_safety === 'verify_before_retry')
+              .map((result) => result.station_name),
+          },
         });
       }
     } catch (error: any) {

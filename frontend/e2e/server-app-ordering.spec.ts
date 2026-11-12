@@ -16,7 +16,16 @@ async function openServerApp(page: Page, serverToken: string): Promise<void> {
     },
     [TOKEN_KEY, serverToken],
   );
+  // The standalone Server App owns its service-worker registration. Wait for
+  // activation before reloading so the reloaded page is actually controlled.
+  await page.evaluate(async () => {
+    if (!('serviceWorker' in navigator)) {
+      throw new Error('Service workers are unavailable in this browser context');
+    }
+    await navigator.serviceWorker.ready;
+  });
   await page.reload();
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller));
 }
 
 test.describe('Server App tableside ordering', () => {
@@ -49,7 +58,9 @@ test.describe('Server App tableside ordering', () => {
     await search.press('Enter');
 
     const note = 'Window seat, birthday';
-    await page.getByPlaceholder('Order notes (optional)').first().fill(note);
+    const ticketNotes = page.getByPlaceholder('Order notes (optional)').last();
+    await expect(ticketNotes).toBeVisible();
+    await ticketNotes.fill(note);
     await page.getByRole('button', { name: 'Send to kitchen' }).first().click();
     await expect(page.getByText('Order sent').first()).toBeVisible();
 
@@ -66,6 +77,283 @@ test.describe('Server App tableside ordering', () => {
           item.product_name === 'E2E Coffee' && item.quantity === 2,
       ),
     ).toBeTruthy();
+  });
+
+  test('shows station-level KOT recovery on the phone and retries only the safe failed station', async ({
+    page,
+  }) => {
+    const managerToken = getE2eToken('e2e-manager', 'manager@flo.local', 'manager');
+    const serverToken = getE2eToken('e2e-server', 'server@flo.local', 'server');
+    const headers = { Authorization: `Bearer ${managerToken}` };
+    const tableName = `Phone KOT ${Date.now()}`;
+    const tableRes = await page.request.post(`${E2E_BASE_URL}/api/tables`, {
+      headers,
+      data: { number: tableName, capacity: 2 },
+    });
+    expect(tableRes.ok()).toBeTruthy();
+
+    const dispatchRequests: Array<Record<string, unknown>> = [];
+    await page.route('**/api/printers/print-kot', async (route) => {
+      const requestBody = route.request().postDataJSON() as Record<string, unknown>;
+      dispatchRequests.push(requestBody);
+      if (dispatchRequests.length === 1) {
+        await route.fulfill({
+          status: 502,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: false,
+            error: 'KOT dispatch incomplete',
+            detail: 'KOT dispatch incomplete. Grill failed before connection.',
+            station_results: [
+              {
+                station_name: 'Grill',
+                printer_id: 'printer-grill',
+                printer_name: 'Grill Mini',
+                item_count: 1,
+                item_ids: [701],
+                dispatch_state: 'failed',
+                retry_safety: 'safe_to_retry',
+                detail: 'Network error: connect ECONNREFUSED 192.0.2.10:9100',
+              },
+              {
+                station_name: 'Kitchen',
+                printer_id: 'printer-kitchen',
+                printer_name: 'Kitchen Mini',
+                item_count: 1,
+                item_ids: [702],
+                dispatch_state: 'submitted',
+                retry_safety: 'not_applicable',
+              },
+            ],
+            recovery: {
+              safe_to_retry_stations: ['Grill'],
+              verify_before_retry_stations: [],
+            },
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          warnings: [],
+          station_results: [
+            {
+              station_name: 'Grill',
+              printer_id: 'printer-grill',
+              printer_name: 'Grill Mini',
+              item_count: 1,
+              item_ids: [701],
+              dispatch_state: 'submitted',
+              retry_safety: 'not_applicable',
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openServerApp(page, serverToken);
+    await page.getByRole('button', { name: new RegExp(tableName) }).click();
+    const grid = page.getByTestId('pos-product-grid');
+    const search = grid.getByPlaceholder('Search menu');
+    await search.fill('E2E Coffee');
+    const coffeeCard = grid
+      .getByTestId('pos-product-card')
+      .filter({ hasText: 'E2E Coffee' })
+      .first();
+    await expect(coffeeCard).toBeVisible();
+    await coffeeCard.click();
+    await page.getByRole('button', { name: 'Current ticket' }).click();
+    // Both desktop panel and mobile drawer render the same ticket action.
+    // At phone width the drawer's action is the visible (last) matching node.
+    const sendOrder = page.getByTestId('server-app-send-order').last();
+    await expect(sendOrder).toBeVisible();
+    await expect(sendOrder).toBeEnabled();
+    await sendOrder.click();
+    await expect(page.getByText('Order sent').first()).toBeVisible();
+
+    const recovery = page.getByTestId('kot-dispatch-recovery-modal');
+    await expect(recovery).toBeVisible();
+    await expect(recovery).toContainText('1 submitted');
+    await expect(recovery).toContainText('1 need attention');
+    await expect(recovery.getByTestId('retry-kot-grill')).toBeVisible();
+    await expect(recovery.getByTestId('retry-kot-kitchen')).toHaveCount(0);
+
+    await recovery.getByTestId('retry-kot-grill').click();
+    await expect(recovery.locator('[data-testid="kot-station-grill"]')).toContainText('Submitted');
+    expect(dispatchRequests).toHaveLength(2);
+    expect(dispatchRequests[1]).toMatchObject({
+      retryStations: [
+        {
+          station_name: 'Grill',
+          printer_id: 'printer-grill',
+          item_ids: [701],
+        },
+      ],
+    });
+    expect(dispatchRequests[1]).not.toHaveProperty('items');
+    await expect(recovery.locator('[data-testid="kot-station-kitchen"]')).toContainText(
+      'Submitted',
+    );
+  });
+
+  test('keeps an unsent ticket on the phone across offline reload, then sends it after reconnecting', async ({
+    page,
+    context,
+  }) => {
+    const managerToken = getE2eToken('e2e-manager', 'manager@flo.local', 'manager');
+    const serverToken = getE2eToken('e2e-server', 'server@flo.local', 'server');
+    const headers = { Authorization: `Bearer ${managerToken}` };
+    const tableName = `Offline Phone ${Date.now()}`;
+    const tableRes = await page.request.post(`${E2E_BASE_URL}/api/tables`, {
+      headers,
+      data: { number: tableName, capacity: 2 },
+    });
+    expect(tableRes.ok()).toBeTruthy();
+    const { table } = await tableRes.json();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openServerApp(page, serverToken);
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller));
+    await page.evaluate(() => {
+      const testWindow = window as Window & { __copiedManualTemplate?: string };
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (value: string) => {
+            testWindow.__copiedManualTemplate = value;
+          },
+        },
+      });
+    });
+    await page.getByTestId('server-app-copy-manual-ticket-template').click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as Window & { __copiedManualTemplate?: string }).__copiedManualTemplate || '',
+        ),
+      )
+      .toContain('STATUS: MANUAL NOTE — NOT SENT TO KITCHEN');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as Window & { __copiedManualTemplate?: string }).__copiedManualTemplate || '',
+        ),
+      )
+      .toContain('Verify the table/current order on the Windows hub');
+
+    await expect(page.getByRole('button', { name: new RegExp(tableName) })).toBeVisible();
+    await page.getByRole('button', { name: new RegExp(tableName) }).click();
+    const grid = page.getByTestId('pos-product-grid');
+    const search = grid.getByPlaceholder('Search menu');
+    await search.fill('E2E Coffee');
+    const coffeeCard = grid
+      .getByTestId('pos-product-card')
+      .filter({ hasText: 'E2E Coffee' })
+      .first();
+    await expect(coffeeCard).toBeVisible();
+    await coffeeCard.click();
+    await page.getByRole('button', { name: 'Current ticket' }).click();
+    const note = 'Room 12 — guest arrives after sunset';
+    const ticketNotes = page.getByPlaceholder('Order notes (optional)').last();
+    await expect(ticketNotes).toBeVisible();
+    await ticketNotes.fill(note);
+
+    await context.setOffline(true);
+    await expect(page.getByTestId('server-app-offline-banner')).toContainText(
+      'saved on this phone',
+    );
+    const saveOffline = page.getByTestId('server-app-save-offline').last();
+    await expect(saveOffline).toBeVisible();
+    await saveOffline.click();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const key = Object.keys(localStorage).find((entry) =>
+            entry.startsWith('flocafe:server-app-local:v1:'),
+          );
+          if (!key) return '';
+          const record = JSON.parse(localStorage.getItem(key) || '{}');
+          return record.draft?.orderNotes || '';
+        }),
+      )
+      .toBe(note);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('server-app-offline-banner')).toBeVisible();
+    await page.getByRole('button', { name: 'Current ticket' }).click();
+    const restoredTicketNotes = page.getByPlaceholder('Order notes (optional)').last();
+    await expect(restoredTicketNotes).toBeVisible();
+    await expect(restoredTicketNotes).toHaveValue(note);
+    const copyTicketNote = page.getByTestId('server-app-copy-ticket-note').last();
+    await expect(copyTicketNote).toBeVisible();
+
+    // Verify the emergency Notes handoff copies a clearly unsent ticket, not an
+    // order confirmation. The clipboard is stubbed so this assertion is deterministic.
+    await page.evaluate(() => {
+      const testWindow = window as Window & { __copiedTicketNote?: string };
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (value: string) => {
+            testWindow.__copiedTicketNote = value;
+          },
+        },
+      });
+    });
+    await copyTicketNote.click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as Window & { __copiedTicketNote?: string }).__copiedTicketNote || '',
+        ),
+      )
+      .toContain('STATUS: NOT SENT TO KITCHEN');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as Window & { __copiedTicketNote?: string }).__copiedTicketNote || '',
+        ),
+      )
+      .toContain(note);
+
+    const beforeSend = await page.request.get(`${E2E_BASE_URL}/api/orders`, {
+      headers,
+      params: { table_id: table.id, type: 'dine_in', per_page: 5 },
+    });
+    expect((await beforeSend.json()).orders).toHaveLength(0);
+
+    // Close the modal ticket drawer before using the header refresh action;
+    // its overlay intentionally prevents clicking controls behind it.
+    await page.keyboard.press('Escape');
+    await expect(copyTicketNote).toBeHidden();
+
+    await context.setOffline(false);
+    const refreshHub = page.getByRole('button', { name: 'Refresh' });
+    await expect(refreshHub).toBeVisible();
+    await refreshHub.click();
+
+    // Reopen the phone ticket after the Windows hub has refreshed the connection.
+    await page.getByRole('button', { name: 'Current ticket' }).click();
+    const sendRestoredTicket = page.getByTestId('server-app-send-order').last();
+    await expect(sendRestoredTicket).toBeVisible();
+    await expect(sendRestoredTicket).toBeEnabled();
+    await sendRestoredTicket.click();
+    await expect(page.getByText('Order sent').first()).toBeVisible();
+
+    const afterSend = await page.request.get(`${E2E_BASE_URL}/api/orders`, {
+      headers,
+      params: { table_id: table.id, type: 'dine_in', per_page: 5 },
+    });
+    const { orders } = await afterSend.json();
+    expect(orders, 'local offline save must not create an order').toHaveLength(1);
+    expect(orders[0]?.special_instructions).toBe(note);
   });
 
   test('does not open browser print popup when no hardware printer is configured (400)', async ({
@@ -173,12 +461,16 @@ test.describe('Server App tableside ordering', () => {
 
       const header = page.locator('header');
       const refreshButton = header.getByRole('button', { name: 'Refresh' });
+      const manualTemplateButton = header.getByRole('button', {
+        name: 'Copy blank Notes ticket template',
+      });
       const logoutButton = header.getByRole('button', { name: 'Logout' });
       await expect(refreshButton).toBeVisible();
+      await expect(manualTemplateButton).toBeVisible();
       await expect(logoutButton).toBeVisible();
-      await expect(header.getByRole('button')).toHaveCount(2);
+      await expect(header.getByRole('button')).toHaveCount(3);
 
-      for (const button of [refreshButton, logoutButton]) {
+      for (const button of [refreshButton, manualTemplateButton, logoutButton]) {
         const box = await button.boundingBox();
         expect(box).not.toBeNull();
         expect(box!.width).toBeGreaterThanOrEqual(44);

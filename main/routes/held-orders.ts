@@ -264,14 +264,41 @@ router.post(
         waivedChargeIds,
         optedInChargeIds,
       } = input;
+      const hasExpectedHeldOrderId = Object.prototype.hasOwnProperty.call(
+        req.body,
+        'expectedHeldOrderId',
+      );
+      const expectedHeldOrderId: unknown = req.body.expectedHeldOrderId;
+      if (
+        hasExpectedHeldOrderId &&
+        expectedHeldOrderId !== null &&
+        (typeof expectedHeldOrderId !== 'string' ||
+          expectedHeldOrderId.trim().length === 0 ||
+          expectedHeldOrderId.length > MAX_IDENTIFIER_LENGTH)
+      ) {
+        return res.status(400).json({
+          code: 'HELD_ORDER_EXPECTED_ID_INVALID',
+          error: 'expectedHeldOrderId must be null or a valid held-order identity',
+        });
+      }
       const serializedWaivedChargeIds = JSON.stringify(waivedChargeIds);
       const serializedOptedInChargeIds = JSON.stringify(optedInChargeIds);
       let heldOrderId = '';
+      let heldOrderConflict = false;
 
       withTxn(() => {
         const existing = db
           .prepare('SELECT id FROM held_orders WHERE table_id = ?')
           .get(tableId) as { id: string } | undefined;
+        if (
+          hasExpectedHeldOrderId &&
+          ((expectedHeldOrderId === null && existing !== undefined) ||
+            (typeof expectedHeldOrderId === 'string' &&
+              (!existing || existing.id !== expectedHeldOrderId)))
+        ) {
+          heldOrderConflict = true;
+          return;
+        }
         heldOrderId = `ho-${randomUUID().slice(0, 8)}`;
 
         if (existing) {
@@ -317,7 +344,15 @@ router.post(
         );
       });
 
-      // Return held order identity so clients can verify snapshot validity on deletion.
+      if (heldOrderConflict) {
+        return res.status(409).json({
+          code: 'HELD_ORDER_CONFLICT',
+          error:
+            'This table was updated on another terminal. The latest held cart has been preserved; refresh before trying again.',
+        });
+      }
+
+      // The new identity becomes the version token for the next hold operation.
       res.json({ success: true, id: heldOrderId });
     } catch (error: any) {
       res.locals.postHogError = error;

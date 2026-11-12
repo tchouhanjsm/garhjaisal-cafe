@@ -247,7 +247,7 @@
     "test:issue-127-password-recovery": "node tests/run-electron-node-test.cjs tests/issue-127-password-recovery.test.ts",
     "test:cloud-password-recovery": "node tests/run-electron-node-test.cjs tests/cloud-password-recovery.test.ts",
     "test:password-policy": "ts-node --transpile-only -P tests/tsconfig.json tests/password-policy.test.ts",
-    "test:server-app-server-role": "node tests/run-electron-node-test.cjs tests/server-app-server-role.test.ts && npm run test:server-app-maintenance-handoff",
+    "test:server-app-server-role": "node tests/run-electron-node-test.cjs tests/server-app-server-role.test.ts && ts-node --transpile-only -P tests/tsconfig.json tests/server-app-drafts.test.ts && npm run test:server-app-maintenance-handoff",
     "test:server-app-maintenance-handoff": "node tests/run-electron-node-test.cjs tests/server-app-maintenance-handoff.test.ts",
     "test:server-app-station-routing": "node tests/run-electron-node-test.cjs tests/server-app-station-routing.test.ts",
     "test:issue-1442": "node tests/run-electron-node-test.cjs tests/issue-1442-kot-and-58mm-print.test.ts",

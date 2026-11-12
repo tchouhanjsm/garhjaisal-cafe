@@ -1,7 +1,9 @@
-const CACHE_NAME = 'flo-v19';
+const CACHE_NAME = 'flo-v20';
 const PRECACHE_URLS = [
   '/dashboard',
   '/pos',
+  '/server-standalone',
+  '/server-app-manifest.json',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
