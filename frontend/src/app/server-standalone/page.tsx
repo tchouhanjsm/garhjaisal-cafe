@@ -92,6 +92,7 @@ type Order = {
   id: number;
   order_number: string;
   table_id?: string | null;
+  room_number?: string | null;
   status: string;
   items?: OrderItem[];
   customer?: { id?: string; name: string; phone?: string } | null;
@@ -103,6 +104,7 @@ type ServerAppInfo = {
   currency_symbol: string;
   currency_position: 'prefix' | 'suffix';
   currency_fraction_digits: number;
+  room_number_enabled?: boolean;
   category_sort?: PosCategorySort;
   item_sort?: PosItemSort;
 };
@@ -2141,7 +2143,7 @@ export default function ServerStandalonePage() {
         )}
       </div>
 
-      {(draft.length > 0 || !browserOnline || hubReachable === false || orderNotes.length > 0 || roomNumber.length > 0) && (
+      {regional?.room_number_enabled === true && (draft.length > 0 || !browserOnline || hubReachable === false || orderNotes.length > 0 || roomNumber.length > 0) && (
         <div className="mt-3 space-y-2">
           <input
             data-testid="server-app-room-number-input"

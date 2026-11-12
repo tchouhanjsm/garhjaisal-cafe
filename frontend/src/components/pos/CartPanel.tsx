@@ -849,7 +849,7 @@ export default function CartPanel({
         data-testid="cart-footer"
         className="px-2.5 py-1 border-t border-border dark:border-border bg-card space-y-1"
       >
-        {cart.orderType === 'dine_in' && (
+        {cart.orderType === 'dine_in' && currentTenant?.room_number_enabled === true && (
           <input
             data-testid="pos-room-number-input"
             type="text"

@@ -136,6 +136,8 @@ function buildLocalTenant(db: ReturnType<typeof getDatabase>, userId: string, us
     bill_language_policy: s.bill_language_policy || null,
     kot_language_policy: s.kot_language_policy || null,
     service_model: s.service_model || 'finedine',
+    room_number_enabled: s.room_number_enabled === 'true',
+    hotel_name: s.hotel_name || '',
     currency_display: snapshot?.preferences.currencyDisplay || s.currency_display || 'rial',
     number_digits: snapshot?.preferences.digits || s.number_digits || 'locale',
     calendar: snapshot?.preferences.calendar || s.calendar || 'locale',

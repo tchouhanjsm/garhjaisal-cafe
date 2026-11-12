@@ -18,6 +18,8 @@ export interface Tenant {
   database_name: string;
   business_type: 'restaurant';
   service_model?: 'qsr' | 'finedine';
+  room_number_enabled?: boolean;
+  hotel_name?: string;
   country: string;
   currency: string;
   timezone: string;
