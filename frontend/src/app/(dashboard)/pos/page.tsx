@@ -4079,6 +4079,20 @@ export default function POSPage() {
         }}
       />
 
+      {isRestaurant && showTablePicker && (
+        <TablePickerModal
+          tables={tables}
+          selectedTableId={cart.tableId}
+          onSelectAvailable={handleSelectAvailableTable}
+          onSelectOccupied={handleSelectOccupiedTable}
+          onSelectHeld={handleSelectHeldTable}
+          onPlaceOrder={handlePlaceOrder}
+          onHoldTable={handleHoldTable}
+          onClose={closeTablePicker}
+          presentation={tablePickerPresentation}
+        />
+      )}
+
       {/* Main content area */}
       <div className="flex flex-1 min-h-0 overflow-hidden px-3 py-2 sm:px-4 sm:py-2.5 gap-3 sm:gap-4">
         {/* Product Grid — full width on mobile, flex-1 on desktop */}
@@ -4133,19 +4147,7 @@ export default function POSPage() {
       <CashDrawerMovementModal model={cashDrawer} />
       <ShiftOpenModal model={shift} />
       <ShiftCloseModal model={shift} />
-      {isRestaurant && showTablePicker && (
-        <TablePickerModal
-          tables={tables}
-          selectedTableId={cart.tableId}
-          onSelectAvailable={handleSelectAvailableTable}
-          onSelectOccupied={handleSelectOccupiedTable}
-          onSelectHeld={handleSelectHeldTable}
-          onPlaceOrder={handlePlaceOrder}
-          onHoldTable={handleHoldTable}
-          onClose={closeTablePicker}
-          presentation={tablePickerPresentation}
-        />
-      )}
+
 
       {addonProduct && (
         <AddonModal
