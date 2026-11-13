@@ -54,15 +54,15 @@ function testInlineTableFirstPresentation(): void {
     'utf8',
   );
   const picker = fs.readFileSync(
-    path.join(ROOT, 'frontend/src/components/pos/TablePickerModal.tsx'),
+    path.join(ROOT, 'frontend/src/components/pos/TableFirstSelector.tsx'),
     'utf8',
   );
 
   assert.match(posPage, /setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/);
   assert.match(posPage, /onShowTablePicker=\{openTablePicker\}/);
   assert.match(posPage, /presentation=\{tablePickerPresentation\}/);
-  assert.match(picker, /data-testid=\{isInline \? 'pos-table-first-picker'/);
-  assert.match(picker, /fixed inset-0 z-50/);
+  assert.match(picker, /data-testid="pos-table-first-picker"/);
+  assert.match(posPage, /<TablePickerModal/);
   assert.match(picker, /formatCurrency\(activeOrder\.total\)/);
 
   console.log('  ✓ first table selection is inline; manual switching remains modal');
