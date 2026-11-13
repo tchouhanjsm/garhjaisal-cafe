@@ -2144,13 +2144,13 @@ export default function ServerStandalonePage() {
         )}
       </div>
 
-      {regional?.room_number_enabled === true &&
-        (draft.length > 0 ||
-          !browserOnline ||
-          hubReachable === false ||
-          orderNotes.length > 0 ||
-          roomNumber.length > 0) && (
-          <div className="mt-3 space-y-2">
+      {(draft.length > 0 ||
+        !browserOnline ||
+        hubReachable === false ||
+        orderNotes.length > 0 ||
+        (regional?.room_number_enabled === true && roomNumber.length > 0)) && (
+        <div className="mt-3 space-y-2">
+          {regional?.room_number_enabled === true && (
             <input
               data-testid="server-app-room-number-input"
               type="text"
@@ -2162,20 +2162,21 @@ export default function ServerStandalonePage() {
               maxLength={32}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none disabled:opacity-50"
             />
-            <textarea
-              value={orderNotes}
-              disabled={sending}
-              onChange={(event) => handleOrderNotesChange(event.target.value)}
-              placeholder={tPos('orderNotesPlaceholder')}
-              rows={2}
-              maxLength={200}
-              className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none disabled:opacity-50"
-            />
-            <p className="mt-0.5 text-end text-xs text-muted-foreground">
-              <Ltr>{orderNotes.length}/200</Ltr>
-            </p>
-          </div>
-        )}
+          )}
+          <textarea
+            value={orderNotes}
+            disabled={sending}
+            onChange={(event) => handleOrderNotesChange(event.target.value)}
+            placeholder={tPos('orderNotesPlaceholder')}
+            rows={2}
+            maxLength={200}
+            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none disabled:opacity-50"
+          />
+          <p className="mt-0.5 text-end text-xs text-muted-foreground">
+            <Ltr>{orderNotes.length}/200</Ltr>
+          </p>
+        </div>
+      )}
 
       {(draft.length > 0 || orderNotes.trim() || roomNumber.trim()) && (
         <button
