@@ -96,8 +96,8 @@ async function main() {
         timezone: 'Africa/Casablanca',
         language: 'en',
         terms_accepted: true,
-        owner_approval_pin: '5678',
-        owner_approval_pin_confirmation: '5678',
+        owner_approval_pin: '567890',
+        owner_approval_pin_confirmation: '567890',
       },
     });
     assertEqual(setupRes.status, 200, 'setup/initialize returns 200 for MA');
