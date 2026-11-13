@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "票据已创建并发送至待结账队列。",
     "ticketNumber": "小票编号",
     "paymentTicketInstruction": "请凭此小票前往收银台结账。",
-    "selectCounter": "选择柜台"
+    "selectCounter": "选择柜台",
+    "roomNumberLabel": "酒店房间号",
+    "roomNumberPlaceholder": "房间号（可选）"
   },
   "printTest": {
     "amt": "金额",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 小时",
     "refundWindow4h": "4 小时",
     "refundWindowSameDay": "同一营业日",
-    "refundOwnerUnlimitedNote": "店主始终可以使用其员工审批 PIN 码批准任何历史订单的退款。"
+    "refundOwnerUnlimitedNote": "店主始终可以使用其员工审批 PIN 码批准任何历史订单的退款。",
+    "masterPinCurrentInvalid": "请输入有效的当前 4 位或 6 位主 PIN"
   },
   "setup": {
     "alreadyCompleted": "此安装已完成设置。正在跳转到登录…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "我同意 FloPOS 的",
     "timezoneHint": "根据您的国家/地区预填。多时区国家/地区的门店可选择实际本地时区。",
     "timezoneLabel": "时区",
-    "welcome": "欢迎使用 FloCafe"
+    "welcome": "欢迎使用 FloCafe",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Garh Jaisal Haveli 餐厅设置",
+    "garhJaisalDetails": "Garh Jaisal Haveli 餐厅默认设置：INR、FineDine 先用餐后付款、10 张餐桌、UPI、厨房显示屏和服务员应用。首次销售前，请添加实际菜单和员工账户，并检查税务设置。"
   },
   "staff": {
     "addButton": "添加员工",
@@ -2843,7 +2849,8 @@
     "roleServer": "服务员",
     "title": "员工",
     "updateButton": "更新",
-    "updatedToast": "员工已更新"
+    "updatedToast": "员工已更新",
+    "pinMustBeSixDigits": "PIN 必须正好为 6 位数字"
   },
   "permissionMatrix": {
     "title": "角色权限",
