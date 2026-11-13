@@ -383,7 +383,7 @@ async function main() {
     );
     assert.ok(ownerRow.pin_hash, 'setup stores an owner Staff Approval PIN hash');
     assert.equal(
-      bcrypt.compareSync('5678', ownerRow.pin_hash),
+      bcrypt.compareSync('567890', ownerRow.pin_hash),
       true,
       'owner Staff Approval PIN verifies against users.pin_hash',
     );
