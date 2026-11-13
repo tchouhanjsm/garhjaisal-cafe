@@ -465,7 +465,7 @@ async function run() {
     assertEqual(login2.status, 200, 'Post-change /api/auth/login in same ms succeeds');
     const pinLogin2 = await request(app)
       .post('/api/auth/pin-login')
-      .send({ user_id: 'jwt-owner-1', pin: '1357' });
+      .send({ user_id: 'jwt-owner-1', pin: '135790' });
     assertEqual(pinLogin2.status, 200, 'Post-change /api/auth/pin-login in same ms succeeds');
     const select2 = await request(app)
       .post('/api/auth/tenants/select')
@@ -613,9 +613,9 @@ async function run() {
       currency: 'INR',
       timezone: 'Asia/Kolkata',
       terms_accepted: true,
-      master_pin: '1234',
-      owner_approval_pin: '2468',
-      owner_approval_pin_confirmation: '2468',
+      master_pin: '123456',
+      owner_approval_pin: '246810',
+      owner_approval_pin_confirmation: '246810',
     });
     assertEqual(
       postCorrectionSetup.status,
@@ -643,7 +643,7 @@ async function run() {
 
     const postCorrectionPinLogin = await request(app)
       .post('/api/auth/pin-login')
-      .send({ user_id: correctedUserId, pin: '2468' });
+      .send({ user_id: correctedUserId, pin: '246810' });
     assertEqual(
       postCorrectionPinLogin.status,
       200,
