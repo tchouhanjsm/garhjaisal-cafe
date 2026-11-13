@@ -583,6 +583,75 @@ async function main() {
   } finally {
     await new Promise<void>((resolve) => cloudServer.close(() => resolve()));
   }
+
+  // ── Garh Jaisal first-run deployment preset: local-only operational setup ──
+  console.log('\n   Garh Jaisal local-first deployment preset');
+  closeDatabase();
+  fs.rmSync(testDir, { recursive: true, force: true });
+  testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flo-first-run-garh-jaisal-'));
+  initDatabase();
+
+  const garhApi = express();
+  garhApi.use(express.json());
+  garhApi.use('/api/auth', authRoutes);
+  const garhServer = await listen(garhApi);
+  const garhBaseUrl = `http://127.0.0.1:${(garhServer.address() as { port: number }).port}/api/auth`;
+  try {
+    const refreshesBeforeGarhSetup = profileRefreshes;
+    const garhSetup = await request(garhBaseUrl, '/setup/initialize', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Garh Jaisal Owner',
+        email: 'garh-owner@example.com',
+        password: 'TestPass123',
+        business_type: 'restaurant',
+        setup_profile: 'garh-jaisal',
+        service_model: 'finedine',
+        terms_accepted: true,
+        owner_approval_pin: '678901',
+        owner_approval_pin_confirmation: '678901',
+      }),
+    });
+    assert.equal(
+      garhSetup.status,
+      200,
+      `Garh Jaisal first-run setup succeeds (got ${garhSetup.status}, ${JSON.stringify(garhSetup.data)})`,
+    );
+    assert.equal(setting('country'), 'IN', 'Garh Jaisal preset fixes country to India');
+    assert.equal(setting('currency'), 'INR', 'Garh Jaisal preset fixes currency to INR');
+    assert.equal(setting('timezone'), 'Asia/Kolkata', 'Garh Jaisal preset fixes Asia/Kolkata');
+    assert.equal(setting('service_model'), 'finedine', 'Garh Jaisal uses FineDine service');
+    assert.equal(setting('billing_type'), 'postpaid', 'Garh Jaisal starts postpaid');
+    assert.equal(setting('tables_required'), 'true', 'Garh Jaisal requires dine-in tables');
+    assert.equal(setting('room_number_enabled'), 'true', 'optional room references are enabled');
+    assert.equal(setting('kds_enabled'), 'true', 'KDS is enabled');
+    assert.equal(setting('server_app_enabled'), 'true', 'waiter Server App is enabled');
+    assert.equal(setting('tax_registered'), 'false', 'GST remains disabled at first run');
+    assert.equal(setting('tax_registration_number'), '', 'GSTIN is left blank for later owner setup');
+    assert.equal(setting('cloud_sync_enabled'), '0', 'Garh Jaisal has no cloud-sync dependency');
+    assert.equal(
+      setting('cloud_services_disabled_by_user'),
+      'true',
+      'cloud services are explicitly disabled for this local installation',
+    );
+    assert.equal(count('users'), 1, 'setup creates only the owner account');
+    assert.equal(count('tables'), 10, 'setup creates the ten approved restaurant tables');
+    assert.equal(count('products'), 0, 'setup does not invent menu products or prices');
+    assert.equal(count('categories'), 0, 'setup does not invent menu categories');
+    assert.equal(
+      count('payment_methods'),
+      1,
+      'setup adds only the configured UPI payment method',
+    );
+    assert.equal(
+      profileRefreshes,
+      refreshesBeforeGarhSetup + 1,
+      'local first-run completion keeps the existing registration refresh hook',
+    );
+    console.log('   ✓ Garh Jaisal preset is local-first and seeds only approved operational defaults');
+  } finally {
+    await new Promise<void>((resolve) => garhServer.close(() => resolve()));
+  }
 }
 
 main()
