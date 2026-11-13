@@ -65,7 +65,6 @@ export default function TableFirstSelector({
   return (
     <section
       data-testid="pos-table-first-picker"
-      role="region"
       aria-label={t('selectTable')}
       className="mb-4 w-full rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6"
     >
@@ -79,11 +78,8 @@ export default function TableFirstSelector({
           const isHeld = heldOrders.hasHeldOrder(table.id);
           const isSelected = selectedTableId === table.id;
           const activeOrder = table.current_order || table.activeOrder;
-          const isDisabled =
-            table.status === 'cleaning' || (table.status === 'held' && !isHeld);
-          const statusLabel = isHeld
-            ? t('tableHeld')
-            : tTables(TABLE_STATUS_LABEL_KEYS[table.status]);
+          const isDisabled = table.status === 'cleaning' || (table.status === 'held' && !isHeld);
+          const statusLabel = isHeld ? t('tableHeld') : tTables(TABLE_STATUS_LABEL_KEYS[table.status]);
           const cardStyle = isSelected
             ? 'border-brand bg-brand-light'
             : isHeld
@@ -104,9 +100,7 @@ export default function TableFirstSelector({
               className={cardClassName}
             >
               <span className="block font-bold text-foreground">{table.name}</span>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                {statusLabel}
-              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">{statusLabel}</span>
               <span className="block text-xs text-muted-foreground">
                 {t('tableSeats', { count: table.capacity })}
               </span>
