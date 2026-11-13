@@ -58,10 +58,7 @@ function testInlineTableFirstPresentation(): void {
     'utf8',
   );
 
-  assert.match(
-    posPage,
-    /setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/,
-  );
+  assert.match(posPage, /setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/);
   assert.match(posPage, /onShowTablePicker=\{openTablePicker\}/);
   assert.match(posPage, /presentation=\{tablePickerPresentation\}/);
   assert.match(picker, /data-testid=\{isInline \? 'pos-table-first-picker'/);
