@@ -122,7 +122,14 @@ export default function SetupPage() {
   // The country profile timezone is only a suggested default, set once a
   // country is chosen below; the owner can override it for multi-timezone countries.
   const [timezone, setTimezone] = useState<string>(GARH_JAISAL_PROFILE.timezone);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    business_name: string;
+    instagram_handle: string;
+  }>({
     name: '',
     email: '',
     password: '',
@@ -145,11 +152,11 @@ export default function SetupPage() {
   const [masterPinAvailable, setMasterPinAvailable] = useState<boolean | null>(null);
   const [masterPin, setMasterPin] = useState('');
   const [masterPinConfirm, setMasterPinConfirm] = useState('');
-  const masterPinValid = /^\d{4}$/.test(masterPin) && masterPin === masterPinConfirm;
+  const masterPinValid = /^\d{6}$/.test(masterPin) && masterPin === masterPinConfirm;
   const [ownerApprovalPin, setOwnerApprovalPin] = useState('');
   const [ownerApprovalPinConfirm, setOwnerApprovalPinConfirm] = useState('');
   const ownerApprovalPinValid =
-    /^\d{4,6}$/.test(ownerApprovalPin) && ownerApprovalPin === ownerApprovalPinConfirm;
+    /^\d{6}$/.test(ownerApprovalPin) && ownerApprovalPin === ownerApprovalPinConfirm;
 
   const cloudEnabled = profile !== GARH_JAISAL_PROFILE.id;
   const [cloudServerUrl, setCloudServerUrl] = useState(DEFAULT_CLOUD_SERVER_URL);
@@ -388,7 +395,7 @@ export default function SetupPage() {
         master_pin: masterPinAvailable ? masterPin : undefined,
         owner_approval_pin: ownerApprovalPin,
         owner_approval_pin_confirmation: ownerApprovalPinConfirm,
-        cloud_sync_enabled: true,
+        cloud_sync_enabled: cloudEnabled,
         cloud_server_url: cloudServerUrl.trim() || DEFAULT_CLOUD_SERVER_URL,
         email_product_updates: productUpdates,
         email_marketing: marketing,
@@ -648,12 +655,13 @@ export default function SetupPage() {
                           type={showMasterPin ? 'text' : 'password'}
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          maxLength={4}
+                          minLength={6}
+                          maxLength={6}
                           value={masterPin}
                           onChange={(e) =>
-                            setMasterPin(e.target.value.replace(/\D/g, '').slice(0, 4))
+                            setMasterPin(e.target.value.replace(/\D/g, '').slice(0, 6))
                           }
-                          placeholder="••••"
+                          placeholder="••••••"
                           className="text-center text-lg tracking-[0.5em] pe-10"
                         />
                         <button
@@ -674,12 +682,13 @@ export default function SetupPage() {
                           type={showConfirmMasterPin ? 'text' : 'password'}
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          maxLength={4}
+                          minLength={6}
+                          maxLength={6}
                           value={masterPinConfirm}
                           onChange={(e) =>
-                            setMasterPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4))
+                            setMasterPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 6))
                           }
-                          placeholder="••••"
+                          placeholder="••••••"
                           className="text-center text-lg tracking-[0.5em] pe-10"
                         />
                         <button
@@ -711,13 +720,13 @@ export default function SetupPage() {
                           type={showApprovalPin ? 'text' : 'password'}
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          minLength={4}
+                          minLength={6}
                           maxLength={6}
                           value={ownerApprovalPin}
                           onChange={(e) =>
                             setOwnerApprovalPin(e.target.value.replace(/\D/g, '').slice(0, 6))
                           }
-                          placeholder="••••"
+                          placeholder="••••••"
                           className="text-center text-lg tracking-[0.5em] pe-10"
                           required
                         />
