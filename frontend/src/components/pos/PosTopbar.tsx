@@ -115,7 +115,7 @@ export default function PosTopbar({
               <span className="flex size-8 items-center justify-center rounded-md bg-yellow-400 text-yellow-950">
                 <UtensilsCrossed size={16} />
               </span>
-              <span className="text-base font-bold tabular-nums">{tableName ?? t('selectTable')}</span>
+              <span className="text-base font-bold tabular-nums">{tableName ?? '—'}</span>
               <span
                 aria-hidden="true"
                 className="hidden sm:inline-flex rounded border border-current px-1 text-[10px] font-mono opacity-60"
