@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Fiş oluşturuldu ve ödeme kuyruğuna gönderildi.",
     "ticketNumber": "Fiş numarası",
     "paymentTicketInstruction": "Ödeme yapmak için bu fişi ödeme bankosuna götürün.",
-    "selectCounter": "Banko seç"
+    "selectCounter": "Banko seç",
+    "roomNumberLabel": "Otel oda numarası",
+    "roomNumberPlaceholder": "Oda no. (isteğe bağlı)"
   },
   "printTest": {
     "amt": "Tutar",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 saat",
     "refundWindow4h": "4 saat",
     "refundWindowSameDay": "Aynı iş günü",
-    "refundOwnerUnlimitedNote": "İşletme sahipleri geçmiş herhangi bir siparişin iadesini kendi Personel Onay PIN kodlarıyla her zaman onaylayabilir."
+    "refundOwnerUnlimitedNote": "İşletme sahipleri geçmiş herhangi bir siparişin iadesini kendi Personel Onay PIN kodlarıyla her zaman onaylayabilir.",
+    "masterPinCurrentInvalid": "Geçerli, mevcut 4 veya 6 haneli Ana PIN'i girin"
   },
   "setup": {
     "alreadyCompleted": "Kurulum bu cihazda zaten tamamlandı. Giriş ekranına yönlendiriliyorsunuz…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "FloPOS kullanım koşullarını kabul ediyorum",
     "timezoneHint": "Ülkenize göre otomatik seçildi. Birden çok saat dilimi olan ülkelerde yerel saat diliminizi belirleyebilirsiniz.",
     "timezoneLabel": "Saat Dilimi",
-    "welcome": "FloCafe'ye Hoş Geldiniz"
+    "welcome": "FloCafe'ye Hoş Geldiniz",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Garh Jaisal Haveli restoran kurulumu",
+    "garhJaisalDetails": "Garh Jaisal Haveli restoranı için varsayılanlar: INR, FineDine sonradan ödemeli hizmet, 10 masa, UPI, mutfak ekranı ve garson uygulaması. İlk satıştan önce gerçek menünüzü ve personel hesaplarınızı ekleyin, ardından vergi ayarlarını gözden geçirin."
   },
   "staff": {
     "addButton": "Personel Ekle",
@@ -2843,7 +2849,8 @@
     "roleServer": "Garson",
     "title": "Personel Yönetimi",
     "updateButton": "Güncelle",
-    "updatedToast": "Personel güncellendi"
+    "updatedToast": "Personel güncellendi",
+    "pinMustBeSixDigits": "PIN tam olarak 6 rakamdan oluşmalıdır"
   },
   "permissionMatrix": {
     "title": "Yetki ve İzin Matrisi",
