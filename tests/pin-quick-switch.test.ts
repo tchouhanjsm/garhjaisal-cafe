@@ -393,7 +393,7 @@ async function run() {
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('mgr-1', 'Bob Manager', 'manager@test.local', ?, 'manager', ?, 1, ?, ?)
-  `).run(bcrypt.hashSync('MgrPass1!', 10), bcrypt.hashSync('1357', 10), ts, ts);
+  `).run(bcrypt.hashSync('MgrPass1!', 10), bcrypt.hashSync('135790', 10), ts, ts);
 
   // Seed user without PIN (server) and inactive user with PIN
   db.prepare(`
@@ -404,7 +404,7 @@ async function run() {
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('inactive-pin', 'Inactive Chef', 'inactive@test.local', ?, 'chef', ?, 0, ?, ?)
-  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('9999', 10), ts, ts);
+  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('999999', 10), ts, ts);
 
   const ownerAuth = makeToken('owner-1', 'owner', 'owner@test.local');
   const managerAuth = makeToken('mgr-1', 'manager', 'manager@test.local');
@@ -892,7 +892,7 @@ async function run() {
   const billDiscCashierScan = await request(app)
     .post(`/api/bills/${billId}/discount`)
     .set(cashierAuth)
-    .send({ type: 'percentage', value: 10, override_pin: '7777' });
+    .send({ type: 'percentage', value: 10, override_pin: '777777' });
   assertEqualOrThrow(
     billDiscCashierScan.status,
     403,
@@ -902,7 +902,7 @@ async function run() {
   const billDiscCashierTargeted = await request(app)
     .post(`/api/bills/${billId}/discount`)
     .set(cashierAuth)
-    .send({ type: 'percentage', value: 10, approver_id: cashierId, override_pin: '7777' });
+    .send({ type: 'percentage', value: 10, approver_id: cashierId, override_pin: '777777' });
   assertEqualOrThrow(
     billDiscCashierTargeted.status,
     403,
@@ -914,13 +914,13 @@ async function run() {
   const orderDiscCashier = await request(app)
     .patch(`/api/orders/${orderId}/discount`)
     .set(cashierAuth)
-    .send({ discount_type: 'percentage', discount_value: 10, override_pin: '7777' });
+    .send({ discount_type: 'percentage', discount_value: 10, override_pin: '777777' });
   assertEqualOrThrow(orderDiscCashier.status, 403, 'Order discount rejects cashier PIN with 403');
 
   const itemDiscCashier = await request(app)
     .patch(`/api/orders/${orderId}/items/${orderItemId}/discount`)
     .set(cashierAuth)
-    .send({ discount_type: 'percentage', discount_value: 10, override_pin: '7777' });
+    .send({ discount_type: 'percentage', discount_value: 10, override_pin: '777777' });
   assertEqualOrThrow(
     itemDiscCashier.status,
     403,
@@ -932,7 +932,7 @@ async function run() {
   const itemVoidCashierScan = await request(app)
     .patch(`/api/orders/${orderId}/items/${orderItemId}/cancel`)
     .set(cashierAuth)
-    .send({ reason: 'Customer changed mind', override_pin: '7777' });
+    .send({ reason: 'Customer changed mind', override_pin: '777777' });
   assertEqualOrThrow(
     itemVoidCashierScan.status,
     403,
@@ -942,7 +942,7 @@ async function run() {
   const itemVoidCashierTargeted = await request(app)
     .patch(`/api/orders/${orderId}/items/${orderItemId}/cancel`)
     .set(cashierAuth)
-    .send({ reason: 'Customer changed mind', approver_id: cashierId, override_pin: '7777' });
+    .send({ reason: 'Customer changed mind', approver_id: cashierId, override_pin: '777777' });
   assertEqualOrThrow(
     itemVoidCashierTargeted.status,
     403,
@@ -971,7 +971,7 @@ async function run() {
       reason: 'Customer changed mind',
       manager_id: '',
       approver_id: '  mgr-1  ',
-      override_pin: '1357',
+      override_pin: '135790',
     });
   assertEqualOrThrow(
     itemVoidTrimmedManager.status,
@@ -984,7 +984,7 @@ async function run() {
   const orderCancelCashier = await request(app)
     .patch(`/api/orders/${orderId}/status`)
     .set(cashierAuth)
-    .send({ status: 'cancelled', override_pin: '7777' });
+    .send({ status: 'cancelled', override_pin: '777777' });
   assertEqualOrThrow(
     orderCancelCashier.status,
     403,
@@ -994,7 +994,7 @@ async function run() {
   const orderCompleteCashier = await request(app)
     .patch(`/api/orders/${orderId}/status`)
     .set(cashierAuth)
-    .send({ status: 'completed', approver_id: cashierId, override_pin: '7777' });
+    .send({ status: 'completed', approver_id: cashierId, override_pin: '777777' });
   assertEqualOrThrow(
     orderCompleteCashier.status,
     403,
@@ -1020,7 +1020,7 @@ async function run() {
       charge_id: 'service_charge',
       waived: true,
       approver_id: cashierId,
-      override_pin: '7777',
+      override_pin: '777777',
     });
   assertEqualOrThrow(
     chargeWaiveCashierPin.status,
@@ -1035,7 +1035,7 @@ async function run() {
       charge_id: 'service_charge',
       waived: true,
       approver_id: 'mgr-1',
-      override_pin: '1357',
+      override_pin: '135790',
     });
   assertEqualOrThrow(
     chargeWaiveManagerPin.status,
@@ -1060,7 +1060,7 @@ async function run() {
     .set(cashierAuth)
     .send({
       payments: [{ method: 'card', amount: 110 }],
-      override_pin: '7777',
+      override_pin: '777777',
       approver_id: cashierId,
     });
   assertEqualOrThrow(
@@ -1075,7 +1075,7 @@ async function run() {
     .send({
       method: 'card',
       amount: 110,
-      override_pin: '7777',
+      override_pin: '777777',
     });
   assertEqualOrThrow(
     singlePayKitchenOverrideCashier.status,
@@ -1090,7 +1090,7 @@ async function run() {
     .send({
       payments: [{ method: 'card', amount: 110 }],
       approver_id: 'mgr-1',
-      override_pin: '1357',
+      override_pin: '135790',
     });
   assertEqualOrThrow(
     billPayWithManagerPin.status,
@@ -1106,7 +1106,7 @@ async function run() {
     reason: 'Customer complaint',
     method: 'card',
     approver_id: cashierId,
-    override_pin: '7777',
+    override_pin: '777777',
   });
   assertEqualOrThrow(refundCashierPin.status, 403, 'Refund rejects cashier PIN with 403');
 
@@ -1176,7 +1176,7 @@ async function run() {
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES (?, 'Reports Staff', 'reports@test.local', ?, 'server', ?, 1, ?, ?)
-  `).run(reportsOnlyId, bcrypt.hashSync('Pass123!', 10), bcrypt.hashSync('8888', 10), ts, ts);
+  `).run(reportsOnlyId, bcrypt.hashSync('Pass123!', 10), bcrypt.hashSync('888888', 10), ts, ts);
 
   for (const perm of [
     'pos.use',
@@ -1363,7 +1363,7 @@ async function run() {
   );
 
   // Quick-switch to cashier via pinLogin
-  await useAuthStore.getState().pinLogin(cashierId, '7777');
+  await useAuthStore.getState().pinLogin(cashierId, '777777');
   assertEqualOrThrow(useAuthStore.getState().user?.id, cashierId, 'Quick switch sets cashier user');
   assertEqualOrThrow(useAuthStore.getState().isLocked, false, 'Quick switch clears isLocked');
 
