@@ -262,7 +262,7 @@ async function main() {
         globalThis.fetch = savedFetchAfterRestore;
       }
 
-      resetMasterPin('1234');
+      resetMasterPin('123456');
       const importPayload = {
         schema_version: String(getCurrentSchemaVersion()),
         data: {
@@ -277,7 +277,7 @@ async function main() {
         headers: ownerAuth,
         body: {
           overwrite: true,
-          master_pin: '1234',
+          master_pin: '123456',
           data: importPayload,
         },
       });
