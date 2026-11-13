@@ -83,11 +83,19 @@ export default function TableFirstSelector({
           const activeOrder = table.current_order || table.activeOrder;
           const isDisabled =
             table.status === 'cleaning' || (table.status === 'held' && !isHeld);
+          const statusLabel = isHeld
+            ? t('tableHeld')
+            : tTables(TABLE_STATUS_LABEL_KEYS[table.status]);
           const cardStyle = isSelected
             ? 'border-brand bg-brand-light'
             : isHeld
               ? 'border-blue-400 bg-blue-50'
               : tableStatusStyles[table.status];
+          const cardClassName = [
+            'relative min-h-28 rounded-xl border-2 p-4 text-center transition-colors',
+            cardStyle,
+            isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+          ].join(' ');
 
           return (
             <button
@@ -95,13 +103,11 @@ export default function TableFirstSelector({
               type="button"
               onClick={() => !isDisabled && handleClick(table)}
               disabled={isDisabled}
-              className={`relative min-h-28 rounded-xl border-2 p-4 text-center transition-colors ${cardStyle} ${isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+              className={cardClassName}
             >
               <span className="block font-bold text-foreground">{table.name}</span>
               <span className="mt-1 block text-xs text-muted-foreground">
-                {isHeld
-                  ? t('tableHeld')
-                  : tTables(TABLE_STATUS_LABEL_KEYS[table.status])}
+                {statusLabel}
               </span>
               <span className="block text-xs text-muted-foreground">
                 {t('tableSeats', { count: table.capacity })}
