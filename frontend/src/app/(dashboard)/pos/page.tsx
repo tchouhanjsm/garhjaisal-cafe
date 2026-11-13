@@ -1862,7 +1862,11 @@ export default function POSPage() {
       if (cart.tableId && !pendingOrder) cart.setTableId(null);
       return;
     }
-    if (!isRestaurant || !tablesRequired || !tablesLoaded) return;
+    if (!isRestaurant || !tablesRequired) {
+      tablePickerAutoOpenedRef.current = false;
+      return;
+    }
+    if (!tablesLoaded) return;
 
     const selected = tables.find((tbl) => tbl.id === cart.tableId);
     const staleSelection =
