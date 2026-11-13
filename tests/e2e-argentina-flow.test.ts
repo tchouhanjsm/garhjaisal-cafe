@@ -33,9 +33,16 @@ Module._load = function (request, parent, isMain) {
 };
 
 const {
-  initTestDb, createApp, startServer,
-  seedOwnerUser, api, assert, assertEqual, assertIncludes,
-  getResults, closeDatabase,
+  initTestDb,
+  createApp,
+  startServer,
+  seedOwnerUser,
+  api,
+  assert,
+  assertEqual,
+  assertIncludes,
+  getResults,
+  closeDatabase,
 } = require('./helpers/test-setup');
 
 const { authRoutes } = require('../main/routes/auth');
@@ -65,11 +72,14 @@ async function main() {
     await runArgentinaSettings(baseUrl, db);
     await runArgentinaTaxAndCustomers(baseUrl, db);
     await runArgentinaTranslations(db);
-
   } finally {
     if (server) server.close();
     closeDatabase();
-    try { fs.rmSync(testDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    try {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
   }
 
   // Run the regression in a fresh DB so the AR hamburger from earlier does not
@@ -78,7 +88,11 @@ async function main() {
   try {
     await runLegacyOnboardingInIsolation(legacyTestDir);
   } finally {
-    try { fs.rmSync(legacyTestDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    try {
+      fs.rmSync(legacyTestDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
   }
 
   const { passed, failed, total } = getResults();
