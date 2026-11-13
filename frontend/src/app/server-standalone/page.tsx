@@ -2055,11 +2055,17 @@ export default function ServerStandalonePage() {
           </p>
           <div className="space-y-2">
             {currentOrder.items.map((item) => (
-              <div key={item.id} className="flex items-center gap-2 text-sm">
+              <div
+                key={item.id}
+                data-testid="server-app-current-order-item"
+                className="flex items-center gap-2 text-sm"
+              >
                 {itemStatusIcon(item.status, t)}
                 <span className="min-w-0 flex-1 truncate">
-                  <Ltr>{item.quantity}</Ltr> x{' '}
-                  {formatItemHeading(item.product_name, item.variant_selection)}
+                  <span data-testid="server-app-current-order-item-quantity">
+                    <Ltr>{item.quantity}</Ltr>
+                  </span>{' '}
+                  x {formatItemHeading(item.product_name, item.variant_selection)}
                 </span>
               </div>
             ))}
@@ -2076,7 +2082,11 @@ export default function ServerStandalonePage() {
         ) : (
           <div className="space-y-3">
             {draft.map((line) => (
-              <div key={line.id} className="rounded-lg border border-border p-2">
+              <div
+                key={line.id}
+                data-testid="server-app-draft-line"
+                className="rounded-lg border border-border p-2"
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">
@@ -2118,10 +2128,14 @@ export default function ServerStandalonePage() {
                     >
                       <Minus size={14} />
                     </button>
-                    <span className="w-6 text-center text-sm font-semibold">
+                    <span
+                      data-testid="server-app-draft-line-quantity"
+                      className="w-6 text-center text-sm font-semibold"
+                    >
                       <Ltr>{line.quantity}</Ltr>
                     </span>
                     <button
+                      data-testid="server-app-increase-quantity"
                       disabled={sending}
                       onClick={() => changeQty(line.id, 1)}
                       className="rounded-md border border-border bg-card p-1 disabled:opacity-50"
