@@ -1851,7 +1851,8 @@ export default function POSPage() {
     !!refundModalTarget ||
     actionsMenuOpen ||
     isConfirmOpen;
-  const anyModalOpen = showTablePicker || anyOtherModalOpen;
+  const anyModalOpen =
+    (showTablePicker && tablePickerPresentation === 'modal') || anyOtherModalOpen;
 
   useBarcodeScanner((code) => {
     if (code.startsWith('FLOCAFE-TICKET:')) {
@@ -3697,7 +3698,7 @@ export default function POSPage() {
       },
       onToggleTables: () => {
         if (isRestaurant && cart.orderType === 'dine_in' && tablesRequired) {
-          if (showTablePicker) closeTablePicker();
+          if (showTablePicker && tablePickerPresentation === 'modal') closeTablePicker();
           else openTablePicker();
         }
       },
@@ -3794,8 +3795,8 @@ export default function POSPage() {
           activeEl.blur();
           return true;
         }
-        if (showTablePicker) {
-          setShowTablePicker(false);
+        if (showTablePicker && tablePickerPresentation === 'modal') {
+          closeTablePicker();
           return true;
         }
         if (addonProduct) {
@@ -3892,7 +3893,8 @@ export default function POSPage() {
     {
       enabled: true,
       anyModalOpen,
-      tablePickerOpen: showTablePicker && !anyOtherModalOpen,
+      tablePickerOpen:
+        showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,
       cartItemCount: cart.items.length,
     },
   );
