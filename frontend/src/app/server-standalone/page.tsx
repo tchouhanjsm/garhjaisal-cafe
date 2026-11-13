@@ -2145,11 +2145,11 @@ export default function ServerStandalonePage() {
       </div>
 
       {regional?.room_number_enabled === true &&
-          (draft.length > 0 ||
-            !browserOnline ||
-            hubReachable === false ||
-            orderNotes.length > 0 ||
-            roomNumber.length > 0) && (
+        (draft.length > 0 ||
+          !browserOnline ||
+          hubReachable === false ||
+          orderNotes.length > 0 ||
+          roomNumber.length > 0) && (
           <div className="mt-3 space-y-2">
             <input
               data-testid="server-app-room-number-input"
@@ -2175,7 +2175,8 @@ export default function ServerStandalonePage() {
               <Ltr>{orderNotes.length}/200</Ltr>
             </p>
           </div>
-      )}
+        )}
+
 
       {(draft.length > 0 || orderNotes.trim() || roomNumber.trim()) && (
         <button
