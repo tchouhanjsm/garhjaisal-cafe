@@ -29,7 +29,7 @@ import {
  * unobservable.
  */
 
-const OWNER_APPROVAL_PIN = '1234';
+const OWNER_APPROVAL_PIN = '123456';
 
 let tracked: { id: string; name: string; price: number };
 let cancelProbe: { id: string; name: string; price: number };
