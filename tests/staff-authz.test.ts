@@ -350,7 +350,7 @@ async function main() {
     email: 'owner-created-manager@test.local',
     password: 'StrongPass1',
     role: 'manager',
-    pin: '9876',
+    pin: '987654',
   });
   assertEqual(result.status, 201, 'owner can create a manager with a valid PIN');
   assertEqual(result.body.staff.has_pin, 1, 'staff responses expose has_pin for configured PINs');
