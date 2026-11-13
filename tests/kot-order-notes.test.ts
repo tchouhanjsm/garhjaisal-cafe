@@ -62,6 +62,17 @@ assert.equal(
   'no banner without order notes',
 );
 
+const withRoomReference = renderKotViaDocument(
+  { ...baseOrder, table: { name: 'T4' }, room_number: '204' },
+  items,
+  'Kitchen',
+  opts,
+);
+assert.ok(
+  withRoomReference.lines.some((line) => line.includes('Room: 204')),
+  'KOT document prints an optional hotel room reference',
+);
+
 const withNotes = renderKotViaDocument(
   { ...baseOrder, special_instructions: 'SEVERE PEANUT ALLERGY - pack cutlery separately' },
   items,
@@ -155,6 +166,16 @@ async function runAsyncTests() {
     order_notes: 'Extra spicy',
     items,
   } as any);
+
+  const htmlWithRoomReference = frontend.kotWebPrint.generateKotHtml({
+    ...baseOrder,
+    room_number: '204',
+    items,
+  } as any);
+  assert.ok(
+    htmlWithRoomReference.includes('Room: 204'),
+    'browser KOT print includes the optional hotel room reference',
+  );
   assert.ok(
     htmlWithFallback.includes('!! Note: Extra spicy'),
     'generateKotHtml falls back to order_notes',
@@ -191,6 +212,15 @@ async function runAsyncTests() {
   // 2. buildKotBytes tests
   const longNote =
     'EXTREME PEANUT ALLERGY - PLEASE CLEAN GRILL THOROUGHLY AND PACK CUTLERY SEPARATELY';
+  const bytesWithRoomReference = frontend.kotEncoder.buildKotBytes(
+    { ...baseOrder, room_number: '204', items } as any,
+    opts,
+  );
+  assert.ok(
+    escPosToText(bytesWithRoomReference).includes('Room: 204'),
+    'ESC/POS KOT prints the optional hotel room reference',
+  );
+
   const bytesWithNotes = frontend.kotEncoder.buildKotBytes(
     { ...baseOrder, special_instructions: longNote, items } as any,
     opts,
