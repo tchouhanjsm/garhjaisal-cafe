@@ -89,10 +89,8 @@ function testInlinePickerPreservesGlobalShortcuts(): void {
     '          closeTablePicker();',
     '          return true;',
   ].join('\n');
-  const keyboardPickerGuard = [
-    '      tablePickerOpen:',
-    "        showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,",
-  ].join('\n');
+  const keyboardPickerGuard =
+    "      tablePickerOpen: showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,";
 
   assert.ok(posPage.includes(inlineModalGuard));
   assert.ok(posPage.includes(f2ToggleGuard));
