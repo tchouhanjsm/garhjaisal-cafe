@@ -45,6 +45,7 @@ const {
   resetMasterPinRateLimit,
 } = require('../main/services/master-pin');
 const { requireMasterPin } = require('../main/middleware/master-pin');
+const bcrypt = require('bcryptjs');
 
 function main() {
   console.log('🧪 FloDesktop Master PIN Tests');
@@ -71,6 +72,32 @@ function main() {
   assert.equal(verifyMasterPin('123456'), false, 'old PIN is invalidated after reset');
   assert.equal(verifyMasterPin('567890'), true, 'new PIN verifies after reset');
   console.log('   ✓ resetMasterPin() overwrites the old PIN without requiring it');
+
+  assert.throws(
+    () => setMasterPin('1234'),
+    /exactly 6 digits/,
+    'new Master PIN creation rejects legacy-length four-digit PINs',
+  );
+  fs.writeFileSync(
+    path.join(testDir, 'master-pin.enc'),
+    JSON.stringify({
+      hash: bcrypt.hashSync('1234', 10),
+      createdAt: '2020-01-01T00:00:00.000Z',
+      updatedAt: '2020-01-01T00:00:00.000Z',
+    }),
+  );
+  assert.equal(
+    verifyMasterPin('1234'),
+    true,
+    'an existing four-digit Master PIN remains verifiable after upgrade',
+  );
+  assert.equal(
+    authorizeMasterPin('1234', 'test:legacy-master-pin').ok,
+    true,
+    'legacy Master PIN remains usable by protected operations',
+  );
+  resetMasterPin('567890');
+  console.log('   ✓ six-digit Master PIN creation preserves legacy four-digit verification');
 
   // ── rate limiting ─────────────────────────────────────────────────────
   const key = 'test:rate-limit';
