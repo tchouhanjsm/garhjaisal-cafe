@@ -2431,6 +2431,16 @@ export function seedSetupProfile(
       insertTable(db, `tbl-garh-jaisal-${index}`, `T${index}`, 4);
     }
     const timestamp = now();
+    // Create a logical Kitchen station without claiming an unconfigured printer,
+    // categories, or staff assignments. The owner can route real menu categories
+    // and select the actual thermal printer after restaurant setup.
+    db.prepare(`
+      INSERT OR IGNORE INTO kitchen_stations (
+        id, name, description, category_ids, printer_id, printer_ip, printer_name,
+        is_active, sort_order, created_at, updated_at
+      )
+      VALUES (?, 'Kitchen', 'Default kitchen station', NULL, NULL, NULL, NULL, 1, 0, ?, ?)
+    `).run('stn-garh-jaisal-kitchen', timestamp, timestamp);
     db.prepare(`
       INSERT OR IGNORE INTO payment_methods (name, is_active, sort_order, created_at, updated_at)
       VALUES ('UPI', 1, 10, ?, ?)
