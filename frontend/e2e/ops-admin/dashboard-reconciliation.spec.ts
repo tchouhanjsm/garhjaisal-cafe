@@ -94,7 +94,7 @@ async function readDashboard(
   };
 }
 
-const OWNER_APPROVAL_PIN = '1234';
+const OWNER_APPROVAL_PIN = '123456';
 
 test.describe('@ci-tier2 operations admin - dashboard reconciliation', () => {
   test.beforeAll(async ({ request }) => {
