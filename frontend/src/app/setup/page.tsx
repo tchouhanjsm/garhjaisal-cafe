@@ -748,7 +748,7 @@ export default function SetupPage() {
                           type={showConfirmApprovalPin ? 'text' : 'password'}
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          minLength={4}
+                          minLength={6}
                           maxLength={6}
                           value={ownerApprovalPinConfirm}
                           onChange={(e) =>
@@ -756,7 +756,7 @@ export default function SetupPage() {
                               e.target.value.replace(/\D/g, '').slice(0, 6),
                             )
                           }
-                          placeholder="••••"
+                          placeholder="••••••"
                           className="text-center text-lg tracking-[0.5em] pe-10"
                           required
                         />
