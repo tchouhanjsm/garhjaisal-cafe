@@ -336,6 +336,7 @@ export default function ServerStandalonePage() {
         nonce: restoredAttempt.nonce,
         snapshot: {
           ...restoredAttempt.snapshot,
+          roomNumber: restoredAttempt.snapshot.roomNumber ?? '',
           existingItemIds: new Set(
             restoredAttempt.snapshot.existingItemIds.map(Number).filter(Number.isFinite),
           ),
@@ -659,6 +660,7 @@ export default function ServerStandalonePage() {
     customerName,
     customerPhone,
     orderNotes,
+    roomNumber,
   ]);
 
   useEffect(() => {
@@ -2453,6 +2455,7 @@ export default function ServerStandalonePage() {
                   nextSnapshot.customerName,
                   nextSnapshot.customerPhone,
                   nextSnapshot.orderNotes,
+                  nextSnapshot.roomNumber,
                 ),
                 nonce: prevAttempt.nonce,
                 snapshot: nextSnapshot,
