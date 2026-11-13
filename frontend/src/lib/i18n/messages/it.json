@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Ticket creato e inviato alla coda pagamenti.",
     "ticketNumber": "Numero ticket",
     "paymentTicketInstruction": "Porta questo ticket alla cassa per completare il pagamento.",
-    "selectCounter": "Seleziona postazione"
+    "selectCounter": "Seleziona postazione",
+    "roomNumberLabel": "Numero della camera dell’hotel",
+    "roomNumberPlaceholder": "N. camera (facoltativo)"
   },
   "printTest": {
     "amt": "Importo",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 ore",
     "refundWindow4h": "4 ore",
     "refundWindowSameDay": "Stesso giorno lavorativo",
-    "refundOwnerUnlimitedNote": "I titolari possono sempre approvare i rimborsi per qualsiasi ordine passato con il proprio PIN di approvazione."
+    "refundOwnerUnlimitedNote": "I titolari possono sempre approvare i rimborsi per qualsiasi ordine passato con il proprio PIN di approvazione.",
+    "masterPinCurrentInvalid": "Inserisci un Master PIN attuale valido di 4 o 6 cifre"
   },
   "setup": {
     "alreadyCompleted": "La configurazione è già stata completata su questa installazione. Reindirizzamento all'accesso…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Accetto il FloPOS",
     "timezoneHint": "Precompilato dal tuo paese. I negozio in paesi con più fusi orari possono scegliere il loro fuso orario locale effettivo.",
     "timezoneLabel": "Fuso orario",
-    "welcome": "Benvenuto in FloCafe"
+    "welcome": "Benvenuto in FloCafe",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Configurazione del ristorante Garh Jaisal Haveli",
+    "garhJaisalDetails": "Impostazioni predefinite del ristorante Garh Jaisal Haveli: INR, servizio FineDine con pagamento posticipato, 10 tavoli, UPI, display cucina e app camerieri. Aggiungi il menu e gli account del personale effettivi, quindi controlla le impostazioni fiscali prima della prima vendita."
   },
   "staff": {
     "addButton": "Aggiungi personale",
@@ -2843,7 +2849,8 @@
     "roleServer": "Cameriere",
     "title": "Personale",
     "updateButton": "Aggiorna",
-    "updatedToast": "Personale aggiornato"
+    "updatedToast": "Personale aggiornato",
+    "pinMustBeSixDigits": "Il PIN deve contenere esattamente 6 cifre"
   },
   "permissionMatrix": {
     "title": "Permessi ruolo",
