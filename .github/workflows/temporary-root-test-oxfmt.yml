@@ -1,0 +1,26 @@
+name: Temporary root test formatter
+
+on:
+  push:
+    branches:
+      - feature/garh-jaisal-deployment-room-number-six-digit-pins
+    paths:
+      - .github/workflows/temporary-root-test-oxfmt.yml
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install formatter dependencies
+        run: npm ci --ignore-scripts
+      - name: Format the two changed root test files
+        run: npx oxfmt --write -- tests/dev-tooling-scripts.test.ts tests/first-run-setup.test.ts
+      - name: Print exact diff
+        run: git diff -- tests/dev-tooling-scripts.test.ts tests/first-run-setup.test.ts
