@@ -64,7 +64,7 @@ async function runTests() {
 
   initDatabase();
   const db = getDatabase();
-  setMasterPin('1234');
+  setMasterPin('123456');
 
   const originalPlatform = process.platform;
   const originalUnlinkSync = fs.unlinkSync;
@@ -265,7 +265,7 @@ async function runTests() {
       const backupRes = await request(app)
         .post('/api/db/backup')
         .set('Authorization', `Bearer ${ownerToken}`)
-        .send({ master_pin: '1234' });
+        .send({ master_pin: '123456' });
 
       check(backupRes.status === 200, `POST /api/db/backup succeeded (got ${backupRes.status})`);
       check(Boolean(backupRes.body.path), `response contains path (got ${backupRes.body.path})`);
@@ -276,7 +276,7 @@ async function runTests() {
         .post('/api/db/import')
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
-          master_pin: '1234',
+          master_pin: '123456',
           overwrite: false,
           data: {
             schema_version: String(getCurrentSchemaVersion() + 1), // mismatch triggers safety backup
