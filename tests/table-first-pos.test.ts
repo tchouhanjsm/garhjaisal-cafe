@@ -60,7 +60,7 @@ function testInlineTableFirstPresentation(): void {
 
   assert.match(posPage, /setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/);
   assert.match(posPage, /onShowTablePicker=\{openTablePicker\}/);
-  assert.match(posPage, /presentation=\{tablePickerPresentation\}/);
+  assert.match(posPage, /tablePickerPresentation === 'inline'/);
   assert.match(picker, /data-testid="pos-table-first-picker"/);
   assert.match(posPage, /<TablePickerModal/);
   assert.match(picker, /formatCurrency\(activeOrder\.total\)/);
