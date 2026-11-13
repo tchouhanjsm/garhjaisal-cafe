@@ -49,9 +49,9 @@ async function run() {
     service_model: 'qsr',
     terms_accepted: true,
     country: 'US',
-    master_pin: '1234',
-    owner_approval_pin: '5678',
-    owner_approval_pin_confirmation: '5678',
+    master_pin: '123456',
+    owner_approval_pin: '567890',
+    owner_approval_pin_confirmation: '567890',
   };
 
   const originalReload = cloudSync.reload.bind(cloudSync);
@@ -72,7 +72,7 @@ async function run() {
     assert.equal(cloudFailure.status, 200, 'cloud initialization failure does not make local setup appear to fail');
     assert.equal((getDatabase().prepare('SELECT COUNT(*) AS count FROM users').get() as { count: number }).count, 1, 'owner is committed exactly once');
     assert.equal(isMasterPinSet(), true, 'Master PIN remains available after successful local setup');
-    assert.equal(verifyMasterPin('1234'), true, 'persisted Master PIN verifies after setup');
+    assert.equal(verifyMasterPin('123456'), true, 'persisted Master PIN verifies after setup');
 
     const retry = await request(app).post('/api/auth/setup/initialize').send({
       ...setupPayload,
