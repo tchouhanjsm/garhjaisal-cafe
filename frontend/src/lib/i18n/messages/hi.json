@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "टिकट बनाया गया और भुगतान कतार में भेजा गया।",
     "ticketNumber": "टिकट संख्या",
     "paymentTicketInstruction": "भुगतान के लिए यह टिकट भुगतान काउंटर पर ले जाएं।",
-    "selectCounter": "काउंटर चुनें"
+    "selectCounter": "काउंटर चुनें",
+    "roomNumberLabel": "होटल का कमरा नंबर",
+    "roomNumberPlaceholder": "कमरा नंबर (वैकल्पिक)"
   },
   "printTest": {
     "amt": "राशि",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 घंटे",
     "refundWindow4h": "4 घंटे",
     "refundWindowSameDay": "उसी कारोबारी दिन",
-    "refundOwnerUnlimitedNote": "मालिक अपने स्टाफ स्वीकृति पिन के साथ किसी भी पुराने ऑर्डर के रिफंड को हमेशा स्वीकृत कर सकते हैं।"
+    "refundOwnerUnlimitedNote": "मालिक अपने स्टाफ स्वीकृति पिन के साथ किसी भी पुराने ऑर्डर के रिफंड को हमेशा स्वीकृत कर सकते हैं।",
+    "masterPinCurrentInvalid": "मान्य वर्तमान 4 या 6 अंकों का मास्टर PIN दर्ज करें"
   },
   "setup": {
     "alreadyCompleted": "इस इंस्टाल पर सेटअप पहले ही पूरा हो चुका है. लॉगिन करने के लिए पुनः निर्देशित किया जा रहा है...",
@@ -2807,7 +2810,10 @@
     "termsIntro": "मैं FloPOS से सहमत हूं",
     "timezoneHint": "आपके देश से पहले से भरा हुआ. बहु-समयक्षेत्र वाले देशों में स्टोर अपना वास्तविक स्थानीय समयक्षेत्र चुन सकते हैं।",
     "timezoneLabel": "समयक्षेत्र",
-    "welcome": "FloCafe में आपका स्वागत है"
+    "welcome": "FloCafe में आपका स्वागत है",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Garh Jaisal Haveli रेस्टोरेंट सेटअप",
+    "garhJaisalDetails": "Garh Jaisal Haveli रेस्टोरेंट के डिफ़ॉल्ट: INR, FineDine पोस्टपेड बिलिंग, 10 टेबल, UPI, किचन डिस्प्ले और वेटर ऐप। पहली बिक्री से पहले अपना वास्तविक मेनू और स्टाफ खाते जोड़ें, फिर टैक्स सेटिंग जाँचें।"
   },
   "staff": {
     "addButton": "स्टाफ़ जोड़ें",
@@ -2843,7 +2849,8 @@
     "roleServer": "सर्वर",
     "title": "स्टाफ",
     "updateButton": "अद्यतन करें",
-    "updatedToast": "स्टाफ अपडेट किया गया"
+    "updatedToast": "स्टाफ अपडेट किया गया",
+    "pinMustBeSixDigits": "PIN ठीक 6 अंकों का होना चाहिए"
   },
   "permissionMatrix": {
     "title": "भूमिका अनुमतियाँ",
