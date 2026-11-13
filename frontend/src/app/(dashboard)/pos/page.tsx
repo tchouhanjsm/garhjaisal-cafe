@@ -4090,8 +4090,9 @@ export default function POSPage() {
         }}
       />
 
-      {isRestaurant && showTablePicker && (
-        tablePickerPresentation === 'inline' ? (
+      {isRestaurant &&
+        showTablePicker &&
+        (tablePickerPresentation === 'inline' ? (
           <TableFirstSelector
             tables={tables}
             selectedTableId={cart.tableId}
@@ -4110,8 +4111,7 @@ export default function POSPage() {
             onHoldTable={handleHoldTable}
             onClose={closeTablePicker}
           />
-        )
-      )}
+        ))}
 
       {/* Main content area */}
       <div className="flex flex-1 min-h-0 overflow-hidden px-3 py-2 sm:px-4 sm:py-2.5 gap-3 sm:gap-4">
@@ -4167,7 +4167,6 @@ export default function POSPage() {
       <CashDrawerMovementModal model={cashDrawer} />
       <ShiftOpenModal model={shift} />
       <ShiftCloseModal model={shift} />
-
 
       {addonProduct && (
         <AddonModal
