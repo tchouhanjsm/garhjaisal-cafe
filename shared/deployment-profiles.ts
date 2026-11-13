@@ -12,6 +12,7 @@ export const GARH_JAISAL_PROFILE = {
   instagramHandle: '@garhjaisal',
   serviceModel: 'finedine',
   billingType: 'postpaid',
+  // GST is optional at onboarding; the owner can add the GSTIN and configure 5% later.
   taxRegistered: false,
   tablesRequired: true,
   tableCount: 10,
@@ -21,6 +22,9 @@ export const GARH_JAISAL_PROFILE = {
   roomNumberEnabled: true,
   paymentMethods: ['UPI'],
   rolePermissionOverrides: [
-    { role: 'manager', permissionId: 'reports.financial.view' },
+    {
+      role: 'manager',
+      permissionId: 'reports.financial.view',
+    },
   ],
 } as const;
