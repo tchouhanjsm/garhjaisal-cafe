@@ -89,6 +89,10 @@ async function run() {
     INSERT INTO users (id, name, email, password, role, is_active, created_at, updated_at)
     VALUES ('jwt-owner-1', 'JWT Owner', 'jwt-owner@test.local', ?, 'owner', 1, ?, ?)
   `).run(bcrypt.hashSync('Pass1234!', 10), now(), now());
+  db.prepare('UPDATE users SET pin_hash = ? WHERE id = ?').run(
+    bcrypt.hashSync('246810', 10),
+    'jwt-owner-1',
+  );
 
   const app = createApp({
     '/api/auth': authRoutes,
