@@ -69,6 +69,33 @@ function testInlineTableFirstPresentation(): void {
   console.log('  ✓ occupied table cards show the active order total');
 }
 
+function testInlinePickerPreservesGlobalShortcuts(): void {
+  const posPage = fs.readFileSync(
+    path.join(ROOT, 'frontend/src/app/(dashboard)/pos/page.tsx'),
+    'utf8',
+  );
+
+  assert.match(
+    posPage,
+    /const anyModalOpen =\s*\(showTablePicker && tablePickerPresentation === 'modal'\) \|\| anyOtherModalOpen;/,
+  );
+  assert.match(
+    posPage,
+    /if \(showTablePicker && tablePickerPresentation === 'modal'\) closeTablePicker\(\);\s*else openTablePicker\(\);/,
+  );
+  assert.match(
+    posPage,
+    /if \(showTablePicker && tablePickerPresentation === 'modal'\) \{\s*closeTablePicker\(\);\s*return true;/,
+  );
+  assert.match(
+    posPage,
+    /tablePickerOpen:\s*showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,/,
+  );
+
+  console.log('  ✓ inline table-first selection does not block keyboard shortcuts');
+  console.log('  ✓ F2 promotes the inline selector to the existing modal; Escape closes only that modal');
+}
+
 function testWaiterMobileTableFirst(): void {
   const serverApp = fs.readFileSync(
     path.join(ROOT, 'frontend/src/app/server-standalone/page.tsx'),
@@ -91,6 +118,7 @@ function main(): void {
   console.log('Table-first POS tests');
   testFreshDineInSelection();
   testInlineTableFirstPresentation();
+  testInlinePickerPreservesGlobalShortcuts();
   testWaiterMobileTableFirst();
   console.log('All table-first POS tests passed.');
 }
