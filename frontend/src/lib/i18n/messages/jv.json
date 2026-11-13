@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Tiket digawe lan dikirim menyang antrian pambayaran.",
     "ticketNumber": "Nomer tiket",
     "paymentTicketInstruction": "Gawa tiket iki menyang meja kasir kanggo mbayar.",
-    "selectCounter": "Pilih kasir"
+    "selectCounter": "Pilih kasir",
+    "roomNumberLabel": "Nomer kamar hotel",
+    "roomNumberPlaceholder": "No. kamar (opsional)"
   },
   "printTest": {
     "amt": "Gng",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 jam",
     "refundWindow4h": "4 jam",
     "refundWindowSameDay": "Dina kerja sing padha",
-    "refundOwnerUnlimitedNote": "Sing duwe toko tansah bisa nyetujoni bali dhuwit kanggo pesanan lawas apa wae nganggo PIN Persetujuan Staf dheweke."
+    "refundOwnerUnlimitedNote": "Sing duwe toko tansah bisa nyetujoni bali dhuwit kanggo pesanan lawas apa wae nganggo PIN Persetujuan Staf dheweke.",
+    "masterPinCurrentInvalid": "Lebokna Master PIN saiki sing sah, 4 utawa 6 digit"
   },
   "setup": {
     "alreadyCompleted": "Pangaturan wiwitan wis rampung ditindakake ing pamasangan iki. Ngalihake menyang layar mlebu…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Aku nyarujuki FloPOS",
     "timezoneHint": "Kaisi wiwitan saka negara Panjenengan. Warung ing negara kanthi luwih saka siji zona wektu bisa milih zona wektu lokal sing sajatine.",
     "timezoneLabel": "Zona wektu",
-    "welcome": "Sugeng Teka ing FloCafe"
+    "welcome": "Sugeng Teka ing FloCafe",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Setelan restoran Garh Jaisal Haveli",
+    "garhJaisalDetails": "Setelan baku restoran Garh Jaisal Haveli: INR, tagihan FineDine dibayar sawise pesenan, 10 meja, UPI, tampilan pawon lan aplikasi pelayan. Tambah menu lan akun staf sing nyata, banjur priksa setelan pajak sadurunge dodolan kapisan."
   },
   "staff": {
     "addButton": "Tambah Staf",
@@ -2843,7 +2849,8 @@
     "roleServer": "Pramusaji",
     "title": "Staf",
     "updateButton": "Anyari",
-    "updatedToast": "Staf dianyari"
+    "updatedToast": "Staf dianyari",
+    "pinMustBeSixDigits": "PIN kudu pas 6 digit"
   },
   "permissionMatrix": {
     "title": "Idin peran",
