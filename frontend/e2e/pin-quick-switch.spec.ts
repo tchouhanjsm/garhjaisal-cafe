@@ -261,10 +261,14 @@ test.describe('PIN Quick User Switch and Lock Flow (#1338 / #1516)', () => {
     await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-pad-digit-9').click();
+    await page.getByTestId('pin-pad-digit-9').click();
+    await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-login-submit').click();
     await expect(page.getByTestId('pin-login-error')).toBeVisible();
     await expect(page.getByTestId('pin-login-input')).toHaveValue('');
 
+    await page.getByTestId('pin-pad-digit-1').click();
+    await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
@@ -294,10 +298,14 @@ test.describe('PIN Quick User Switch and Lock Flow (#1338 / #1516)', () => {
     await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-pad-digit-9').click();
+    await page.getByTestId('pin-pad-digit-9').click();
+    await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-login-submit').click();
     await expect(page.getByTestId('pin-login-error')).toBeVisible();
     await expect(page.getByTestId('pin-login-input')).toHaveValue('');
 
+    await page.getByTestId('pin-pad-digit-1').click();
+    await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
