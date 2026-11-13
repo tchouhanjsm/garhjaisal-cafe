@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "قبض ایجاد شد و به صف پرداخت ارسال گردید.",
     "ticketNumber": "شماره قبض",
     "paymentTicketInstruction": "این قبض را جهت پرداخت به صندوق ببرید.",
-    "selectCounter": "انتخاب پیشخوان"
+    "selectCounter": "انتخاب پیشخوان",
+    "roomNumberLabel": "شماره اتاق هتل",
+    "roomNumberPlaceholder": "شماره اتاق (اختیاری)"
   },
   "printTest": {
     "amt": "مبلغ",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "۲ ساعت",
     "refundWindow4h": "۴ ساعت",
     "refundWindowSameDay": "همان روز کاری",
-    "refundOwnerUnlimitedNote": "مالکان همیشه میتوانند استرداد هر سفارش قبلی را با پین تأیید خود تأیید کنند."
+    "refundOwnerUnlimitedNote": "مالکان همیشه میتوانند استرداد هر سفارش قبلی را با پین تأیید خود تأیید کنند.",
+    "masterPinCurrentInvalid": "یک رمز اصلی فعلی معتبر ۴ یا ۶ رقمی وارد کنید"
   },
   "setup": {
     "alreadyCompleted": "راه‌اندازی در این نصب پیش‌تر انجام شده است. در حال بازگشت به ورود…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "من با FloPOS موافقم",
     "timezoneHint": "بر اساس کشور شما از پیش پر شده است. فروشگاه‌ها در کشورهای چندمنطقه‌ای می‌توانند منطقه زمانی واقعی خود را انتخاب کنند.",
     "timezoneLabel": "منطقه زمانی",
-    "welcome": "به FloCafe خوش آمدید"
+    "welcome": "به FloCafe خوش آمدید",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "راه‌اندازی رستوران Garh Jaisal Haveli",
+    "garhJaisalDetails": "تنظیمات پیش‌فرض رستوران Garh Jaisal Haveli: روپیه هند، سرویس FineDine با پرداخت پس از سفارش، ۱۰ میز، UPI، نمایشگر آشپزخانه و برنامه گارسورها. پیش از اولین فروش، منوی واقعی و حساب کارکنان را اضافه و تنظیمات مالیات را بررسی کنید."
   },
   "staff": {
     "addButton": "افزودن کارمند",
@@ -2843,7 +2849,8 @@
     "roleServer": "پیش‌خدمت",
     "title": "کارمند",
     "updateButton": "به‌روزرسانی",
-    "updatedToast": "کارمند به‌روزرسانی شد"
+    "updatedToast": "کارمند به‌روزرسانی شد",
+    "pinMustBeSixDigits": "رمز باید دقیقاً ۶ رقم باشد"
   },
   "permissionMatrix": {
     "title": "دسترسی‌های نقش‌ها",
