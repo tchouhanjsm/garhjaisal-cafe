@@ -11,6 +11,7 @@
     "predev": "",
     "dev": "npm run clean && npm run build:frontend && npm run build && electron .",
     "dev:restart": "bash scripts/dev/restart.sh",
+    "dev:sync": "bash scripts/dev/sync.sh",
     "dev:reset": "bash scripts/dev/nuclear-reset.sh",
     "dev:frontend": "cd frontend && npm run dev",
     "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc && node scripts/copy-runtime-assets.cjs",
