@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Bon aangemaakt en naar de betaalwachtrij gestuurd.",
     "ticketNumber": "Bonnummer",
     "paymentTicketInstruction": "Neem deze bon mee naar de kassa om te betalen.",
-    "selectCounter": "Balie selecteren"
+    "selectCounter": "Balie selecteren",
+    "roomNumberLabel": "Hotelkamernummer",
+    "roomNumberPlaceholder": "Kamernr. (optioneel)"
   },
   "printTest": {
     "amt": "Bedrag",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 uur",
     "refundWindow4h": "4 uur",
     "refundWindowSameDay": "Zelfde werkdag",
-    "refundOwnerUnlimitedNote": "Eigenaren kunnen terugbetalingen voor elke eerdere bestelling altijd goedkeuren met hun goedkeuringspincode."
+    "refundOwnerUnlimitedNote": "Eigenaren kunnen terugbetalingen voor elke eerdere bestelling altijd goedkeuren met hun goedkeuringspincode.",
+    "masterPinCurrentInvalid": "Voer een geldige huidige Master-PIN van 4 of 6 cijfers in"
   },
   "setup": {
     "alreadyCompleted": "De installatie is bij deze installatie al voltooid. Omleiden naar inloggen…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Ik ga akkoord met de FloPOS",
     "timezoneHint": "Vooraf ingevuld vanuit uw land. Winkels in landen met meerdere tijdzones kunnen hun werkelijke lokale tijdzone kiezen.",
     "timezoneLabel": "Tijdzone",
-    "welcome": "Welkom bij FloCafe"
+    "welcome": "Welkom bij FloCafe",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Restaurantinstellingen voor Garh Jaisal Haveli",
+    "garhJaisalDetails": "Standaardinstellingen voor restaurant Garh Jaisal Haveli: INR, FineDine met betaling achteraf, 10 tafels, UPI, keukenscherm en ober-app. Voeg het echte menu en de personeelsaccounts toe en controleer de belastinginstellingen vóór de eerste verkoop."
   },
   "staff": {
     "addButton": "Personeel toevoegen",
@@ -2843,7 +2849,8 @@
     "roleServer": "Server",
     "title": "Personeel",
     "updateButton": "Bijwerken",
-    "updatedToast": "Personeel bijgewerkt"
+    "updatedToast": "Personeel bijgewerkt",
+    "pinMustBeSixDigits": "De pincode moet precies 6 cijfers bevatten"
   },
   "permissionMatrix": {
     "title": "Rolmachtigingen",
