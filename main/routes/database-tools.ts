@@ -167,8 +167,8 @@ router.post(
   (req: Request, res: Response) => {
     const { pin, confirm_pin } = req.body as { pin?: string; confirm_pin?: string };
     const cleanPin = String(pin || '').trim();
-    if (!/^\d{4}$/.test(cleanPin)) {
-      return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
+    if (!/^\d{6}$/.test(cleanPin)) {
+      return res.status(400).json({ error: 'PIN must be exactly 6 digits' });
     }
     if (cleanPin !== confirm_pin) {
       return res.status(400).json({ error: 'PINs do not match' });
