@@ -483,7 +483,7 @@ function LoginContent() {
                     <Button
                       type="submit"
                       data-testid="pin-login-submit"
-                      disabled={loading || pin.length < 4}
+                      disabled={loading || pin.length !== 6}
                       className="flex-1"
                     >
                       {loading ? t('signingIn') : t('signIn')}
