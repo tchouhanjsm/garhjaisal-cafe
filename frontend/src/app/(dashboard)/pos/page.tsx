@@ -47,6 +47,7 @@ import { ShiftOpenModal } from '@/components/dashboard/ShiftOpenModal';
 import { ShiftCloseModal } from '@/components/dashboard/ShiftCloseModal';
 import { useCashSession } from '@/hooks/useCashSession';
 import { usePosSortPreference } from '@/hooks/usePosSort';
+import { shouldAutoOpenTablePicker } from '@/lib/table-picker-auto-open';
 import { tenantCan } from '@/lib/permissions';
 import { CashDrawerMovementModal } from '@/components/dashboard/CashDrawerMovementModal';
 import { useCashDrawerMovements } from '@/hooks/useCashDrawerMovements';
@@ -315,6 +316,7 @@ export default function POSPage() {
 
   // Modal state
   const [showTablePicker, setShowTablePicker] = useState(false);
+  const tablePickerAutoOpenedRef = useRef(false);
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [addonProduct, setAddonProduct] = useState<Product | null>(null);
   const [addonInitialQuantity, setAddonInitialQuantity] = useState(1);
@@ -1856,10 +1858,12 @@ export default function POSPage() {
   const tablesLoaded = tables.length > 0;
   useEffect(() => {
     if (cart.orderType !== 'dine_in') {
+      tablePickerAutoOpenedRef.current = false;
       if (cart.tableId && !pendingOrder) cart.setTableId(null);
       return;
     }
     if (!isRestaurant || !tablesRequired || !tablesLoaded) return;
+
     const selected = tables.find((tbl) => tbl.id === cart.tableId);
     const staleSelection =
       !!selected &&
@@ -1867,19 +1871,32 @@ export default function POSPage() {
       cart.items.length === 0 &&
       !pendingOrder &&
       !checkoutTable;
-    if (cart.tableId && !staleSelection) return;
-    const next = tables.find(
-      (tbl) => tbl.status === 'available' && !heldOrders.hasHeldOrder(tbl.id),
-    );
-    if (next) cart.setTableId(next.id);
-    else if (staleSelection) cart.setTableId(null);
+
+    if (staleSelection) cart.setTableId(null);
+    else if (cart.tableId) return;
+
+    if (
+      shouldAutoOpenTablePicker({
+        isRestaurant,
+        tablesRequired,
+        tableCount: tables.length,
+        orderType: cart.orderType,
+        tableId: staleSelection ? null : cart.tableId,
+        itemCount: cart.items.length,
+        hasPendingOrder: Boolean(pendingOrder),
+        isCheckoutOpen: Boolean(checkoutTable),
+        alreadyPrompted: tablePickerAutoOpenedRef.current,
+      })
+    ) {
+      tablePickerAutoOpenedRef.current = true;
+      setShowTablePicker(true);
+    }
   }, [
     isRestaurant,
     tablesRequired,
     tablesLoaded,
     tables,
     cart,
-    heldOrders,
     pendingOrder,
     checkoutTable,
   ]);
@@ -3281,6 +3298,7 @@ export default function POSPage() {
     tableId: string,
     customer?: { id: string; name: string; phone: string } | null,
   ) => {
+    tablePickerAutoOpenedRef.current = false;
     const cartCustomerWasInherited = cart.customerSource === 'reservation';
 
     cart.setTableId(tableId);
@@ -3300,6 +3318,7 @@ export default function POSPage() {
   };
 
   const handleSelectOccupiedTable = async (table: Table) => {
+    tablePickerAutoOpenedRef.current = false;
     const activeOrder = table.current_order || table.activeOrder || null;
     const activeCustomerId = activeOrder?.customer_id;
     const activeCustomerName = activeOrder?.customer?.name || t('anotherCustomer');
@@ -3325,6 +3344,7 @@ export default function POSPage() {
   };
 
   const handleSelectHeldTable = async (tableId: string) => {
+    tablePickerAutoOpenedRef.current = false;
     try {
       const held = await heldOrders.restoreOrder(tableId);
       if (held) {
