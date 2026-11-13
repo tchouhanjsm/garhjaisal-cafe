@@ -5,7 +5,6 @@ import type { Table } from '@/lib/types';
 import { useHeldOrdersStore } from '@/store/held-orders';
 import { useTranslations, type AppConfig } from 'use-intl';
 import { TableTurnoverBadge } from '@/components/tables/TableTurnoverBadge';
-import { useFormatCurrency } from '@/hooks/useFormatCurrency';
 
 interface Props {
   tables: Table[];
@@ -16,7 +15,6 @@ interface Props {
   onPlaceOrder: () => void;
   onHoldTable: (tableId: string) => void;
   onClose: () => void;
-  presentation?: 'modal' | 'inline';
 }
 
 type PosKey = keyof AppConfig['Messages']['pos'];
@@ -30,12 +28,10 @@ const statusStyles: Record<string, { border: string; badge: string; badgeKey: Po
 };
 
 export default function TablePickerModal({
-  tables, selectedTableId, onSelectAvailable, onSelectOccupied, onSelectHeld, onPlaceOrder, onHoldTable, onClose, presentation = 'modal',
+  tables, selectedTableId, onSelectAvailable, onSelectOccupied, onSelectHeld, onPlaceOrder, onHoldTable, onClose,
 }: Props) {
   const heldOrders = useHeldOrdersStore();
   const t = useTranslations('pos');
-  const formatCurrency = useFormatCurrency();
-  const isInline = presentation === 'inline';
 
   const handleClick = (table: Table) => {
     if (heldOrders.hasHeldOrder(table.id)) {
@@ -56,42 +52,20 @@ export default function TablePickerModal({
   };
 
   return (
-    <div
-      data-testid={isInline ? 'pos-table-first-picker' : 'pos-table-picker-modal'}
-      role={isInline ? 'region' : undefined}
-      aria-label={isInline ? t('selectTable') : undefined}
-      className={
-        isInline
-          ? 'mb-4 w-full'
-          : 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4'
-      }
-    >
-      <div
-        className={
-          isInline
-            ? 'w-full rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6'
-            : 'max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-6'
-        }
-      >
-        <div className="mb-4 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-card rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold">{t('selectTable')}</h2>
-          {!isInline && (
-            <button
-              onClick={onClose}
-              className="touch-target rounded-full text-gray-400 hover:text-muted-foreground active:bg-muted"
-              aria-label={t('close')}
-            >
-              <X size={20} />
-            </button>
-          )}
+          <button onClick={onClose} className="touch-target rounded-full text-gray-400 hover:text-muted-foreground active:bg-muted" aria-label={t('close')}>
+            <X size={20} />
+          </button>
         </div>
 
-        <div className={`grid gap-3 ${isInline ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' : 'grid-cols-3'}`}>
+        <div className="grid grid-cols-3 gap-3">
           {tables.map((table) => {
             const isHeld = heldOrders.hasHeldOrder(table.id);
             const isSelected = selectedTableId === table.id;
             const style = statusStyles[table.status] || statusStyles.available;
-            const activeOrder = table.current_order || table.activeOrder;
             const isDisabled = table.status === 'cleaning';
 
             return (
@@ -119,15 +93,10 @@ export default function TablePickerModal({
                 )}
                 <p className="font-bold text-foreground">{table.name}</p>
                 <p className="text-xs text-muted-foreground">{t('tableSeats', { count: table.capacity })}</p>
-                {table.status === 'occupied' && activeOrder && (
-                  <div className="mt-1 space-y-0.5">
-                    <p className="text-xs text-orange-600 font-medium">#{activeOrder.order_number}</p>
-                    {typeof activeOrder.total === 'number' && (
-                      <p className="text-xs font-semibold text-foreground">
-                        {formatCurrency(activeOrder.total)}
-                      </p>
-                    )}
-                  </div>
+                {table.status === 'occupied' && (table.current_order || table.activeOrder) && (
+                  <p className="text-xs text-orange-600 font-medium mt-1">
+                    #{(table.current_order || table.activeOrder)?.order_number}
+                  </p>
                 )}
                 {table.status === 'occupied' && table.seated_at && (
                   <div className="mt-1"><TableTurnoverBadge seatedAt={table.seated_at} /></div>
