@@ -46,7 +46,9 @@ function runTest() {
     /nuclear-reset|dev:reset|rm -rf[^\n]*(?:flo\.db|backups|Application Support)/i,
     'development sync must not run a reset or remove application data',
   );
-  console.log('✓ dev:sync fast-forwards safely, installs only on lockfile drift, and preserves local data');
+  console.log(
+    '✓ dev:sync fast-forwards safely, installs only on lockfile drift, and preserves local data',
+  );
 
   console.log('Testing i18n:add scaffolding validation...');
   const existingLanguage = spawnSync(process.execPath, [i18nAddScript, 'en'], {
