@@ -69,10 +69,27 @@ function testInlineTableFirstPresentation(): void {
   console.log('  ✓ occupied table cards show the active order total');
 }
 
+function testWaiterMobileTableFirst(): void {
+  const serverApp = fs.readFileSync(
+    path.join(ROOT, 'frontend/src/app/server-standalone/page.tsx'),
+    'utf8',
+  );
+
+  assert.doesNotMatch(serverApp, /selectedTableIdRef\\.current = loadedTables\\[0\\]\\.id/);
+  assert.doesNotMatch(serverApp, /selectedTableIdRef\\.current = firstTable\\.id/);
+  assert.match(serverApp, /disabled=\\{sending \\|\\| !selectedTableId\\}/);
+  assert.match(serverApp, /TABLE_STATUS_LABEL_KEYS\\[table\\.status \\?\\? 'available'\\]/);
+  assert.match(serverApp, /table\\.status === 'cleaning'/);
+  assert.match(serverApp, /table\\.status === 'held'/);
+
+  console.log('  ✓ waiter mobile app requires an explicit usable table selection');
+}
+
 function main(): void {
   console.log('Table-first POS tests');
   testFreshDineInSelection();
   testInlineTableFirstPresentation();
+  testWaiterMobileTableFirst();
   console.log('All table-first POS tests passed.');
 }
 
