@@ -2095,7 +2095,8 @@ export default function POSPage() {
           : undefined;
         const orderPayload = {
           table_id: cart.tableId,
-          room_number: cart.orderType === 'dine_in' ? cart.roomNumber.trim() || undefined : undefined,
+          room_number:
+            cart.orderType === 'dine_in' ? cart.roomNumber.trim() || undefined : undefined,
           customer_id: cart.customerId,
           type: cart.orderType,
           guest_count: cart.guestCount,
