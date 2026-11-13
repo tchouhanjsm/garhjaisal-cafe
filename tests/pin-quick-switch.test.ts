@@ -471,7 +471,9 @@ async function run() {
   }
 
   // ── 3. Two users with the same PIN each sign in as themselves ──
-  console.log('\n3. Two users sharing PIN 246810 sign in as themselves via POST /api/auth/pin-login');
+  console.log(
+    '\n3. Two users sharing PIN 246810 sign in as themselves via POST /api/auth/pin-login',
+  );
   const ownerPinLogin = await request(app)
     .post('/api/auth/pin-login')
     .send({ user_id: 'owner-1', pin: '246810' });
@@ -788,8 +790,8 @@ async function run() {
     'Cashier with PIN is excluded from GET /api/staff/approvers',
   );
 
-  // Set a distinct PIN on cashier (7777) so fallback PIN scanning cannot match owner-1 (246810)
-  await request(app).put(`/api/staff/${cashierId}`).set(managerAuth).send({ pin: '7777' });
+  // Set a distinct PIN on cashier so fallback PIN scanning cannot match the owner PIN.
+  await request(app).put(`/api/staff/${cashierId}`).set(managerAuth).send({ pin: '777777' });
 
   // Even when a store grants cashier route permissions for discounts, item cancel, and refunds,
   // cashier PINs must STILL be rejected on every PIN approval check (only owner/manager PINs approve).
