@@ -688,7 +688,7 @@ async function legacyJsonImportAssertions(): Promise<void> {
   await closeStore();
   initDatabase();
   const db = getDatabase();
-  resetMasterPin('1234');
+  resetMasterPin('123456');
   const app = createApp({
     '/api/db': databaseRoutes,
     '/api/database': databaseRoutes,
@@ -826,7 +826,7 @@ async function legacyJsonImportAssertions(): Promise<void> {
       method: 'POST',
       headers: owner.authHeader,
       body: {
-        master_pin: '1234',
+        master_pin: '123456',
         overwrite: true,
         data: buildLegacyPayload({ schemaVersion: 103 }),
       },
@@ -890,7 +890,7 @@ async function legacyJsonImportAssertions(): Promise<void> {
       method: 'POST',
       headers: owner.authHeader,
       body: {
-        master_pin: '1234',
+        master_pin: '123456',
         overwrite: true,
         data: buildLegacyPayload({}),
       },
@@ -931,7 +931,7 @@ async function legacyJsonImportAssertions(): Promise<void> {
       method: 'POST',
       headers: owner.authHeader,
       body: {
-        master_pin: '1234',
+        master_pin: '123456',
         overwrite: true,
         data: buildLegacyPayload({ schema_version: String(getCurrentSchemaVersion()) }),
       },
