@@ -1870,11 +1870,19 @@ export default function POSPage() {
   useEffect(() => {
     if (cart.orderType !== 'dine_in') {
       tablePickerAutoOpenedRef.current = false;
+      if (showTablePicker) {
+        setShowTablePicker(false);
+        setTablePickerPresentation('modal');
+      }
       if (cart.tableId && !pendingOrder) cart.setTableId(null);
       return;
     }
     if (!isRestaurant || !tablesRequired) {
       tablePickerAutoOpenedRef.current = false;
+      if (showTablePicker) {
+        setShowTablePicker(false);
+        setTablePickerPresentation('modal');
+      }
       return;
     }
     if (!tablesLoaded) return;
@@ -1915,6 +1923,7 @@ export default function POSPage() {
     cart,
     pendingOrder,
     checkoutTable,
+    showTablePicker,
   ]);
 
   const validateOrderPreflight = () => {
