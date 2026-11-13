@@ -5,6 +5,7 @@ import type { Table } from '@/lib/types';
 import { useHeldOrdersStore } from '@/store/held-orders';
 import { useTranslations, type AppConfig } from 'use-intl';
 import { TableTurnoverBadge } from '@/components/tables/TableTurnoverBadge';
+import { useFormatCurrency } from '@/hooks/useFormatCurrency';
 
 interface Props {
   tables: Table[];
@@ -32,6 +33,7 @@ export default function TablePickerModal({
 }: Props) {
   const heldOrders = useHeldOrdersStore();
   const t = useTranslations('pos');
+  const formatCurrency = useFormatCurrency();
 
   const handleClick = (table: Table) => {
     if (heldOrders.hasHeldOrder(table.id)) {
@@ -94,9 +96,16 @@ export default function TablePickerModal({
                 <p className="font-bold text-foreground">{table.name}</p>
                 <p className="text-xs text-muted-foreground">{t('tableSeats', { count: table.capacity })}</p>
                 {table.status === 'occupied' && (table.current_order || table.activeOrder) && (
-                  <p className="text-xs text-orange-600 font-medium mt-1">
-                    #{(table.current_order || table.activeOrder)?.order_number}
-                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <p className="text-xs text-orange-600 font-medium">
+                      #{(table.current_order || table.activeOrder)?.order_number}
+                    </p>
+                    {typeof (table.current_order || table.activeOrder)?.total === 'number' && (
+                      <p className="text-xs font-semibold text-foreground">
+                        {formatCurrency((table.current_order || table.activeOrder)!.total)}
+                      </p>
+                    )}
+                  </div>
                 )}
                 {table.status === 'occupied' && table.seated_at && (
                   <div className="mt-1"><TableTurnoverBadge seatedAt={table.seated_at} /></div>
