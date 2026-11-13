@@ -117,7 +117,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   pinLogin: async (userId: string, pin: string, rememberMe = false) => {
     const operation = ++authOperation;
     clearBillTemplateProvenance();
-    const { data } = await api.post('/auth/pin-login', { user_id: userId, pin, rememberMe, scope: 'pos' });
+    const { data } = await api.post('/auth/pin-login', {
+      user_id: userId,
+      pin,
+      rememberMe,
+      scope: 'pos',
+    });
     if (operation !== authOperation) return;
     const tenants: Tenant[] = data.tenants;
     const currentTenant = tenants.length === 1 ? tenants[0] : null;
