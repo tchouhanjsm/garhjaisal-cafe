@@ -64,13 +64,13 @@ function verifyIsolatedRestore(exportPath: string): {
     app.use('/api/db-tools', databaseToolsRoutes);
 
     async function verify() {
-      await request(app).post('/api/db-tools/master-pin/reset').send({ pin: '1234', confirm_pin: '1234' });
+      await request(app).post('/api/db-tools/master-pin/reset').send({ pin: '123456', confirm_pin: '123456' });
       const raw = fs.readFileSync(${JSON.stringify(exportPath)}, 'utf8');
       const parsed = JSON.parse(raw);
       db.exec('DELETE FROM inventory_movements;');
       const importRes = await request(app)
         .post('/api/db/import')
-        .send({ overwrite: true, master_pin: '1234', data: parsed });
+        .send({ overwrite: true, master_pin: '123456', data: parsed });
       if (importRes.status !== 200) {
         process.stdout.write(
           '__RESULT__' +
