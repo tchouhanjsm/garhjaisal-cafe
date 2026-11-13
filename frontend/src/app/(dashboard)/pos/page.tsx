@@ -316,7 +316,18 @@ export default function POSPage() {
 
   // Modal state
   const [showTablePicker, setShowTablePicker] = useState(false);
+  const [tablePickerPresentation, setTablePickerPresentation] = useState<'modal' | 'inline'>(
+    'modal',
+  );
   const tablePickerAutoOpenedRef = useRef(false);
+  const openTablePicker = () => {
+    setTablePickerPresentation('modal');
+    setShowTablePicker(true);
+  };
+  const closeTablePicker = () => {
+    setShowTablePicker(false);
+    setTablePickerPresentation('modal');
+  };
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [addonProduct, setAddonProduct] = useState<Product | null>(null);
   const [addonInitialQuantity, setAddonInitialQuantity] = useState(1);
@@ -1893,6 +1904,7 @@ export default function POSPage() {
       })
     ) {
       tablePickerAutoOpenedRef.current = true;
+      setTablePickerPresentation('inline');
       setShowTablePicker(true);
     }
   }, [
@@ -1921,7 +1933,7 @@ export default function POSPage() {
       tablesRequired &&
       !cart.tableId
     ) {
-      setShowTablePicker(true);
+      openTablePicker();
       return false;
     }
     if (
@@ -3318,7 +3330,7 @@ export default function POSPage() {
     } else if (!customer && cartCustomerWasInherited) {
       cart.setCustomer(null);
     }
-    setShowTablePicker(false);
+    closeTablePicker();
   };
 
   const handleSelectOccupiedTable = async (table: Table) => {
@@ -3343,7 +3355,7 @@ export default function POSPage() {
       if (!shouldProceed) return;
     }
 
-    setShowTablePicker(false);
+    closeTablePicker();
     setCheckoutTable(table);
   };
 
@@ -3373,7 +3385,7 @@ export default function POSPage() {
     } catch {
       toast.error(t('loadOrderFailed'));
     } finally {
-      setShowTablePicker(false);
+      closeTablePicker();
       await refreshTables();
     }
   };
@@ -3396,7 +3408,7 @@ export default function POSPage() {
         cart.roomNumber,
       );
       cart.clearCart();
-      setShowTablePicker(false);
+      closeTablePicker();
       toast.success(t('orderHeld', { tableName }));
       await refreshTables();
     } catch (error) {
@@ -3674,7 +3686,8 @@ export default function POSPage() {
       },
       onToggleTables: () => {
         if (isRestaurant && cart.orderType === 'dine_in' && tablesRequired) {
-          setShowTablePicker((prev) => !prev);
+          if (showTablePicker) closeTablePicker();
+          else openTablePicker();
         }
       },
       onOpenCheckout: () => {
@@ -3705,9 +3718,9 @@ export default function POSPage() {
         if (cart.tableId) {
           const tbl = tables.find((t) => t.id === cart.tableId);
           if (tbl) setCheckoutTable(tbl);
-          else setShowTablePicker(true);
+          else openTablePicker();
         } else {
-          setShowTablePicker(true);
+          openTablePicker();
         }
       },
       onOpenCashMovement: () => {
@@ -4005,7 +4018,7 @@ export default function POSPage() {
         onTopItemSelect={handleProductClick}
         showTableButton={isRestaurant && cart.orderType === 'dine_in' && tablesRequired}
         tableName={tables.find((tbl) => tbl.id === cart.tableId)?.name ?? null}
-        onShowTablePicker={() => setShowTablePicker(true)}
+        onShowTablePicker={openTablePicker}
         onActionsMenuOpenChange={setActionsMenuOpen}
         onShowCashMovement={cashDrawer.openModal}
         // Re-fetch on entry: the mount snapshot can be hours stale on a
@@ -4129,7 +4142,8 @@ export default function POSPage() {
           onSelectHeld={handleSelectHeldTable}
           onPlaceOrder={handlePlaceOrder}
           onHoldTable={handleHoldTable}
-          onClose={() => setShowTablePicker(false)}
+          onClose={closeTablePicker}
+          presentation={tablePickerPresentation}
         />
       )}
 
