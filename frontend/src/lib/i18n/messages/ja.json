@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "伝票が作成され、会計待ち一覧に送信されました。",
     "ticketNumber": "伝票番号",
     "paymentTicketInstruction": "この伝票をお会計カウンターにお持ちください。",
-    "selectCounter": "カウンターを選択"
+    "selectCounter": "カウンターを選択",
+    "roomNumberLabel": "ホテルの部屋番号",
+    "roomNumberPlaceholder": "部屋番号（任意）"
   },
   "printTest": {
     "amt": "金額",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2時間",
     "refundWindow4h": "4時間",
     "refundWindowSameDay": "同一営業日内",
-    "refundOwnerUnlimitedNote": "オーナーはスタッフ承認PINを使用して、過去のどの注文の返金でも常に承認できます。"
+    "refundOwnerUnlimitedNote": "オーナーはスタッフ承認PINを使用して、過去のどの注文の返金でも常に承認できます。",
+    "masterPinCurrentInvalid": "有効な4桁または6桁の現在のマスターPINを入力してください"
   },
   "setup": {
     "alreadyCompleted": "このインストールではセットアップが完了しています。ログインへ移動します…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "FloPOSに同意します",
     "timezoneHint": "国から事前入力されます。複数のタイムゾーンがある国の店舗では、実際の現地タイムゾーンを選択できます。",
     "timezoneLabel": "タイムゾーン",
-    "welcome": "FloCafeへようこそ"
+    "welcome": "FloCafeへようこそ",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Garh Jaisal Haveli レストランのセットアップ",
+    "garhJaisalDetails": "Garh Jaisal Haveli レストランの初期設定：INR、FineDine の後払い方式、テーブル10台、UPI、キッチンディスプレイ、ウェイターアプリ。初回販売の前に実際のメニューとスタッフアカウントを追加し、税設定を確認してください。"
   },
   "staff": {
     "addButton": "スタッフを追加",
@@ -2843,7 +2849,8 @@
     "roleServer": "サーバー担当",
     "title": "スタッフ",
     "updateButton": "更新",
-    "updatedToast": "スタッフを更新しました"
+    "updatedToast": "スタッフを更新しました",
+    "pinMustBeSixDigits": "PINは6桁ちょうどである必要があります"
   },
   "permissionMatrix": {
     "title": "ロール権限",
