@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Ticket créé et envoyé dans la file d'attente.",
     "ticketNumber": "Numéro de ticket",
     "paymentTicketInstruction": "Présentez ce ticket à la caisse pour effectuer le règlement.",
-    "selectCounter": "Sélectionner le comptoir"
+    "selectCounter": "Sélectionner le comptoir",
+    "roomNumberLabel": "Numéro de chambre de l’hôtel",
+    "roomNumberPlaceholder": "N° de chambre (facultatif)"
   },
   "printTest": {
     "amt": "Montant",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 heures",
     "refundWindow4h": "4 heures",
     "refundWindowSameDay": "Même journée commerciale",
-    "refundOwnerUnlimitedNote": "Les propriétaires peuvent toujours approuver les remboursements de toute commande passée avec leur code PIN d’approbation."
+    "refundOwnerUnlimitedNote": "Les propriétaires peuvent toujours approuver les remboursements de toute commande passée avec leur code PIN d’approbation.",
+    "masterPinCurrentInvalid": "Saisissez un code Master actuel valide de 4 ou 6 chiffres"
   },
   "setup": {
     "alreadyCompleted": "La configuration a déjà été effectuée sur cette installation. Redirection vers la connexion…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "J’accepte les documents FloPOS suivants :",
     "timezoneHint": "Prérempli à partir de votre pays. Les établissements situés dans un pays couvrant plusieurs fuseaux horaires peuvent choisir leur fuseau local réel.",
     "timezoneLabel": "Fuseau horaire",
-    "welcome": "Bienvenue dans FloCafe"
+    "welcome": "Bienvenue dans FloCafe",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Configuration du restaurant Garh Jaisal Haveli",
+    "garhJaisalDetails": "Paramètres par défaut du restaurant Garh Jaisal Haveli : INR, service FineDine avec paiement différé, 10 tables, UPI, écran de cuisine et application serveur. Ajoutez votre véritable menu et vos comptes employés, puis vérifiez les paramètres fiscaux avant la première vente."
   },
   "staff": {
     "addButton": "Ajouter un employé",
@@ -2843,7 +2849,8 @@
     "roleServer": "Personnel de service",
     "title": "Personnel",
     "updateButton": "Mettre à jour",
-    "updatedToast": "Employé mis à jour"
+    "updatedToast": "Employé mis à jour",
+    "pinMustBeSixDigits": "Le code PIN doit comporter exactement 6 chiffres"
   },
   "permissionMatrix": {
     "title": "Autorisations des rôles",
