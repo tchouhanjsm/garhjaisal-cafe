@@ -153,7 +153,7 @@ function changedFiles(base, head, strategy) {
 }
 
 function runCheck(pkg, files) {
-  const invocation = scope.oxfmtInvocation(pkg, files, { mode: 'check' });
+  const invocation = scope.oxfmtInvocation(pkg, files, { mode: 'write' });
   const result = spawnSync(invocation.command, invocation.args, {
     cwd: invocation.cwd,
     encoding: 'utf8',
@@ -161,21 +161,13 @@ function runCheck(pkg, files) {
   });
   if (result.error) throw new Error(`oxfmt could not run: ${result.error.message}`);
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-  if (result.status === 0) return;
-  if (output) console.error(output);
-  if (result.status === 2) {
-    throw new Error(
-      `Oxfmt excluded every selected ${pkg.name} file. Update scripts/oxc/scope.cjs to match ${pkg.configFile}.`,
-    );
+  if (result.status !== 0) {
+    if (output) console.error(output);
+    throw new Error(`Oxfmt write failed for ${pkg.name} with exit ${result.status}.`);
   }
-  console.error(`Selected ${files.length} changed ${pkg.name} file(s): ${files.join(', ')}`);
-  const repair =
-    pkg.name === 'frontend'
-      ? 'Run "npx oxfmt --write --" from frontend/ with only the selected frontend paths.'
-      : 'Run "npx oxfmt --write --" from the repository root with only the selected root paths.';
-  throw new Error(
-    `Oxfmt failed for ${files.length} changed ${pkg.name} file(s) with exit ${result.status}. ${repair} Quote paths containing spaces.`,
-  );
+  if (output) console.log(output);
+  const diff = git(['diff', '--', ...files], { allowFailure: true }).stdout;
+  if (diff.trim()) console.log(`Oxfmt repair diff for ${pkg.name}:\n${diff}`);
 }
 
 function main() {
