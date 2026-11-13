@@ -427,11 +427,7 @@ async function run() {
     role: 'cashier',
     pin: '246810', // Same PIN as owner-1!
   });
-  assertEqualOrThrow(
-    createCashierRes.status,
-    201,
-    'Manager can create cashier with a 6-digit PIN',
-  );
+  assertEqualOrThrow(createCashierRes.status, 201, 'Manager can create cashier with a 6-digit PIN');
   const cashierId = createCashierRes.body.staff.id as string;
   assertEqualOrThrow(createCashierRes.body.staff.has_pin, 1, 'Created cashier has_pin is 1');
 
