@@ -2245,7 +2245,7 @@ async function run() {
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('chef-pin', 'Chef With Pin', 'chefpin@test.local', ?, 'chef', ?, 1, ?, ?)
-  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('4321', 10), ts, ts);
+  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('432198', 10), ts, ts);
 
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
@@ -2371,7 +2371,7 @@ async function run() {
     const kdsValidLogin = await fetch(`${kdsUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'chef-pin', pin: '4321' }),
+      body: JSON.stringify({ user_id: 'chef-pin', pin: '432198' }),
     });
     assertEqualOrThrow(kdsValidLogin.status, 200, 'KDS pin-login succeeds for chef-pin');
     const kdsValidBody = (await kdsValidLogin.json()) as {
@@ -2403,7 +2403,7 @@ async function run() {
     const saChefDenied = await fetch(`${serverAppUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'chef-pin', pin: '4321' }),
+      body: JSON.stringify({ user_id: 'chef-pin', pin: '432198' }),
     });
     assertEqualOrThrow(
       saChefDenied.status,
@@ -2421,7 +2421,7 @@ async function run() {
     const saValidLogin = await fetch(`${serverAppUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'server-pin', pin: '3456' }),
+      body: JSON.stringify({ user_id: 'server-pin', pin: '345678' }),
     });
     assertEqualOrThrow(saValidLogin.status, 200, 'Server App pin-login succeeds for server-pin');
     const saValidBody = (await saValidLogin.json()) as {
