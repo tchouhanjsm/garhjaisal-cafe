@@ -2811,7 +2811,7 @@
     "timezoneHint": "Prérempli à partir de votre pays. Les établissements situés dans un pays couvrant plusieurs fuseaux horaires peuvent choisir leur fuseau local réel.",
     "timezoneLabel": "Fuseau horaire",
     "welcome": "Bienvenue dans FloCafe",
-    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalLabel": "Restaurant Garh Jaisal",
     "garhJaisalDesc": "Configuration du restaurant Garh Jaisal Haveli",
     "garhJaisalDetails": "Paramètres par défaut du restaurant Garh Jaisal Haveli : INR, service FineDine avec paiement différé, 10 tables, UPI, écran de cuisine et application serveur. Ajoutez votre véritable menu et vos comptes employés, puis vérifiez les paramètres fiscaux avant la première vente."
   },
