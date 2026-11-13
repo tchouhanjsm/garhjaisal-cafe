@@ -236,7 +236,7 @@ async function run() {
     .prepare(
       `UPDATE users SET role = 'owner', is_active = 1, pin_hash = ?, tokens_valid_after = NULL WHERE id = 'jwt-owner-1'`,
     )
-    .run(bcrypt.hashSync('2468', 10));
+    .run(bcrypt.hashSync('246810', 10));
   clearUserAuthCache();
   clearLoginRateLimits();
 
