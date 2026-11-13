@@ -150,6 +150,7 @@ async function main() {
     name: 'New Owner',
     email: 'new-owner@example.com',
     password: 'TestPass123',
+    master_pin: '123456',
     business_type: 'restaurant',
     business_name: 'Reset Cafe',
     setup_profile: 'demo',
