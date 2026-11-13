@@ -54,8 +54,15 @@ test.describe('Server App tableside ordering', () => {
     const grid = page.getByTestId('pos-product-grid');
     await expect(grid.getByPlaceholder('Search menu')).toBeVisible();
     const search = grid.getByPlaceholder('Search menu');
-    await search.fill('2*E2E Coffee');
+    await search.fill('E2E Coffee');
     await search.press('Enter');
+    const coffeeCard = grid
+      .getByTestId('pos-product-card')
+      .filter({ hasText: 'E2E Coffee' })
+      .first();
+    await expect(coffeeCard).toBeVisible();
+    await coffeeCard.click();
+    await coffeeCard.click();
 
     const note = 'Window seat, birthday';
     const ticketNotes = page.getByPlaceholder('Order notes (optional)').last();
@@ -526,6 +533,12 @@ test.describe('Server App tableside ordering', () => {
     const search = grid.getByPlaceholder('Search menu');
     await search.fill('E2E Coffee');
     await search.press('Enter');
+    const coffeeCard = page
+      .getByTestId('pos-product-card')
+      .filter({ hasText: 'E2E Coffee' })
+      .first();
+    await expect(coffeeCard).toBeVisible();
+    await coffeeCard.click();
 
     const notesInput = page.getByPlaceholder('Order notes (optional)').first();
     await notesInput.fill('Initial note');
@@ -727,8 +740,15 @@ test.describe('Server App tableside ordering', () => {
     await page.getByRole('button', { name: new RegExp(tableAName) }).click();
 
     const search = page.getByTestId('pos-product-grid').getByPlaceholder('Search menu');
-    await search.fill('2*E2E Coffee');
+    await search.fill('E2E Coffee');
     await search.press('Enter');
+    const coffeeCard = page
+      .getByTestId('pos-product-card')
+      .filter({ hasText: 'E2E Coffee' })
+      .first();
+    await expect(coffeeCard).toBeVisible();
+    await coffeeCard.click();
+    await coffeeCard.click();
 
     const notesInput = page.getByPlaceholder('Order notes (optional)').first();
     await notesInput.fill('Retry note');
