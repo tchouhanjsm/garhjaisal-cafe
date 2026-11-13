@@ -2811,7 +2811,7 @@
     "timezoneHint": "국가에 따라 미리 채워집니다. 다중 시간대 국가의 매장은 실제 현지 시간대를 선택할 수 있습니다.",
     "timezoneLabel": "시간대",
     "welcome": "FloCafe에 오신 것을 환영합니다",
-    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalLabel": "Garh Jaisal 레스토랑",
     "garhJaisalDesc": "Garh Jaisal Haveli 레스토랑 설정",
     "garhJaisalDetails": "Garh Jaisal Haveli 레스토랑 기본값: INR, FineDine 후불 서비스, 테이블 10개, UPI, 주방 디스플레이 및 웨이터 앱. 첫 판매 전에 실제 메뉴와 직원 계정을 추가하고 세금 설정을 확인하세요."
   },
