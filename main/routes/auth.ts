@@ -1254,7 +1254,9 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
     const resolvedTimezone =
       normalizedSetupProfile === GARH_JAISAL_PROFILE.id
         ? GARH_JAISAL_PROFILE.timezone
-        : timezone === undefined ? resolvedCountry.timezone : timezone;
+        : timezone === undefined
+          ? resolvedCountry.timezone
+          : timezone;
     if (!isValidTimeZone(resolvedTimezone)) {
       return res.status(400).json({ error: 'Invalid timezone' });
     }
@@ -1361,7 +1363,10 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
 
       userId = randomUUID();
       db.prepare(`
-        INSERT INTO users (id, name, email, password, role, pin_hash, is_active, terms_accepted_at, created_at, updated_at)
+        INSERT INTO users (
+          id, name, email, password, role, pin_hash, is_active, terms_accepted_at,
+          created_at, updated_at
+        )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         userId,
@@ -1409,7 +1414,9 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         tables_required:
           normalizedSetupProfile === GARH_JAISAL_PROFILE.id
             ? String(GARH_JAISAL_PROFILE.tablesRequired)
-            : normalizedServiceModel === 'finedine' ? 'true' : 'false',
+            : normalizedServiceModel === 'finedine'
+              ? 'true'
+              : 'false',
         service_model: normalizedServiceModel,
         setup_profile: pendingCurrencyReset ? 'empty' : normalizedSetupProfile,
         onboarding_completed: 'true',
