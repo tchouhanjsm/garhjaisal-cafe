@@ -54,15 +54,8 @@ test.describe('Server App tableside ordering', () => {
     const grid = page.getByTestId('pos-product-grid');
     await expect(grid.getByPlaceholder('Search menu')).toBeVisible();
     const search = grid.getByPlaceholder('Search menu');
-    await search.fill('E2E Coffee');
+    await search.fill('2*E2E Coffee');
     await search.press('Enter');
-    const coffeeCard = grid
-      .getByTestId('pos-product-card')
-      .filter({ hasText: 'E2E Coffee' })
-      .first();
-    await expect(coffeeCard).toBeVisible();
-    await coffeeCard.click();
-    await coffeeCard.click();
 
     const note = 'Window seat, birthday';
     const ticketNotes = page.getByPlaceholder('Order notes (optional)').last();
@@ -78,12 +71,10 @@ test.describe('Server App tableside ordering', () => {
     expect(ordersRes.ok()).toBeTruthy();
     const { orders } = await ordersRes.json();
     expect(orders[0]?.special_instructions).toBe(note);
-    expect(
-      orders[0]?.items?.some(
-        (item: { product_name: string; quantity: number }) =>
-          item.product_name === 'E2E Coffee' && item.quantity === 2,
-      ),
-    ).toBeTruthy();
+    const coffeeQuantity = (orders[0]?.items || [])
+      .filter((item: { product_name: string }) => item.product_name === 'E2E Coffee')
+      .reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0);
+    expect(coffeeQuantity).toBe(2);
   });
 
   test('shows station-level KOT recovery on the phone and retries only the safe failed station', async ({
@@ -533,12 +524,6 @@ test.describe('Server App tableside ordering', () => {
     const search = grid.getByPlaceholder('Search menu');
     await search.fill('E2E Coffee');
     await search.press('Enter');
-    const coffeeCard = page
-      .getByTestId('pos-product-card')
-      .filter({ hasText: 'E2E Coffee' })
-      .first();
-    await expect(coffeeCard).toBeVisible();
-    await coffeeCard.click();
 
     const notesInput = page.getByPlaceholder('Order notes (optional)').first();
     await notesInput.fill('Initial note');
@@ -632,14 +617,24 @@ test.describe('Server App tableside ordering', () => {
     releaseOrderPost();
     await expect(page.getByText('Order sent').first()).toBeVisible();
     await expect(page.getByText('Tap menu items to add them here.').first()).toBeVisible();
-    await expect(page.getByText('1 x E2E Coffee').first()).toBeVisible();
+    const currentCoffeeLine = page
+      .getByTestId('server-app-current-order-item')
+      .filter({ hasText: 'E2E Coffee' })
+      .first();
+    await expect(currentCoffeeLine).toBeVisible();
+    await expect(currentCoffeeLine.getByTestId('server-app-current-order-item-quantity')).toHaveText('1');
     releaseKotPrint();
 
     // Now that the first send finished and unlocked the UI, adding and sending a second item must succeed.
     await search.fill('E2E Coffee');
     await search.press('Enter');
     await page.getByRole('button', { name: 'Add to order' }).first().click();
-    await expect(page.locator('main').getByText('1 x E2E Coffee')).toHaveCount(2);
+    const currentCoffeeLines = page
+      .getByTestId('server-app-current-order-item')
+      .filter({ hasText: 'E2E Coffee' });
+    await expect(currentCoffeeLines).toHaveCount(2);
+    await expect(currentCoffeeLines.nth(0).getByTestId('server-app-current-order-item-quantity')).toHaveText('1');
+    await expect(currentCoffeeLines.nth(1).getByTestId('server-app-current-order-item-quantity')).toHaveText('1');
     await expect.poll(() => kotPrintPayloads.length).toBe(2);
     expect(kotPrintPayloads[0]?.items).toHaveLength(1);
     expect(kotPrintPayloads[1]?.items).toHaveLength(1);
@@ -740,15 +735,8 @@ test.describe('Server App tableside ordering', () => {
     await page.getByRole('button', { name: new RegExp(tableAName) }).click();
 
     const search = page.getByTestId('pos-product-grid').getByPlaceholder('Search menu');
-    await search.fill('E2E Coffee');
+    await search.fill('2*E2E Coffee');
     await search.press('Enter');
-    const coffeeCard = page
-      .getByTestId('pos-product-card')
-      .filter({ hasText: 'E2E Coffee' })
-      .first();
-    await expect(coffeeCard).toBeVisible();
-    await coffeeCard.click();
-    await coffeeCard.click();
 
     const notesInput = page.getByPlaceholder('Order notes (optional)').first();
     await notesInput.fill('Retry note');
@@ -795,7 +783,12 @@ test.describe('Server App tableside ordering', () => {
     await page.getByRole('button', { name: new RegExp(tableBName) }).click();
     await page.getByRole('button', { name: new RegExp(tableAName) }).click();
     await reloadTableAOrder;
-    await expect(page.getByText('2 x E2E Coffee').first()).toBeVisible();
+    const retriedCoffeeLine = page
+      .getByTestId('server-app-current-order-item')
+      .filter({ hasText: 'E2E Coffee' })
+      .first();
+    await expect(retriedCoffeeLine).toBeVisible();
+    await expect(retriedCoffeeLine.getByTestId('server-app-current-order-item-quantity')).toHaveText('2');
 
     // Retrying the unmodified draft must replay the original POST /api/orders with the same key instead of appending a second time.
     await page.getByRole('button', { name: 'Add to order' }).first().click();
