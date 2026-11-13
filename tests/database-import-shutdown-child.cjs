@@ -123,10 +123,10 @@ async function run() {
         },
       });
     } else {
-      setMasterPin('1234');
+      setMasterPin('123456');
       db.prepare("INSERT INTO categories (id, name) VALUES ('reset-survivor', 'Reset survivor')").run();
       response = await request(server).post('/api/db-tools/initialize').send({
-        master_pin: '1234',
+        master_pin: '123456',
         confirmation_phrase: 'INITIALIZE',
       });
     }
