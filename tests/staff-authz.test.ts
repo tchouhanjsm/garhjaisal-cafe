@@ -287,7 +287,11 @@ async function main() {
         role: 'manager',
         pin,
       });
-    assertEqual(result.status, 400, `PIN ${pin} is rejected unless it is exactly six numeric digits`);
+    assertEqual(
+      result.status,
+      400,
+      `PIN ${pin} is rejected unless it is exactly six numeric digits`,
+    );
   }
 
   result = await request(app)
