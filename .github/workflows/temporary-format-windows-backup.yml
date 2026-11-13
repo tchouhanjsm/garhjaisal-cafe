@@ -1,0 +1,35 @@
+name: Temporary single-file formatter
+on:
+  push:
+    branches:
+      - feature/garh-jaisal-deployment-room-number-six-digit-pins
+    paths:
+      - tests/windows-backup-unlink-ebusy.test.ts
+      - .github/workflows/temporary-format-windows-backup.yml
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Format the changed regression test
+        run: npx oxfmt --write -- tests/windows-backup-unlink-ebusy.test.ts
+      - name: Commit formatted file when changed
+        run: |
+          if git diff --quiet -- tests/windows-backup-unlink-ebusy.test.ts; then
+            echo "The file is already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/windows-backup-unlink-ebusy.test.ts
+          git commit -m "style: format Windows backup regression test"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
