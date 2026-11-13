@@ -67,7 +67,7 @@ function testInlineAndModalTablePicker(): void {
     isMain: boolean,
     options?: any,
   ) {
-    const resolvedRequest = request.startsWith('@/') 
+    const resolvedRequest = request.startsWith('@/')
       ? path.resolve(root, 'frontend/src', request.slice(2))
       : request;
     return originalResolveFilename.call(this, resolvedRequest, parent, isMain, options);
@@ -158,7 +158,9 @@ function testInlineAndModalTablePicker(): void {
       assert.ok(markup.includes('₹425.00'), 'renders the active order total');
     }
 
-    console.log('  ✓ initial table selection is inline and manual table switching remains modal');
+    console.log(
+      '  ✓ initial table selection is inline and manual table switching remains modal',
+    );
     console.log('  ✓ occupied table shows its active order number and total');
   } finally {
     moduleApi._load = originalLoad;
