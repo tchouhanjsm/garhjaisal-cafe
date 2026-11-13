@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "टिकट तयार गरी भुक्तानी लाममा पठाइयो।",
     "ticketNumber": "टिकट नम्बर",
     "paymentTicketInstruction": "भुक्तानी गर्न यो टिकट भुक्तानी काउन्टरमा लैजानुहोस्।",
-    "selectCounter": "काउन्टर छान्नुहोस्"
+    "selectCounter": "काउन्टर छान्नुहोस्",
+    "roomNumberLabel": "होटल कोठा नम्बर",
+    "roomNumberPlaceholder": "कोठा नं. (वैकल्पिक)"
   },
   "printTest": {
     "amt": "रकम",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "२ घण्टा",
     "refundWindow4h": "४ घण्टा",
     "refundWindowSameDay": "सोही व्यावसायिक दिन",
-    "refundOwnerUnlimitedNote": "मालिकहरूले आफ्नो स्टाफ स्वीकृति पिन प्रयोग गरी जुनसुकै पुरानो अर्डरको रिफन्ड सधैं स्वीकृत गर्न सक्छन्।"
+    "refundOwnerUnlimitedNote": "मालिकहरूले आफ्नो स्टाफ स्वीकृति पिन प्रयोग गरी जुनसुकै पुरानो अर्डरको रिफन्ड सधैं स्वीकृत गर्न सक्छन्।",
+    "masterPinCurrentInvalid": "मान्य हालको ४ वा ६ अङ्कको मास्टर PIN प्रविष्ट गर्नुहोस्"
   },
   "setup": {
     "alreadyCompleted": "यस स्थापनामा सेटअप पहिले नै पूरा भइसकेको छ। लगइन गर्न रिडिरेक्ट गर्दै...",
@@ -2807,7 +2810,10 @@
     "termsIntro": "म FloPOS मा सहमत छु",
     "timezoneHint": "तपाईंको देशबाट पूर्व भरिएको। बहु-समय क्षेत्र देशहरूमा पसलहरूले तिनीहरूको वास्तविक स्थानीय समय क्षेत्र रोज्न सक्छन्।",
     "timezoneLabel": "समय क्षेत्र",
-    "welcome": "FloCafe मा स्वागत छ"
+    "welcome": "FloCafe मा स्वागत छ",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Garh Jaisal Haveli रेस्टुरेन्ट सेटअप",
+    "garhJaisalDetails": "Garh Jaisal Haveli रेस्टुरेन्टका पूर्वनिर्धारित सेटिङहरू: INR, FineDine पोस्टपेड बिलिङ, १० टेबल, UPI, किचन डिस्प्ले र वेटर एप। पहिलो बिक्रीअघि वास्तविक मेनु र कर्मचारी खाताहरू थप्नुहोस् र कर सेटिङहरू जाँच गर्नुहोस्।"
   },
   "staff": {
     "addButton": "कर्मचारी थप्नुहोस्",
@@ -2843,7 +2849,8 @@
     "roleServer": "सर्भर",
     "title": "कर्मचारी",
     "updateButton": "अपडेट गर्नुहोस्",
-    "updatedToast": "कर्मचारी अपडेट गरियो"
+    "updatedToast": "कर्मचारी अपडेट गरियो",
+    "pinMustBeSixDigits": "PIN ठ्याक्कै ६ अङ्कको हुनुपर्छ"
   },
   "permissionMatrix": {
     "title": "भूमिका अनुमतिहरू",
