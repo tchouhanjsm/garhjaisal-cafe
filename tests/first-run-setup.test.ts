@@ -641,7 +641,7 @@ async function main() {
     assert.equal(count('users'), 1, 'setup creates only the owner account');
     assert.equal(count('tables'), 10, 'setup creates the ten approved restaurant tables');
     assert.equal(count('kitchen_stations'), 1, 'setup creates one default Kitchen station');
-    const defaultKitchen = db
+    const defaultKitchen = getDatabase()
       .prepare(
         'SELECT name, category_ids, printer_id, is_active FROM kitchen_stations WHERE id = ?',
       )
