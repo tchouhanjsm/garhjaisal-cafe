@@ -622,7 +622,9 @@ test.describe('Server App tableside ordering', () => {
       .filter({ hasText: 'E2E Coffee' })
       .first();
     await expect(currentCoffeeLine).toBeVisible();
-    await expect(currentCoffeeLine.getByTestId('server-app-current-order-item-quantity')).toHaveText('1');
+    await expect(
+      currentCoffeeLine.getByTestId('server-app-current-order-item-quantity'),
+    ).toHaveText('1');
     releaseKotPrint();
 
     // Now that the first send finished and unlocked the UI, adding and sending a second item must succeed.
@@ -633,8 +635,12 @@ test.describe('Server App tableside ordering', () => {
       .getByTestId('server-app-current-order-item')
       .filter({ hasText: 'E2E Coffee' });
     await expect(currentCoffeeLines).toHaveCount(2);
-    await expect(currentCoffeeLines.nth(0).getByTestId('server-app-current-order-item-quantity')).toHaveText('1');
-    await expect(currentCoffeeLines.nth(1).getByTestId('server-app-current-order-item-quantity')).toHaveText('1');
+    await expect(
+      currentCoffeeLines.nth(0).getByTestId('server-app-current-order-item-quantity'),
+    ).toHaveText('1');
+    await expect(
+      currentCoffeeLines.nth(1).getByTestId('server-app-current-order-item-quantity'),
+    ).toHaveText('1');
     await expect.poll(() => kotPrintPayloads.length).toBe(2);
     expect(kotPrintPayloads[0]?.items).toHaveLength(1);
     expect(kotPrintPayloads[1]?.items).toHaveLength(1);
@@ -788,7 +794,9 @@ test.describe('Server App tableside ordering', () => {
       .filter({ hasText: 'E2E Coffee' })
       .first();
     await expect(retriedCoffeeLine).toBeVisible();
-    await expect(retriedCoffeeLine.getByTestId('server-app-current-order-item-quantity')).toHaveText('2');
+    await expect(
+      retriedCoffeeLine.getByTestId('server-app-current-order-item-quantity'),
+    ).toHaveText('2');
 
     // Retrying the unmodified draft must replay the original POST /api/orders with the same key instead of appending a second time.
     await page.getByRole('button', { name: 'Add to order' }).first().click();
