@@ -40,7 +40,7 @@ const { staffRoutes } = require('../main/routes/staff');
 const { authorizationRoutes } = require('../main/routes/authorization');
 const { getJWTSecret } = require('../main/routes/auth');
 
-function seedUser(db: any, id: string, role: string, pin = '1234') {
+function seedUser(db: any, id: string, role: string, pin = '123456') {
   const email = `${id}@test.local`;
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
@@ -394,7 +394,7 @@ async function main() {
         { permission_id: 'staff.operational.manage', effect: 'deny' },
         { permission_id: 'settings.manage', effect: 'deny' },
       ],
-      override_pin: '1234',
+      override_pin: '123456',
     });
   assertEqual(
     stripOperational.status,
