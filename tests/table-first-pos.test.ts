@@ -74,26 +74,33 @@ function testInlinePickerPreservesGlobalShortcuts(): void {
     path.join(ROOT, 'frontend/src/app/(dashboard)/pos/page.tsx'),
     'utf8',
   );
+  const inlineModalGuard = [
+    'const anyModalOpen =',
+    "    (showTablePicker && tablePickerPresentation === 'modal') || anyOtherModalOpen;",
+  ].join('\\n');
+  const f2ToggleGuard = [
+    '      onToggleTables: () => {',
+    '        if (isRestaurant && cart.orderType === \'dine_in\' && tablesRequired) {',
+    "          if (showTablePicker && tablePickerPresentation === 'modal') closeTablePicker();",
+    '          else openTablePicker();',
+  ].join('\\n');
+  const escapeGuard = [
+    "        if (showTablePicker && tablePickerPresentation === 'modal') {",
+    '          closeTablePicker();',
+    '          return true;',
+  ].join('\\n');
+  const keyboardPickerGuard = [
+    '      tablePickerOpen:',
+    "        showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,",
+  ].join('\\n');
 
-  assert.match(
-    posPage,
-    /const anyModalOpen =\s*\(showTablePicker && tablePickerPresentation === 'modal'\) \|\| anyOtherModalOpen;/,
-  );
-  assert.match(
-    posPage,
-    /if \(showTablePicker && tablePickerPresentation === 'modal'\) closeTablePicker\(\);\s*else openTablePicker\(\);/,
-  );
-  assert.match(
-    posPage,
-    /if \(showTablePicker && tablePickerPresentation === 'modal'\) \{\s*closeTablePicker\(\);\s*return true;/,
-  );
-  assert.match(
-    posPage,
-    /tablePickerOpen:\s*showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,/,
-  );
+  assert.ok(posPage.includes(inlineModalGuard));
+  assert.ok(posPage.includes(f2ToggleGuard));
+  assert.ok(posPage.includes(escapeGuard));
+  assert.ok(posPage.includes(keyboardPickerGuard));
 
-  console.log('  ✓ inline table-first selection does not block keyboard shortcuts');
-  console.log('  ✓ F2 promotes the inline selector to the existing modal; Escape closes only that modal');
+  console.log('  ✓ inline table-first selection keeps POS shortcuts active');
+  console.log('  ✓ F2 opens the modal picker; Escape closes that modal');
 }
 
 function testWaiterMobileTableFirst(): void {
