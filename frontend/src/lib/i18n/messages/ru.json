@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Талон создан и отправлен в очередь на оплату.",
     "ticketNumber": "Номер талона",
     "paymentTicketInstruction": "Предъявите этот талон на кассе для оплаты.",
-    "selectCounter": "Выбрать кассу"
+    "selectCounter": "Выбрать кассу",
+    "roomNumberLabel": "Номер гостиничного номера",
+    "roomNumberPlaceholder": "Номер комнаты (необязательно)"
   },
   "printTest": {
     "amt": "Сумма",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 часа",
     "refundWindow4h": "4 часа",
     "refundWindowSameDay": "Тот же рабочий день",
-    "refundOwnerUnlimitedNote": "Владельцы всегда могут подтвердить возврат по любому прошлому заказу своим PIN-кодом подтверждения."
+    "refundOwnerUnlimitedNote": "Владельцы всегда могут подтвердить возврат по любому прошлому заказу своим PIN-кодом подтверждения.",
+    "masterPinCurrentInvalid": "Введите действующий мастер-PIN из 4 или 6 цифр"
   },
   "setup": {
     "alreadyCompleted": "Настройка этой установки уже завершена. Перенаправление на вход…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Я согласен с условиями FloPOS",
     "timezoneHint": "Предварительно заполнено из вашей страны. Магазины в странах с несколькими часовыми поясами могут выбирать фактический местный часовой пояс.",
     "timezoneLabel": "Часовой пояс",
-    "welcome": "Добро пожаловать во FloCafe"
+    "welcome": "Добро пожаловать во FloCafe",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Настройка ресторана Garh Jaisal Haveli",
+    "garhJaisalDetails": "Настройки ресторана Garh Jaisal Haveli по умолчанию: INR, обслуживание FineDine с оплатой после заказа, 10 столов, UPI, кухонный экран и приложение официанта. Добавьте фактическое меню и учётные записи сотрудников, затем проверьте настройки налогов перед первой продажей."
   },
   "staff": {
     "addButton": "Добавить сотрудника",
@@ -2843,7 +2849,8 @@
     "roleServer": "Официант",
     "title": "Персонал",
     "updateButton": "Обновить",
-    "updatedToast": "Сотрудник обновлён"
+    "updatedToast": "Сотрудник обновлён",
+    "pinMustBeSixDigits": "PIN-код должен состоять ровно из 6 цифр"
   },
   "permissionMatrix": {
     "title": "Разрешения ролей",
