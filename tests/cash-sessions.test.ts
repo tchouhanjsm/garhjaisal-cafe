@@ -3137,7 +3137,7 @@ async function main() {
         'manager-sess',
       );
 
-      await withFixedClock('2026-11-13T10:00:00.000Z', async () => {
+      await withFixedClock('2026-11-14T10:00:00.000Z', async () => {
         // Step 1: Enable one_shift_per_staff = 'true'
         const enableComboPerStaff = await request(app)
           .put('/api/settings/one_shift_per_staff')
@@ -3304,7 +3304,7 @@ async function main() {
         );
 
         const xComboShiftB = await request(app)
-          .get(`/api/reports/x-report?date=2026-11-13&session_id=${comboShiftBId}`)
+          .get(`/api/reports/x-report?date=2026-11-14&session_id=${comboShiftBId}`)
           .set('Authorization', `Bearer ${managerPinToken}`);
         const xComboShiftBRep = xComboShiftB.body?.xReport;
         assert(
@@ -3324,7 +3324,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-13',
+            business_date: '2026-11-14',
             opening_float_cents: 10000,
             counted_cash_cents: 10000,
           });
@@ -3347,7 +3347,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-13',
+            business_date: '2026-11-14',
             opening_float_cents: 10000,
             counted_cash_cents: 10000,
           });
@@ -3371,7 +3371,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-13',
+            business_date: '2026-11-14',
             opening_float_cents: 10000,
             counted_cash_cents: 10000,
           });
@@ -3389,10 +3389,10 @@ async function main() {
 
         // Step 8: Verify X report and Z report JSON and CSV exports reconcile with the corrected payment method and totals
         const xComboDay = await request(app)
-          .get('/api/reports/x-report?date=2026-11-13')
+          .get('/api/reports/x-report?date=2026-11-14')
           .set('Authorization', `Bearer ${managerPinToken}`);
         const zComboDay = await request(app)
-          .get('/api/reports/z-report?date=2026-11-13')
+          .get('/api/reports/z-report?date=2026-11-14')
           .set('Authorization', `Bearer ${managerPinToken}`);
         assert(
           xComboDay.status === 200 &&
@@ -3410,10 +3410,10 @@ async function main() {
         );
 
         const xCsvExport = await request(app)
-          .get('/api/reports/x-report/export?date=2026-11-13&format=csv')
+          .get('/api/reports/x-report/export?date=2026-11-14&format=csv')
           .set('Authorization', `Bearer ${managerPinToken}`);
         const zCsvExport = await request(app)
-          .get('/api/reports/z-report/export?date=2026-11-13&format=csv')
+          .get('/api/reports/z-report/export?date=2026-11-14&format=csv')
           .set('Authorization', `Bearer ${managerPinToken}`);
         assert(
           xCsvExport.status === 200 &&
