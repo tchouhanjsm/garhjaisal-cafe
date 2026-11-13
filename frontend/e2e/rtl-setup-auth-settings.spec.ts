@@ -193,9 +193,9 @@ test('setup wizard renders with logical navigation, .rtl-flip directional arrows
   await captureScreenshot(page, 'setup-step2-master-pin-rtl-fa.png');
 
   // Fill master pin to advance to Step 3 (Admin Account)
-  await page.locator('#master-pin').fill('1234');
+  await page.locator('#master-pin').fill('123456');
   await page.locator('#master-pin-confirm').fill('1234');
-  await page.locator('#owner-approval-pin').fill('5678');
+  await page.locator('#owner-approval-pin').fill('567890');
   await page.locator('#owner-approval-pin-confirm').fill('5678');
   await page
     .locator('button', { hasText: /ادامه|Continue/ })
