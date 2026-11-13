@@ -3893,8 +3893,7 @@ export default function POSPage() {
     {
       enabled: true,
       anyModalOpen,
-      tablePickerOpen:
-        showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,
+      tablePickerOpen: showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,
       cartItemCount: cart.items.length,
     },
   );
