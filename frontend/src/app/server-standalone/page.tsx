@@ -2177,7 +2177,6 @@ export default function ServerStandalonePage() {
           </div>
         )}
 
-
       {(draft.length > 0 || orderNotes.trim() || roomNumber.trim()) && (
         <button
           type="button"
