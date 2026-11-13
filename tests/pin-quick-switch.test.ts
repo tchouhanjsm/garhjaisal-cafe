@@ -384,7 +384,7 @@ async function run() {
     "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('discount_requires_approval', 'true', ?)",
   ).run(ts);
 
-  // Seed owner (PIN 246810) and manager (PIN 1357)
+  // Seed owner (PIN 246810) and manager (PIN 135790)
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('owner-1', 'Alice Owner', 'owner@test.local', ?, 'owner', ?, 1, ?, ?)
@@ -2250,12 +2250,12 @@ async function run() {
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('chef-inactive-station', 'Chef Inactive Station', 'chefinactive@test.local', ?, 'chef', ?, 1, ?, ?)
-  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('8765', 10), ts, ts);
+  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('876543', 10), ts, ts);
 
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('server-pin', 'Waiter With Pin', 'serverpin@test.local', ?, 'server', ?, 1, ?, ?)
-  `).run(bcrypt.hashSync('SrvPass1!', 10), bcrypt.hashSync('3456', 10), ts, ts);
+  `).run(bcrypt.hashSync('SrvPass1!', 10), bcrypt.hashSync('345678', 10), ts, ts);
 
   // Create an inactive kitchen station and assign chef-inactive-station ONLY to it
   db.prepare(`
@@ -2336,7 +2336,7 @@ async function run() {
     const kdsCashierDenied = await fetch(`${kdsUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: cashierId, pin: '7777' }),
+      body: JSON.stringify({ user_id: cashierId, pin: '777777' }),
     });
     assertEqualOrThrow(
       kdsCashierDenied.status,
@@ -2347,7 +2347,7 @@ async function run() {
     const kdsInactiveStationDenied = await fetch(`${kdsUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'chef-inactive-station', pin: '8765' }),
+      body: JSON.stringify({ user_id: 'chef-inactive-station', pin: '876543' }),
     });
     assertEqualOrThrow(
       kdsInactiveStationDenied.status,
