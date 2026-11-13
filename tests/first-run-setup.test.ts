@@ -645,8 +645,8 @@ async function main() {
     );
     assert.equal(
       profileRefreshes,
-      refreshesBeforeGarhSetup + 1,
-      'local first-run completion keeps the existing registration refresh hook',
+      refreshesBeforeGarhSetup,
+      'local-only Garh Jaisal setup does not invoke cloud registration refresh',
     );
     console.log('   ✓ Garh Jaisal preset is local-first and seeds only approved operational defaults');
   } finally {
