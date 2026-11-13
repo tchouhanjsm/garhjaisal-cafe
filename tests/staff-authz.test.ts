@@ -266,9 +266,9 @@ async function main() {
     email: 'pinned-cashier@test.local',
     password: 'StrongPass1',
     role: 'cashier',
-    pin: '1234',
+    pin: '123456',
   });
-  assertEqual(result.status, 201, 'operational roles accept a valid 4-6 digit PIN');
+  assertEqual(result.status, 201, 'operational roles accept a valid six-digit PIN');
   assertEqual(
     result.body.staff.has_pin,
     1,
@@ -276,7 +276,7 @@ async function main() {
   );
 
   console.log('\n── PIN policy ─────────────────────────────────────────────────');
-  for (const pin of ['abcd', '123', '1234567']) {
+  for (const pin of ['abcd', '123', '1234', '1234567']) {
     result = await request(app)
       .post('/api/staff')
       .set(ownerAuth)
@@ -287,7 +287,7 @@ async function main() {
         role: 'manager',
         pin,
       });
-    assertEqual(result.status, 400, `PIN ${pin} is rejected unless it is 4-6 numeric digits`);
+    assertEqual(result.status, 400, `PIN ${pin} is rejected unless it is exactly six numeric digits`);
   }
 
   result = await request(app)
