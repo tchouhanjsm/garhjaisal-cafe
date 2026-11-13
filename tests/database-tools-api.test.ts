@@ -199,7 +199,7 @@ async function runTests() {
   console.log('Database Tools API Tests (supertest)');
   console.log('='.repeat(50));
 
-  // ── Test 1: setup/initialize requires a 4-digit master_pin when available ──
+  // ── Test 1: setup/initialize requires a 6-digit master_pin when available ──
   console.log('\nTest 1: setup requires master_pin');
   {
     const missingPin = await request(app).post('/api/auth/setup/initialize').send({
@@ -226,16 +226,16 @@ async function runTests() {
       service_model: 'qsr',
       terms_accepted: true,
       country: 'US',
-      master_pin: '1234',
-      owner_approval_pin: '5678',
-      owner_approval_pin_confirmation: '5678',
+      master_pin: '123456',
+      owner_approval_pin: '567890',
+      owner_approval_pin_confirmation: '567890',
     });
     assert(
       ok.status === 200,
       `setup with valid master_pin succeeds (got ${ok.status}, ${JSON.stringify(ok.body)})`,
     );
     assert(isMasterPinSet(), 'master PIN is set on disk after setup');
-    assert(verifyMasterPin('1234'), 'the PIN submitted during setup verifies afterward');
+    assert(verifyMasterPin('123456'), 'the PIN submitted during setup verifies afterward');
   }
 
   const ownerToken = tokenFor('owner-1', 'owner');
@@ -347,55 +347,55 @@ async function runTests() {
     const withoutCurrentPin = await request(app)
       .post('/api/db-tools/master-pin/reset')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ pin: '5678', confirm_pin: '5678' });
+      .send({ pin: '567890', confirm_pin: '567890' });
     assert(
       withoutCurrentPin.status === 403,
       `reset with an existing PIN rejects a request without current proof (got ${withoutCurrentPin.status})`,
     );
     assert(
-      verifyMasterPin('1234'),
+      verifyMasterPin('123456'),
       'a rejected reset without current proof leaves the existing PIN unchanged',
     );
-    resetMasterPin('1234');
+    resetMasterPin('123456');
 
     const withWrongCurrentPin = await request(app)
       .post('/api/db-tools/master-pin/reset')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '0000', pin: '5678', confirm_pin: '5678' });
+      .send({ master_pin: '000000', pin: '567890', confirm_pin: '567890' });
     assert(
       withWrongCurrentPin.status === 403,
       `reset with an existing PIN rejects incorrect current proof (got ${withWrongCurrentPin.status})`,
     );
     assert(
-      verifyMasterPin('1234'),
+      verifyMasterPin('123456'),
       'a rejected reset with incorrect proof leaves the existing PIN unchanged',
     );
-    resetMasterPin('1234');
+    resetMasterPin('123456');
 
     const withCurrentPin = await request(app)
       .post('/api/db-tools/master-pin/reset')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '1234', pin: '5678', confirm_pin: '5678' });
+      .send({ master_pin: '123456', pin: '567890', confirm_pin: '567890' });
     assert(
       withCurrentPin.status === 200,
       `reset with the correct current PIN succeeds (got ${withCurrentPin.status})`,
     );
-    assert(verifyMasterPin('5678'), 'authorized reset stores the new PIN');
-    assert(!verifyMasterPin('1234'), 'authorized reset invalidates the old PIN');
-    resetMasterPin('1234');
+    assert(verifyMasterPin('567890'), 'authorized reset stores the new PIN');
+    assert(!verifyMasterPin('123456'), 'authorized reset invalidates the old PIN');
+    resetMasterPin('123456');
 
     fs.unlinkSync(path.join(testDir, 'master-pin.enc'));
     assert(!isMasterPinSet(), 'the first-time setup control starts with no configured PIN');
     const firstTimeSetup = await request(app)
       .post('/api/db-tools/master-pin/reset')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ pin: '5678', confirm_pin: '5678' });
+      .send({ pin: '567890', confirm_pin: '567890' });
     assert(
       firstTimeSetup.status === 200,
       `first-time PIN setup succeeds without existing-PIN proof (got ${firstTimeSetup.status})`,
     );
-    assert(verifyMasterPin('5678'), 'first-time PIN setup stores the PIN');
-    resetMasterPin('1234');
+    assert(verifyMasterPin('567890'), 'first-time PIN setup stores the PIN');
+    resetMasterPin('123456');
   }
 
   await new Promise<void>((resolve) => downloadServer.listen(0, '127.0.0.1', resolve));
@@ -403,7 +403,7 @@ async function runTests() {
     .get('/api/db/download')
     .set('Authorization', `Bearer ${ownerToken}`)
     .set('x-test-stall-download', '1')
-    .send({ master_pin: '1234' });
+    .send({ master_pin: '123456' });
   void stalledDownload.then(
     () => undefined,
     () => undefined,
@@ -421,7 +421,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -447,7 +447,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -500,7 +500,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -556,7 +556,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -637,7 +637,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -674,7 +674,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -724,7 +724,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -754,7 +754,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -793,7 +793,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion() - 1),
@@ -857,7 +857,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion() - 1),
@@ -898,7 +898,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: false,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -963,7 +963,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion() - 1),
@@ -999,7 +999,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -1037,7 +1037,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -1332,7 +1332,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -1374,7 +1374,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -1423,7 +1423,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -1485,7 +1485,7 @@ async function runTests() {
     .post('/api/db/import')
     .set('Authorization', `Bearer ${ownerToken}`)
     .send({
-      master_pin: '1234',
+      master_pin: '123456',
       overwrite: true,
       data: {
         schema_version: String(getCurrentSchemaVersion()),
@@ -1537,7 +1537,7 @@ async function runTests() {
     const wrongPin = await request(app)
       .post('/api/db/backup')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '0000' });
+      .send({ master_pin: '000000' });
     assert(
       wrongPin.status === 403,
       `backup with the wrong PIN is rejected (got ${wrongPin.status})`,
@@ -1546,7 +1546,7 @@ async function runTests() {
     const ok = await request(app)
       .post('/api/db/backup')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '1234' });
+      .send({ master_pin: '123456' });
     assert(
       ok.status === 200,
       `backup with the correct PIN succeeds (got ${ok.status}, ${JSON.stringify(ok.body)})`,
@@ -1626,7 +1626,7 @@ async function runTests() {
     const invalidName = await request(app)
       .post('/api/db-tools/backups/not-a-backup.txt/delete')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '1234' });
+      .send({ master_pin: '123456' });
     assert(
       invalidName.status === 400,
       `invalid backup name returns 400 (got ${invalidName.status})`,
@@ -1635,7 +1635,7 @@ async function runTests() {
     const notFound = await request(app)
       .post('/api/db-tools/backups/flo-backup-missing-00000000.db/delete')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '1234' });
+      .send({ master_pin: '123456' });
     assert(notFound.status === 404, `missing backup returns 404 (got ${notFound.status})`);
 
     const list = await request(app)
@@ -1646,7 +1646,7 @@ async function runTests() {
     const okDelete = await request(app)
       .post(`/api/db-tools/backups/${encodeURIComponent(fileName)}/delete`)
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '1234' });
+      .send({ master_pin: '123456' });
     assert(
       okDelete.status === 200,
       `deleting an existing backup returns 200 (got ${okDelete.status})`,
@@ -1834,7 +1834,7 @@ async function runTests() {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         overwrite: false,
-        master_pin: '0000',
+        master_pin: '000000',
         data: { schema_version: String(currentVersion + 1), data: emptyPayload },
       });
     assert(
@@ -1886,7 +1886,7 @@ async function runTests() {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         overwrite: false,
-        master_pin: '1234',
+        master_pin: '123456',
         data: { schema_version: String(currentVersion + 1), data: emptyPayload },
       });
     assert(
@@ -2183,7 +2183,7 @@ async function runTests() {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         overwrite: true,
-        master_pin: '1234',
+        master_pin: '123456',
         data: {
           schema_version: String(getCurrentSchemaVersion()),
           data: {
@@ -2377,7 +2377,7 @@ async function runTests() {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         overwrite: true,
-        master_pin: '1234',
+        master_pin: '123456',
         data: {
           schema_version: String(getCurrentSchemaVersion()),
           data: exportRes.body.data,
@@ -2542,7 +2542,7 @@ async function runTests() {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         overwrite: true,
-        master_pin: '1234',
+        master_pin: '123456',
         data: {
           schema_version: String(getCurrentSchemaVersion()),
           data: contamOverwritePayload,
@@ -2608,7 +2608,7 @@ async function runTests() {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         overwrite: false,
-        master_pin: '1234',
+        master_pin: '123456',
         data: {
           schema_version: '114',
           data: v114Payload,
@@ -2971,7 +2971,7 @@ async function runTests() {
       .set('Authorization', `Bearer ${delegatedToken}`)
       .send({
         overwrite: true,
-        master_pin: '1234',
+        master_pin: '123456',
         data: {
           schema_version: String(getCurrentSchemaVersion()),
           data: {
@@ -3111,7 +3111,7 @@ async function runTests() {
     '\nTest 3m: GET /api/db/download accepts x-master-pin header, rejects query credentials, and shares IP rate limit across routes and recovery',
   );
   {
-    resetMasterPin('1234');
+    resetMasterPin('123456');
     resetMasterPinRateLimit('master-pin:127.0.0.1');
 
     const queryPinDownload = await request(app)
@@ -3126,7 +3126,7 @@ async function runTests() {
     const headerPinDownload = await request(app)
       .get('/api/db/download')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-master-pin', '1234')
+      .set('x-master-pin', '123456')
       .buffer(true)
       .parse((res: any, callback: any) => {
         const chunks: Buffer[] = [];
@@ -3157,14 +3157,14 @@ async function runTests() {
     const fail1 = await request(app)
       .post('/api/db/backup')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '0000' });
+      .send({ master_pin: '000000' });
     assertEqual(fail1.status, 403, 'shared budget attempt 1 (POST /api/db/backup) returns 403');
 
     // Attempt 2: POST /api/db-tools/initialize with trailing slash and uppercase path
     const fail2 = await request(app)
       .post('/api/db-tools/INITIALIZE/')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '0000', confirmation_phrase: 'INITIALIZE' });
+      .send({ master_pin: '000000', confirmation_phrase: 'INITIALIZE' });
     assertEqual(
       fail2.status,
       403,
@@ -3175,7 +3175,7 @@ async function runTests() {
     const fail3 = await request(app)
       .post('/api/db-tools/backups/fake1.db/delete')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '0000' });
+      .send({ master_pin: '000000' });
     assertEqual(
       fail3.status,
       403,
@@ -3186,7 +3186,7 @@ async function runTests() {
     const fail4 = await request(app)
       .post('/api/db-tools/backups/fake2.db/delete')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '0000' });
+      .send({ master_pin: '000000' });
     assertEqual(
       fail4.status,
       403,
@@ -3196,7 +3196,7 @@ async function runTests() {
     // Attempt 5: POST /api/auth/recover-password hits the shared 5-attempt cap and returns 429
     const fail5 = await request(app).post('/api/auth/recover-password').send({
       email: 'owner@example.com',
-      master_pin: '0000',
+      master_pin: '000000',
       new_password: 'RecoveredPassword123',
     });
     assertEqual(
@@ -3215,7 +3215,7 @@ async function runTests() {
     const wrongPhrase = await request(app)
       .post('/api/db-tools/initialize')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '1234', confirmation_phrase: 'nope' });
+      .send({ master_pin: '123456', confirmation_phrase: 'nope' });
     assert(
       wrongPhrase.status === 400,
       `wrong confirmation phrase is rejected (got ${wrongPhrase.status})`,
@@ -3224,7 +3224,7 @@ async function runTests() {
     const wrongPin = await request(app)
       .post('/api/db-tools/initialize')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '0000', confirmation_phrase: 'INITIALIZE' });
+      .send({ master_pin: '000000', confirmation_phrase: 'INITIALIZE' });
     assert(
       wrongPin.status === 403,
       `wrong PIN is rejected even with the right phrase (got ${wrongPin.status})`,
@@ -3233,7 +3233,7 @@ async function runTests() {
     const ok = await request(app)
       .post('/api/db-tools/initialize')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ master_pin: '1234', confirmation_phrase: 'INITIALIZE' });
+      .send({ master_pin: '123456', confirmation_phrase: 'INITIALIZE' });
     assert(
       ok.status === 200,
       `initialize succeeds with correct PIN + phrase (got ${ok.status}, ${JSON.stringify(ok.body)})`,
@@ -3252,7 +3252,7 @@ async function runTests() {
     // because it lives outside flo.db entirely.
     assert(isMasterPinSet(), 'master-pin.enc still exists after the database was wiped');
     assert(
-      verifyMasterPin('1234'),
+      verifyMasterPin('123456'),
       'the same Master PIN still verifies after the database was wiped',
     );
   }
