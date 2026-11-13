@@ -27,7 +27,15 @@ interface MasterPinPromptProps {
 const NEW_PIN_REGEX = /^\d{6}$/;
 const ACCEPTED_PIN_REGEX = /^(?:\d{4}|\d{6})$/;
 
-export function MasterPinPrompt({ open, mode, title, description, currentPinRequired = false, onCancel, onSubmit }: MasterPinPromptProps) {
+export function MasterPinPrompt({
+  open,
+  mode,
+  title,
+  description,
+  currentPinRequired = false,
+  onCancel,
+  onSubmit,
+}: MasterPinPromptProps) {
   const t = useTranslations('settings');
   const tCommon = useTranslations('common');
   const [pin, setPin] = useState('');
@@ -86,9 +94,7 @@ export function MasterPinPrompt({ open, mode, title, description, currentPinRequ
         <DialogHeader>
           <DialogTitle>{title || t('masterPin')}</DialogTitle>
           <DialogDescription>
-            {description || (mode === 'set'
-              ? t('setPinDescription')
-              : t('verifyPinDescription'))}
+            {description || (mode === 'set' ? t('setPinDescription') : t('verifyPinDescription'))}
           </DialogDescription>
         </DialogHeader>
 
@@ -153,8 +159,17 @@ export function MasterPinPrompt({ open, mode, title, description, currentPinRequ
           <Button variant="outline" onClick={handleCancel} disabled={submitting}>
             {tCommon('cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || (mode === 'set' ? pin.length !== 6 : !ACCEPTED_PIN_REGEX.test(pin))}>
-            {submitting ? tCommon('loading') : mode === 'set' ? t('setPinButton') : t('confirmButton')}
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              submitting || (mode === 'set' ? pin.length !== 6 : !ACCEPTED_PIN_REGEX.test(pin))
+            }
+          >
+            {submitting
+              ? tCommon('loading')
+              : mode === 'set'
+                ? t('setPinButton')
+                : t('confirmButton')}
           </Button>
         </DialogFooter>
       </DialogContent>
