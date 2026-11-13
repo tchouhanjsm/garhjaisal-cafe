@@ -627,7 +627,11 @@ async function main() {
     assert.equal(setting('kds_enabled'), 'true', 'KDS is enabled');
     assert.equal(setting('server_app_enabled'), 'true', 'waiter Server App is enabled');
     assert.equal(setting('tax_registered'), 'false', 'GST remains disabled at first run');
-    assert.equal(setting('tax_registration_number'), '', 'GSTIN is left blank for later owner setup');
+    assert.equal(
+      setting('tax_registration_number'),
+      '',
+      'GSTIN is left blank for later owner setup',
+    );
     assert.equal(setting('cloud_sync_enabled'), '0', 'Garh Jaisal has no cloud-sync dependency');
     assert.equal(
       setting('cloud_services_disabled_by_user'),
@@ -638,17 +642,15 @@ async function main() {
     assert.equal(count('tables'), 10, 'setup creates the ten approved restaurant tables');
     assert.equal(count('products'), 0, 'setup does not invent menu products or prices');
     assert.equal(count('categories'), 0, 'setup does not invent menu categories');
-    assert.equal(
-      count('payment_methods'),
-      1,
-      'setup adds only the configured UPI payment method',
-    );
+    assert.equal(count('payment_methods'), 1, 'setup adds only the configured UPI payment method');
     assert.equal(
       profileRefreshes,
       refreshesBeforeGarhSetup,
       'local-only Garh Jaisal setup does not invoke cloud registration refresh',
     );
-    console.log('   ✓ Garh Jaisal preset is local-first and seeds only approved operational defaults');
+    console.log(
+      '   ✓ Garh Jaisal preset is local-first and seeds only approved operational defaults',
+    );
   } finally {
     await new Promise<void>((resolve) => garhServer.close(() => resolve()));
   }
