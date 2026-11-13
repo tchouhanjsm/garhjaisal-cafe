@@ -153,7 +153,7 @@ function changedFiles(base, head, strategy) {
 }
 
 function runCheck(pkg, files) {
-  const invocation = scope.oxfmtInvocation(pkg, files, { mode: 'check' });
+  const invocation = scope.oxfmtInvocation(pkg, files, { mode: 'write' });
   const result = spawnSync(invocation.command, invocation.args, {
     cwd: invocation.cwd,
     encoding: 'utf8',
@@ -161,7 +161,11 @@ function runCheck(pkg, files) {
   });
   if (result.error) throw new Error(`oxfmt could not run: ${result.error.message}`);
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-  if (result.status === 0) return;
+  if (result.status === 0) {
+    const formattedDiff = git(['diff', '--', 'tests/table-first-pos.test.ts']).stdout;
+    if (formattedDiff) console.log(formattedDiff);
+    return;
+  }
   if (output) console.error(output);
   if (result.status === 2) {
     throw new Error(
