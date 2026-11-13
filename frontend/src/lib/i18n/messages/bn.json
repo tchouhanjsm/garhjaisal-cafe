@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "টিকিট তৈরি করে পেমেন্ট সারিতে পাঠানো হয়েছে।",
     "ticketNumber": "টিকিট নম্বর",
     "paymentTicketInstruction": "বিল পরিশোধ করতে এই টিকিটটি পেমেন্ট কাউন্টারে নিয়ে যান।",
-    "selectCounter": "কাউন্টার নির্বাচন করুন"
+    "selectCounter": "কাউন্টার নির্বাচন করুন",
+    "roomNumberLabel": "হোটেলের কক্ষ নম্বর",
+    "roomNumberPlaceholder": "কক্ষ নম্বর (ঐচ্ছিক)"
   },
   "printTest": {
     "amt": "এএমটি",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "২ ঘণ্টা",
     "refundWindow4h": "৪ ঘণ্টা",
     "refundWindowSameDay": "একই ব্যবসায়িক দিন",
-    "refundOwnerUnlimitedNote": "মালিকরা তাদের স্টাফ অনুমোদন পিন দিয়ে যেকোনো পুরনো অর্ডারের রিফান্ড সর্বদা অনুমোদন করতে পারেন।"
+    "refundOwnerUnlimitedNote": "মালিকরা তাদের স্টাফ অনুমোদন পিন দিয়ে যেকোনো পুরনো অর্ডারের রিফান্ড সর্বদা অনুমোদন করতে পারেন।",
+    "masterPinCurrentInvalid": "একটি বৈধ বর্তমান ৪ বা ৬ সংখ্যার মাস্টার PIN লিখুন"
   },
   "setup": {
     "alreadyCompleted": "এই ইনস্টলে সেটআপ ইতিমধ্যেই সম্পন্ন হয়েছে। লগইন করার জন্য পুনঃনির্দেশ করা হচ্ছে...",
@@ -2807,7 +2810,10 @@
     "termsIntro": "আমি FloPOS-এ সম্মত",
     "timezoneHint": "আপনার দেশ থেকে প্রাক-ভরা। মাল্টি-টাইমজোন দেশগুলিতে স্টোরগুলি তাদের প্রকৃত স্থানীয় সময় অঞ্চল বেছে নিতে পারে।",
     "timezoneLabel": "টাইমজোন",
-    "welcome": "FloCafe স্বাগতম"
+    "welcome": "FloCafe স্বাগতম",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Garh Jaisal Haveli রেস্তোরাঁ সেটআপ",
+    "garhJaisalDetails": "Garh Jaisal Haveli রেস্তোরাঁর ডিফল্ট সেটিংস: INR, FineDine পোস্টপেইড বিলিং, ১০টি টেবিল, UPI, কিচেন ডিসপ্লে এবং ওয়েটার অ্যাপ। প্রথম বিক্রির আগে আপনার আসল মেনু ও কর্মীদের অ্যাকাউন্ট যোগ করুন এবং করের সেটিংস পর্যালোচনা করুন।"
   },
   "staff": {
     "addButton": "স্টাফ যোগ করুন",
@@ -2843,7 +2849,8 @@
     "roleServer": "সার্ভার",
     "title": "স্টাফ",
     "updateButton": "আপডেট",
-    "updatedToast": "স্টাফ আপডেট করা হয়েছে"
+    "updatedToast": "স্টাফ আপডেট করা হয়েছে",
+    "pinMustBeSixDigits": "PIN ঠিক ৬ সংখ্যার হতে হবে"
   },
   "permissionMatrix": {
     "title": "ভূমিকা অনুমতি",
