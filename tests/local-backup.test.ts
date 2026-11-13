@@ -12,6 +12,7 @@ fs.mkdirSync(documentsDir, { recursive: true });
 fs.mkdirSync(userDataDir, { recursive: true });
 
 let documentsThrows = false;
+let activeUserDataDir = userDataDir;
 const ipcHandlers = new Map<string, (...args: any[]) => any>();
 const mainFrame = {
   frameToken: 'main-frame-token',
@@ -33,6 +34,7 @@ Module._load = function (request: string, parent: unknown, isMain: boolean) {
             if (documentsThrows) throw new Error('Failed to get documents path');
             return documentsDir;
           }
+          if (name === 'userData') return activeUserDataDir;
           return userDataDir;
         },
         getVersion: () => 'test',
@@ -93,8 +95,67 @@ import {
 const HOUR = 60 * 60_000;
 
 async function main(): Promise<void> {
+  const originalProfile = process.env.FLO_PROFILE;
+  const originalE2EUserDataDir = process.env.FLO_E2E_USER_DATA_DIR;
+  const originalE2EDbPath = process.env.FLO_E2E_DB_PATH;
+  delete process.env.FLO_PROFILE;
+  delete process.env.FLO_E2E_USER_DATA_DIR;
+  delete process.env.FLO_E2E_DB_PATH;
+
   const backupDir = getLocalBackupDir();
   assert.equal(backupDir, path.join(documentsDir, 'FloCafe', 'Backups'));
+
+  const devProfileDataDir = path.join(testDir, 'profiles', 'garh-jaisal-dev');
+  const pilotProfileDataDir = path.join(testDir, 'profiles', 'garh-jaisal-pilot');
+  activeUserDataDir = devProfileDataDir;
+  process.env.FLO_PROFILE = 'garh-jaisal-dev';
+  const devProfileBackupDir = getLocalBackupDir();
+  assert.equal(
+    devProfileBackupDir,
+    path.join(devProfileDataDir, 'FloCafe', 'Backups'),
+    'development profile backups stay inside the development profile',
+  );
+
+  activeUserDataDir = pilotProfileDataDir;
+  process.env.FLO_PROFILE = 'garh-jaisal-pilot';
+  const pilotProfileBackupDir = getLocalBackupDir();
+  assert.equal(
+    pilotProfileBackupDir,
+    path.join(pilotProfileDataDir, 'FloCafe', 'Backups'),
+    'pilot profile backups stay inside the pilot profile',
+  );
+  assert.notEqual(
+    devProfileBackupDir,
+    pilotProfileBackupDir,
+    'development and pilot backup folders are physically separate',
+  );
+
+  delete process.env.FLO_PROFILE;
+  const e2eUserDataDir = path.join(testDir, 'e2e-user-data');
+  activeUserDataDir = e2eUserDataDir;
+  process.env.FLO_E2E_USER_DATA_DIR = e2eUserDataDir;
+  assert.equal(
+    getLocalBackupDir(),
+    path.join(e2eUserDataDir, 'FloCafe', 'Backups'),
+    'native E2E backups stay inside the disposable userData directory',
+  );
+
+  delete process.env.FLO_E2E_USER_DATA_DIR;
+  const e2eDbDirectory = path.join(testDir, 'e2e-db');
+  process.env.FLO_E2E_DB_PATH = path.join(e2eDbDirectory, 'isolated.db');
+  assert.equal(
+    getLocalBackupDir(),
+    path.join(e2eDbDirectory, 'FloCafe', 'Backups'),
+    'native E2E backups stay beside the disposable database',
+  );
+
+  if (originalProfile === undefined) delete process.env.FLO_PROFILE;
+  else process.env.FLO_PROFILE = originalProfile;
+  if (originalE2EUserDataDir === undefined) delete process.env.FLO_E2E_USER_DATA_DIR;
+  else process.env.FLO_E2E_USER_DATA_DIR = originalE2EUserDataDir;
+  if (originalE2EDbPath === undefined) delete process.env.FLO_E2E_DB_PATH;
+  else process.env.FLO_E2E_DB_PATH = originalE2EDbPath;
+  activeUserDataDir = userDataDir;
   documentsThrows = true;
   try {
     assert.equal(

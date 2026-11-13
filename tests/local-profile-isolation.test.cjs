@@ -9,6 +9,15 @@ const serverAppSource = fs.readFileSync(
   path.join(projectRoot, 'frontend/src/app/server-standalone/page.tsx'),
   'utf8',
 );
+const backupSource = fs.readFileSync(
+  path.join(projectRoot, 'main/services/local-backup.ts'),
+  'utf8',
+);
+const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+const profileLauncherSource = fs.readFileSync(
+  path.join(projectRoot, 'scripts/dev/garh-jaisal-test.cjs'),
+  'utf8',
+);
 
 const profileResolverIndex = mainSource.indexOf('function resolveLocalProfileName');
 const profilePathIndex = mainSource.indexOf("app.setPath('userData', profileDirectory)");
@@ -26,6 +35,40 @@ assert.ok(
 assert.ok(
   profilePathIndex >= 0 && profilePathIndex < logInitializationIndex,
   'profile userData path must be selected before log initialization',
+);
+const profileLogPathIndex = mainSource.indexOf('app.setAppLogsPath(isolatedLogsDirectory)');
+assert.ok(
+  profileLogPathIndex >= 0 && profileLogPathIndex < logInitializationIndex,
+  'isolated profile logs must be selected before electron-log initializes',
+);
+assert.ok(
+  mainSource.includes('process.env.FLO_E2E_USER_DATA_DIR') &&
+    mainSource.includes('process.env.FLO_E2E_DB_PATH'),
+  'native E2E data overrides must receive isolated logs',
+);
+assert.ok(
+  backupSource.includes('process.env.FLO_PROFILE?.trim()') &&
+    backupSource.includes('process.env.FLO_E2E_USER_DATA_DIR') &&
+    backupSource.includes('process.env.FLO_E2E_DB_PATH'),
+  'named profiles and E2E runs must receive isolated automatic backups',
+);
+assert.ok(
+  backupSource.includes("path.join(app.getPath('userData'), 'FloCafe', 'Backups')"),
+  'profile backups must be stored under the selected profile userData directory',
+);
+assert.equal(
+  packageJson.scripts['dev:garh-jaisal-test'],
+  'node scripts/dev/garh-jaisal-test.cjs',
+  'the dedicated Garh Jaisal test-profile launcher must be available',
+);
+assert.ok(
+  profileLauncherSource.includes("FLO_PROFILE: 'garh-jaisal-test'"),
+  'the Garh Jaisal test launcher must force the isolated test profile',
+);
+assert.ok(
+  profileLauncherSource.includes('FLO_E2E_USER_DATA_DIR') &&
+    profileLauncherSource.includes('FLO_E2E_DB_PATH'),
+  'the test launcher must reject accidental E2E path overrides',
 );
 assert.ok(
   mainSource.includes("app.setPath('userData', path.resolve(process.env.FLO_E2E_USER_DATA_DIR))"),

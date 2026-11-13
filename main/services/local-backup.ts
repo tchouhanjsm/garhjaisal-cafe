@@ -18,6 +18,21 @@ const BACKUP_FILE_PATTERN =
   /^flo-backup-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})(?:-(\d{3}))?Z\.db$/;
 
 export function getLocalBackupDir(): string {
+  const isolatedDatabasePath = process.env.FLO_E2E_DB_PATH?.trim();
+  if (isolatedDatabasePath) {
+    return path.join(
+      path.dirname(path.resolve(isolatedDatabasePath)),
+      'FloCafe',
+      'Backups',
+    );
+  }
+
+  // Named profiles and native E2E userData must never share the default
+  // Documents backup folder with the packaged restaurant installation.
+  if (process.env.FLO_PROFILE?.trim() || process.env.FLO_E2E_USER_DATA_DIR) {
+    return path.join(app.getPath('userData'), 'FloCafe', 'Backups');
+  }
+
   try {
     return path.join(app.getPath('documents'), 'FloCafe', 'Backups');
   } catch {

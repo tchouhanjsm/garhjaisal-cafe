@@ -196,6 +196,20 @@ if (process.env.FLO_E2E_USER_DATA_DIR) {
   app.setPath('userData', profileDirectory);
 }
 
+// Electron's default macOS log folder is outside userData. Named profiles and
+// E2E runs explicitly place logs alongside their isolated database and settings.
+const hasIsolatedRuntime = Boolean(
+  localProfileName || process.env.FLO_E2E_USER_DATA_DIR || process.env.FLO_E2E_DB_PATH,
+);
+if (hasIsolatedRuntime) {
+  const isolatedRuntimeDirectory = process.env.FLO_E2E_DB_PATH
+    ? path.dirname(path.resolve(process.env.FLO_E2E_DB_PATH))
+    : app.getPath('userData');
+  const isolatedLogsDirectory = path.join(isolatedRuntimeDirectory, 'logs');
+  fs.mkdirSync(isolatedLogsDirectory, { recursive: true });
+  app.setAppLogsPath(isolatedLogsDirectory);
+}
+
 gotSingleInstanceLock = app.requestSingleInstanceLock();
 
 log.initialize();

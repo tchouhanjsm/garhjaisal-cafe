@@ -345,7 +345,8 @@
     "test:product-variants-screen": "ts-node --transpile-only -P tests/tsconfig.json tests/product-variants-screen.test.ts",
     "test:printer-text-size": "ts-node --transpile-only -P tests/tsconfig.json tests/printer-text-size.test.ts && node tests/run-electron-node-test.cjs tests/migration-printer-text-size.test.ts",
     "test:local-profile-isolation": "node tests/local-profile-isolation.test.cjs",
-    "dev:staging": "FLO_PROFILE=staging FLO_MATRIX_OFFLINE=1 npm run dev"
+    "dev:staging": "FLO_PROFILE=staging FLO_MATRIX_OFFLINE=1 npm run dev",
+    "dev:garh-jaisal-test": "node scripts/dev/garh-jaisal-test.cjs"
   },
   "author": {
     "name": "Flo",
