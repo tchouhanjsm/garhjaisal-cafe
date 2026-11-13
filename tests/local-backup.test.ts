@@ -346,7 +346,7 @@ async function main(): Promise<void> {
       )
       .run();
   ensureOwner();
-  resetMasterPin('1234');
+  resetMasterPin('123456');
   setLocalBackupEnabled(false);
 
   const api = express();
@@ -359,7 +359,7 @@ async function main(): Promise<void> {
 
   const initRes = await request(api)
     .post('/api/db-tools/initialize')
-    .send({ master_pin: '1234', confirmation_phrase: 'INITIALIZE' });
+    .send({ master_pin: '123456', confirmation_phrase: 'INITIALIZE' });
   assert.equal(initRes.status, 200, 'initialize succeeds when local backup is disabled');
   assert.deepEqual(
     listLocalBackups(backupDir),
@@ -377,7 +377,7 @@ async function main(): Promise<void> {
   setLocalBackupEnabled(true);
   const keptRes = await request(api)
     .post('/api/db-tools/initialize')
-    .send({ master_pin: '1234', confirmation_phrase: 'INITIALIZE' });
+    .send({ master_pin: '123456', confirmation_phrase: 'INITIALIZE' });
   assert.equal(keptRes.status, 200);
   assert.equal(keptRes.body.localBackupFailed, false, 'no warning when the copy is kept');
   assert.equal(listLocalBackups(backupDir).length, 1, 'initialize keeps a local copy when enabled');
@@ -387,7 +387,7 @@ async function main(): Promise<void> {
   ensureOwner();
   const failedRes = await request(api)
     .post('/api/db-tools/initialize')
-    .send({ master_pin: '1234', confirmation_phrase: 'INITIALIZE' });
+    .send({ master_pin: '123456', confirmation_phrase: 'INITIALIZE' });
   assert.equal(failedRes.status, 200, 'the committed reset is still reported as done');
   assert.equal(failedRes.body.success, true);
   assert.equal(failedRes.body.localBackupFailed, true, 'a failed local copy is reported');
@@ -419,7 +419,7 @@ async function main(): Promise<void> {
     currency: 'EUR',
     current_currency: 'USD',
     confirmation_phrase: 'CHANGE TO EUR',
-    master_pin: '1234',
+    master_pin: '123456',
   });
   assert.equal(
     currencyResetDisabledRes.status,
@@ -463,7 +463,7 @@ async function main(): Promise<void> {
     currency: 'CAD',
     current_currency: 'GBP',
     confirmation_phrase: 'CHANGE TO CAD',
-    master_pin: '1234',
+    master_pin: '123456',
   });
   assert.equal(currencyResetEnabledRes.status, 200);
   assert.equal(currencyResetEnabledRes.body.localBackupFailed, false);
@@ -496,7 +496,7 @@ async function main(): Promise<void> {
     .prepare('INSERT INTO products (id, category_id, name, price) VALUES (?, ?, ?, ?)')
     .run('p-ipc', 'c-ipc', 'Croissant', 4);
   const ipcDisabledRes = await dbInitializeHandler(trustedIpcEvent, {
-    pin: '1234',
+    pin: '123456',
     confirmationPhrase: 'INITIALIZE',
   });
   assert.equal(ipcDisabledRes.success, true, 'IPC db-initialize succeeds when disabled');
@@ -526,7 +526,7 @@ async function main(): Promise<void> {
 
   setLocalBackupEnabled(true);
   const ipcEnabledRes = await dbInitializeHandler(trustedIpcEvent, {
-    pin: '1234',
+    pin: '123456',
     confirmationPhrase: 'INITIALIZE',
   });
   assert.equal(ipcEnabledRes.success, true, 'IPC db-initialize succeeds when enabled');
