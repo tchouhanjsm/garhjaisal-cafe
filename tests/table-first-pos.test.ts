@@ -75,12 +75,12 @@ function testWaiterMobileTableFirst(): void {
     'utf8',
   );
 
-  assert.doesNotMatch(serverApp, /selectedTableIdRef\\.current = loadedTables\\[0\\]\\.id/);
-  assert.doesNotMatch(serverApp, /selectedTableIdRef\\.current = firstTable\\.id/);
-  assert.match(serverApp, /disabled=\\{sending \\|\\| !selectedTableId\\}/);
-  assert.match(serverApp, /TABLE_STATUS_LABEL_KEYS\\[table\\.status \\?\\? 'available'\\]/);
-  assert.match(serverApp, /table\\.status === 'cleaning'/);
-  assert.match(serverApp, /table\\.status === 'held'/);
+  assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = loadedTables\[0\]\.id/);
+  assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = firstTable\.id/);
+  assert.match(serverApp, /disabled=\{sending \|\| !selectedTableId\}/);
+  assert.match(serverApp, /TABLE_STATUS_LABEL_KEYS\[table\.status \?\? 'available'\]/);
+  assert.match(serverApp, /table\.status === 'cleaning'/);
+  assert.match(serverApp, /table\.status === 'held'/);
 
   console.log('  ✓ waiter mobile app requires an explicit usable table selection');
 }
