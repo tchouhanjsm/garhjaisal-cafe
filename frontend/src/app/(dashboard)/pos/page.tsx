@@ -28,6 +28,7 @@ import CartPanel from '@/components/pos/CartPanel';
 import AddonModal from '@/components/pos/AddonModal';
 import CustomerSearch from '@/components/pos/CustomerSearch';
 import TablePickerModal from '@/components/pos/TablePickerModal';
+import TableFirstSelector from '@/components/pos/TableFirstSelector';
 import TableCheckoutModal from '@/components/pos/TableCheckoutModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import PrepaidCheckoutModal, {
@@ -4088,19 +4089,27 @@ export default function POSPage() {
         }}
       />
 
-      {isRestaurant && showTablePicker && (
-        <TablePickerModal
-          tables={tables}
-          selectedTableId={cart.tableId}
-          onSelectAvailable={handleSelectAvailableTable}
-          onSelectOccupied={handleSelectOccupiedTable}
-          onSelectHeld={handleSelectHeldTable}
-          onPlaceOrder={handlePlaceOrder}
-          onHoldTable={handleHoldTable}
-          onClose={closeTablePicker}
-          presentation={tablePickerPresentation}
-        />
-      )}
+      {isRestaurant && showTablePicker &&
+        (tablePickerPresentation === 'inline' ? (
+          <TableFirstSelector
+            tables={tables}
+            selectedTableId={cart.tableId}
+            onSelectAvailable={handleSelectAvailableTable}
+            onSelectOccupied={handleSelectOccupiedTable}
+            onSelectHeld={handleSelectHeldTable}
+          />
+        ) : (
+          <TablePickerModal
+            tables={tables}
+            selectedTableId={cart.tableId}
+            onSelectAvailable={handleSelectAvailableTable}
+            onSelectOccupied={handleSelectOccupiedTable}
+            onSelectHeld={handleSelectHeldTable}
+            onPlaceOrder={handlePlaceOrder}
+            onHoldTable={handleHoldTable}
+            onClose={closeTablePicker}
+          />
+        ))}
 
       {/* Main content area */}
       <div className="flex flex-1 min-h-0 overflow-hidden px-3 py-2 sm:px-4 sm:py-2.5 gap-3 sm:gap-4">
