@@ -79,7 +79,9 @@ export default function TableFirstSelector({
           const isSelected = selectedTableId === table.id;
           const activeOrder = table.current_order || table.activeOrder;
           const isDisabled = table.status === 'cleaning' || (table.status === 'held' && !isHeld);
-          const statusLabel = isHeld ? t('tableHeld') : tTables(TABLE_STATUS_LABEL_KEYS[table.status]);
+          const statusLabel = isHeld
+            ? t('tableHeld')
+            : tTables(TABLE_STATUS_LABEL_KEYS[table.status]);
           const cardStyle = isSelected
             ? 'border-brand bg-brand-light'
             : isHeld
