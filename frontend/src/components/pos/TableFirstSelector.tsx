@@ -108,9 +108,7 @@ export default function TableFirstSelector({
               </span>
               {table.status === 'occupied' && activeOrder && (
                 <div className="mt-1 space-y-0.5">
-                  <p className="text-xs font-medium text-orange-600">
-                    #{activeOrder.order_number}
-                  </p>
+                  <p className="text-xs font-medium text-orange-600">#{activeOrder.order_number}</p>
                   {typeof activeOrder.total === 'number' && (
                     <p className="text-xs font-semibold text-foreground">
                       {formatCurrency(activeOrder.total)}
