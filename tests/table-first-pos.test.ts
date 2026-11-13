@@ -80,7 +80,7 @@ function testInlinePickerPreservesGlobalShortcuts(): void {
   ].join('\n');
   const f2ToggleGuard = [
     '      onToggleTables: () => {',
-    '        if (isRestaurant && cart.orderType === \'dine_in\' && tablesRequired) {',
+    "        if (isRestaurant && cart.orderType === 'dine_in' && tablesRequired) {",
     "          if (showTablePicker && tablePickerPresentation === 'modal') closeTablePicker();",
     '          else openTablePicker();',
   ].join('\n');
