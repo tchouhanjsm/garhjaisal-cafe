@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Tiket dibuat dan dikirim ke antrean pembayaran.",
     "ticketNumber": "Nomor tiket",
     "paymentTicketInstruction": "Bawa tiket ini ke meja kasir untuk membayar.",
-    "selectCounter": "Pilih kasir"
+    "selectCounter": "Pilih kasir",
+    "roomNumberLabel": "Nomor kamar hotel",
+    "roomNumberPlaceholder": "No. kamar (opsional)"
   },
   "printTest": {
     "amt": "Jml",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 jam",
     "refundWindow4h": "4 jam",
     "refundWindowSameDay": "Hari kerja yang sama",
-    "refundOwnerUnlimitedNote": "Pemilik selalu dapat menyetujui pengembalian dana untuk pesanan lama mana pun dengan PIN Persetujuan Staf mereka."
+    "refundOwnerUnlimitedNote": "Pemilik selalu dapat menyetujui pengembalian dana untuk pesanan lama mana pun dengan PIN Persetujuan Staf mereka.",
+    "masterPinCurrentInvalid": "Masukkan Master PIN saat ini yang valid, terdiri dari 4 atau 6 digit"
   },
   "setup": {
     "alreadyCompleted": "Pengaturan awal sudah selesai dilakukan pada instalasi ini. Mengalihkan ke layar masuk…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Saya menyetujui FloPOS",
     "timezoneHint": "Terisi awal dari negara Anda. Toko di negara dengan lebih dari satu zona waktu dapat memilih zona waktu setempat yang sebenarnya.",
     "timezoneLabel": "Zona waktu",
-    "welcome": "Selamat Datang di FloCafe"
+    "welcome": "Selamat Datang di FloCafe",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Penyiapan restoran Garh Jaisal Haveli",
+    "garhJaisalDetails": "Pengaturan awal restoran Garh Jaisal Haveli: INR, layanan FineDine dengan pembayaran setelah pesanan, 10 meja, UPI, tampilan dapur, dan aplikasi pelayan. Tambahkan menu dan akun staf yang sebenarnya, lalu tinjau pengaturan pajak sebelum penjualan pertama."
   },
   "staff": {
     "addButton": "Tambah Staf",
@@ -2843,7 +2849,8 @@
     "roleServer": "Pelayan",
     "title": "Staf",
     "updateButton": "Perbarui",
-    "updatedToast": "Staf diperbarui"
+    "updatedToast": "Staf diperbarui",
+    "pinMustBeSixDigits": "PIN harus tepat 6 digit"
   },
   "permissionMatrix": {
     "title": "Izin peran",
