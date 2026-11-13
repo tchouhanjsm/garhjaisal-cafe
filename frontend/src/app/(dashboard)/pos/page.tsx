@@ -265,6 +265,8 @@ const parsePrepaidPaymentRequest = (serialized: string): PrepaidPaymentRequest |
   }
 };
 
+type TablePickerPresentation = 'modal' | 'inline';
+
 export default function POSPage() {
   const { currentTenant, user, token } = useAuthStore();
   const isRestaurant = (currentTenant?.business_type ?? 'restaurant') === 'restaurant';
@@ -315,11 +317,10 @@ export default function POSPage() {
   } | null>(null);
   const [retryingKotStations, setRetryingKotStations] = useState<string[]>([]);
 
-  // Modal state
+  // Table selection state
   const [showTablePicker, setShowTablePicker] = useState(false);
-  const [tablePickerPresentation, setTablePickerPresentation] = useState<'modal' | 'inline'>(
-    'modal',
-  );
+  const [tablePickerPresentation, setTablePickerPresentation] =
+    useState<TablePickerPresentation>('modal');
   const tablePickerAutoOpenedRef = useRef(false);
   const openTablePicker = () => {
     setTablePickerPresentation('modal');
