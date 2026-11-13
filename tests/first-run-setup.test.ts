@@ -640,6 +640,17 @@ async function main() {
     );
     assert.equal(count('users'), 1, 'setup creates only the owner account');
     assert.equal(count('tables'), 10, 'setup creates the ten approved restaurant tables');
+    assert.equal(count('kitchen_stations'), 1, 'setup creates one default Kitchen station');
+    const defaultKitchen = db
+      .prepare('SELECT name, category_ids, printer_id, is_active FROM kitchen_stations WHERE id = ?')
+      .get('stn-garh-jaisal-kitchen') as
+      | { name: string; category_ids: string | null; printer_id: string | null; is_active: number }
+      | undefined;
+    assert.equal(defaultKitchen?.name, 'Kitchen', 'default station is named Kitchen');
+    assert.equal(defaultKitchen?.category_ids, null, 'default station waits for the real menu categories');
+    assert.equal(defaultKitchen?.printer_id, null, 'default station does not invent printer hardware');
+    assert.equal(defaultKitchen?.is_active, 1, 'default Kitchen station starts active');
+    assert.equal(count('station_users'), 0, 'setup does not invent kitchen staff assignments');
     assert.equal(count('products'), 0, 'setup does not invent menu products or prices');
     assert.equal(count('categories'), 0, 'setup does not invent menu categories');
     assert.equal(count('payment_methods'), 1, 'setup adds only the configured UPI payment method');
