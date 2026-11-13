@@ -59,7 +59,7 @@ import { registerIpcHandlers } from '../main/ipc';
 import { setMasterPin } from '../main/services/master-pin';
 
 async function run(): Promise<void> {
-  setMasterPin('1234');
+  setMasterPin('123456');
   delete process.env.GOOGLE_DRIVE_CLIENT_ID;
   delete process.env.GOOGLE_DRIVE_CLIENT_SECRET;
   const backupDir = path.join(testDir, 'backups');
