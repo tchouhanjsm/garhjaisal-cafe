@@ -1546,9 +1546,7 @@ export default function ServerStandalonePage() {
         }),
       );
       setOrderNotes((currentNotes) => (currentNotes === snapshot.orderNotes ? '' : currentNotes));
-      setRoomNumber((currentRoom) =>
-        currentRoom === snapshot.roomNumber ? '' : currentRoom,
-      );
+      setRoomNumber((currentRoom) => (currentRoom === snapshot.roomNumber ? '' : currentRoom));
       if (selectedTableIdRef.current === snapshot.tableId) {
         setCurrentOrder(rawOrder as unknown as Order);
         orderLoadedTableIdRef.current = snapshot.tableId;
@@ -2146,32 +2144,37 @@ export default function ServerStandalonePage() {
         )}
       </div>
 
-      {regional?.room_number_enabled === true && (draft.length > 0 || !browserOnline || hubReachable === false || orderNotes.length > 0 || roomNumber.length > 0) && (
-        <div className="mt-3 space-y-2">
-          <input
-            data-testid="server-app-room-number-input"
-            type="text"
-            value={roomNumber}
-            disabled={sending}
-            onChange={(event) => setRoomNumber(event.target.value.slice(0, 32))}
-            placeholder={tPos('roomNumberPlaceholder')}
-            aria-label={tPos('roomNumberLabel')}
-            maxLength={32}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none disabled:opacity-50"
-          />
-          <textarea
-            value={orderNotes}
-            disabled={sending}
-            onChange={(event) => handleOrderNotesChange(event.target.value)}
-            placeholder={tPos('orderNotesPlaceholder')}
-            rows={2}
-            maxLength={200}
-            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none disabled:opacity-50"
-          />
-          <p className="mt-0.5 text-end text-xs text-muted-foreground">
-            <Ltr>{orderNotes.length}/200</Ltr>
-          </p>
-        </div>
+      {regional?.room_number_enabled === true &&
+          (draft.length > 0 ||
+            !browserOnline ||
+            hubReachable === false ||
+            orderNotes.length > 0 ||
+            roomNumber.length > 0) && (
+          <div className="mt-3 space-y-2">
+            <input
+              data-testid="server-app-room-number-input"
+              type="text"
+              value={roomNumber}
+              disabled={sending}
+              onChange={(event) => setRoomNumber(event.target.value.slice(0, 32))}
+              placeholder={tPos('roomNumberPlaceholder')}
+              aria-label={tPos('roomNumberLabel')}
+              maxLength={32}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none disabled:opacity-50"
+            />
+            <textarea
+              value={orderNotes}
+              disabled={sending}
+              onChange={(event) => handleOrderNotesChange(event.target.value)}
+              placeholder={tPos('orderNotesPlaceholder')}
+              rows={2}
+              maxLength={200}
+              className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none disabled:opacity-50"
+            />
+            <p className="mt-0.5 text-end text-xs text-muted-foreground">
+              <Ltr>{orderNotes.length}/200</Ltr>
+            </p>
+          </div>
       )}
 
       {(draft.length > 0 || orderNotes.trim() || roomNumber.trim()) && (
