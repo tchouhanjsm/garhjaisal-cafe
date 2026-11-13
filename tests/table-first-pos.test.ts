@@ -1,5 +1,5 @@
 /**
- * Table-first POS behavior and table picker summary rendering.
+ * Table-first POS behavior and table picker presentation.
  *
  * Usage: ts-node --transpile-only -P tests/tsconfig.json tests/table-first-pos.test.ts
  */
@@ -8,7 +8,7 @@ import path from 'node:path';
 
 const { shouldAutoOpenTablePicker } = require('../frontend/src/lib/table-picker-auto-open');
 
-function testTablePickerAutoOpenRules() {
+function testTablePickerAutoOpenRules(): void {
   const eligible = {
     isRestaurant: true,
     tablesRequired: true,
@@ -21,7 +21,11 @@ function testTablePickerAutoOpenRules() {
     alreadyPrompted: false,
   };
 
-  assert.equal(shouldAutoOpenTablePicker(eligible), true, 'fresh dine-in service opens table selection');
+  assert.equal(
+    shouldAutoOpenTablePicker(eligible),
+    true,
+    'fresh dine-in service opens table selection',
+  );
 
   const blockedCases = [
     ['non-restaurant', { isRestaurant: false }],
@@ -46,10 +50,10 @@ function testTablePickerAutoOpenRules() {
   console.log('  ✓ table selection opens only for a fresh, unassigned dine-in order');
 }
 
-function testOccupiedTableShowsOrderAmount() {
-  const ROOT = path.join(__dirname, '..');
+function testInlineAndModalTablePicker(): void {
+  const root = path.join(__dirname, '..');
   const Module = require('module');
-  const frontendRequire = Module.createRequire(path.join(ROOT, 'frontend/package.json'));
+  const frontendRequire = Module.createRequire(path.join(root, 'frontend/package.json'));
   const moduleApi = require('module') as {
     _load: (...args: any[]) => any;
     _resolveFilename: (...args: any[]) => string;
@@ -63,8 +67,8 @@ function testOccupiedTableShowsOrderAmount() {
     isMain: boolean,
     options?: any,
   ) {
-    const resolvedRequest = request.startsWith('@/')
-      ? path.resolve(ROOT, 'frontend/src', request.slice(2))
+    const resolvedRequest = request.startsWith('@/') 
+      ? path.resolve(root, 'frontend/src', request.slice(2))
       : request;
     return originalResolveFilename.call(this, resolvedRequest, parent, isMain, options);
   };
@@ -109,22 +113,52 @@ function testOccupiedTableShowsOrderAmount() {
       current_order: { id: 101, order_number: '0101', total: 425 },
       activeOrder: null,
     };
-    const markup = ReactDOMServer.renderToStaticMarkup(
-      React.createElement(TablePickerModal, {
-        tables: [table],
-        selectedTableId: null,
-        onSelectAvailable: () => undefined,
-        onSelectOccupied: () => undefined,
-        onSelectHeld: () => undefined,
-        onPlaceOrder: () => undefined,
-        onHoldTable: () => undefined,
-        onClose: () => undefined,
-      }),
+    const pickerProps = {
+      tables: [table],
+      selectedTableId: null,
+      onSelectAvailable: () => undefined,
+      onSelectOccupied: () => undefined,
+      onSelectHeld: () => undefined,
+      onPlaceOrder: () => undefined,
+      onHoldTable: () => undefined,
+      onClose: () => undefined,
+    };
+    const renderPicker = (presentation?: 'modal' | 'inline') =>
+      ReactDOMServer.renderToStaticMarkup(
+        React.createElement(TablePickerModal, {
+          ...pickerProps,
+          ...(presentation ? { presentation } : {}),
+        }),
+      );
+
+    const inlineMarkup = renderPicker('inline');
+    assert.ok(
+      inlineMarkup.includes('data-testid="pos-table-first-picker"'),
+      'initial table selection renders as an inline region',
+    );
+    assert.ok(
+      !inlineMarkup.includes('fixed inset-0'),
+      'inline table selection does not create a blocking screen overlay',
+    );
+    assert.ok(
+      !inlineMarkup.includes('aria-label="pos.close"'),
+      'inline table selection cannot be dismissed before choosing a table',
     );
 
-    assert.ok(markup.includes('Table 1'), 'renders the table');
-    assert.ok(markup.includes('#0101'), 'renders the active order number');
-    assert.ok(markup.includes('₹425.00'), 'renders the active order total');
+    const modalMarkup = renderPicker();
+    assert.ok(
+      modalMarkup.includes('data-testid="pos-table-picker-modal"'),
+      'manual table switching keeps the modal presentation',
+    );
+    assert.ok(modalMarkup.includes('fixed inset-0'), 'manual table picker remains modal');
+
+    for (const markup of [inlineMarkup, modalMarkup]) {
+      assert.ok(markup.includes('Table 1'), 'renders the table');
+      assert.ok(markup.includes('#0101'), 'renders the active order number');
+      assert.ok(markup.includes('₹425.00'), 'renders the active order total');
+    }
+
+    console.log('  ✓ initial table selection is inline and manual table switching remains modal');
     console.log('  ✓ occupied table shows its active order number and total');
   } finally {
     moduleApi._load = originalLoad;
@@ -132,10 +166,10 @@ function testOccupiedTableShowsOrderAmount() {
   }
 }
 
-function main() {
+function main(): void {
   console.log('Table-first POS tests');
   testTablePickerAutoOpenRules();
-  testOccupiedTableShowsOrderAmount();
+  testInlineAndModalTablePicker();
   console.log('All table-first POS tests passed.');
 }
 
