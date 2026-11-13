@@ -2313,9 +2313,7 @@ export default function ServerStandalonePage() {
                 return (
                   <button
                     key={table.id}
-                    disabled={
-                      sending || table.status === 'cleaning' || table.status === 'held'
-                    }
+                    disabled={sending || table.status === 'cleaning' || table.status === 'held'}
                     onClick={() => selectTable(table.id)}
                     className={`min-h-14 rounded-lg border px-2 py-2 text-start disabled:opacity-50 ${selected ? 'border-brand bg-brand/10' : 'border-border bg-card'}`}
                   >
