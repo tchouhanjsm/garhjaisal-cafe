@@ -5,6 +5,10 @@ const path = require('node:path');
 const projectRoot = path.resolve(__dirname, '..');
 const mainSource = fs.readFileSync(path.join(projectRoot, 'main/index.ts'), 'utf8');
 const dbSource = fs.readFileSync(path.join(projectRoot, 'main/db.ts'), 'utf8');
+const serverAppSource = fs.readFileSync(
+  path.join(projectRoot, 'frontend/src/app/server-standalone/page.tsx'),
+  'utf8',
+);
 
 const profileResolverIndex = mainSource.indexOf('function resolveLocalProfileName');
 const profilePathIndex = mainSource.indexOf("app.setPath('userData', profileDirectory)");
@@ -44,6 +48,18 @@ assert.ok(dbSource.includes("return path.join(userDataPath, 'flo.db')"));
 assert.ok(
   dbSource.includes("return path.join(userDataPath, 'backups')"),
   'profile backups must use the same selected userData directory as the database',
+);
+
+// The waiter app runs on a separate device and must never open the production
+// SQLite file. Its only online data path is the authenticated LAN hub API;
+// disconnected drafts and cached catalog snapshots stay in browser storage.
+assert.ok(serverAppSource.includes('function createApi()'));
+assert.ok(serverAppSource.includes('baseURL: window.location.origin'));
+assert.ok(serverAppSource.includes("api.post('/api/auth/pin-login'"));
+assert.ok(serverAppSource.includes('saveServerAppDraft(window.localStorage'));
+assert.ok(
+  !/better-sqlite3|node:sqlite|sqlite3|flo\.db/i.test(serverAppSource),
+  'waiter browser code must not reference SQLite drivers or the production database file',
 );
 
 console.log('Local profile isolation contract passed');
