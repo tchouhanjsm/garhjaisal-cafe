@@ -37,7 +37,7 @@ function testTablePickerAutoOpenRules() {
 
   for (const [label, override] of blockedCases) {
     assert.equal(
-      shouldAutoOpenTablePicker({ ...eligible, ...override }),
+      shouldAutoOpenTablePicker({ ...eligible, ...override } as any),
       false,
       `does not auto-open for ${label}`,
     );
@@ -63,7 +63,7 @@ function testOccupiedTableShowsOrderAmount() {
     isMain: boolean,
     options?: any,
   ) {
-    const resolvedRequest = request.startsWith('@/') 
+    const resolvedRequest = request.startsWith('@/')
       ? path.resolve(ROOT, 'frontend/src', request.slice(2))
       : request;
     return originalResolveFilename.call(this, resolvedRequest, parent, isMain, options);
