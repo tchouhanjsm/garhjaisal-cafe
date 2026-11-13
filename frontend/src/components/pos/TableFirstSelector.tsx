@@ -20,10 +20,8 @@ interface Props {
 
 const tableStatusStyles: Record<Table['status'], string> = {
   available: 'border-border hover:border-brand/40',
-  occupied:
-    'border-orange-300 bg-orange-50 dark:border-orange-800/40 dark:bg-orange-950/40',
-  reserved:
-    'border-yellow-300 bg-yellow-50 dark:border-yellow-800/40 dark:bg-yellow-950/40',
+  occupied: 'border-orange-300 bg-orange-50 dark:border-orange-800/40 dark:bg-orange-950/40',
+  reserved: 'border-yellow-300 bg-yellow-50 dark:border-yellow-800/40 dark:bg-yellow-950/40',
   cleaning: 'border-gray-300 bg-muted dark:border-border',
   held: 'border-blue-400 bg-blue-50 dark:border-blue-800/40 dark:bg-blue-950/40',
 };
