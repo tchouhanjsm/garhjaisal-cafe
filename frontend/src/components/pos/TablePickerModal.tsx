@@ -68,6 +68,7 @@ export default function TablePickerModal({
             const isHeld = heldOrders.hasHeldOrder(table.id);
             const isSelected = selectedTableId === table.id;
             const style = statusStyles[table.status] || statusStyles.available;
+            const activeOrder = table.current_order || table.activeOrder;
             const isDisabled = table.status === 'cleaning';
 
             return (
@@ -95,14 +96,12 @@ export default function TablePickerModal({
                 )}
                 <p className="font-bold text-foreground">{table.name}</p>
                 <p className="text-xs text-muted-foreground">{t('tableSeats', { count: table.capacity })}</p>
-                {table.status === 'occupied' && (table.current_order || table.activeOrder) && (
+                {table.status === 'occupied' && activeOrder && (
                   <div className="mt-1 space-y-0.5">
-                    <p className="text-xs text-orange-600 font-medium">
-                      #{(table.current_order || table.activeOrder)?.order_number}
-                    </p>
-                    {typeof (table.current_order || table.activeOrder)?.total === 'number' && (
+                    <p className="text-xs text-orange-600 font-medium">#{activeOrder.order_number}</p>
+                    {typeof activeOrder.total === 'number' && (
                       <p className="text-xs font-semibold text-foreground">
-                        {formatCurrency((table.current_order || table.activeOrder)!.total)}
+                        {formatCurrency(activeOrder.total)}
                       </p>
                     )}
                   </div>
