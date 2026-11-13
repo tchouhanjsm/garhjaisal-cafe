@@ -1236,7 +1236,9 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
     }
     const displayName = String(name || '').trim();
     const normalizedBusinessType = String(business_type || 'restaurant').trim();
-    let normalizedServiceModel = String(service_model || 'qsr').trim().toLowerCase();
+    let normalizedServiceModel = String(service_model || 'qsr')
+      .trim()
+      .toLowerCase();
     if (isGarhJaisalSetup) {
       normalizedServiceModel = GARH_JAISAL_PROFILE.serviceModel;
     }
