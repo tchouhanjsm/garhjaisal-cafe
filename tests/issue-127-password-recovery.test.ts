@@ -116,7 +116,7 @@ async function runTests() {
   {
     const res = await request(app).post('/api/auth/recover-password').send({
       email: 'owner@example.com',
-      master_pin: '1234',
+      master_pin: '123456',
       new_password: 'NewPass123',
     });
     assert(res.status === 409, `blocked with 409 when no owner exists (got ${res.status})`);
@@ -138,7 +138,7 @@ async function runTests() {
   {
     const res = await request(app).post('/api/auth/recover-password').send({
       email: 'owner@example.com',
-      master_pin: '1234',
+      master_pin: '123456',
       new_password: 'NewPass123',
     });
     assert(
@@ -153,7 +153,7 @@ async function runTests() {
     encryptionAvailable = false;
     const res = await request(app).post('/api/auth/recover-password').send({
       email: 'owner@example.com',
-      master_pin: '1234',
+      master_pin: '123456',
       new_password: 'NewPass123',
     });
     assert(
@@ -165,7 +165,7 @@ async function runTests() {
 
   // Now actually set a Master PIN for this install (independent of flo.db —
   // exactly like a real install, this can be done without an active session).
-  setMasterPin('1234');
+  setMasterPin('123456');
   assert(isMasterPinSet(), 'Master PIN is set on disk for the remaining tests');
 
   // ── Test 3: rejected with the wrong Master PIN ───────────────────────────
@@ -194,7 +194,7 @@ async function runTests() {
   {
     const res = await request(app).post('/api/auth/recover-password').send({
       email: 'Owner@Example.com', // exercises email normalization (case/whitespace)
-      master_pin: '1234',
+      master_pin: '123456',
       new_password: NEW_PASSWORD,
     });
     assert(
@@ -247,7 +247,7 @@ async function runTests() {
       `unrelated /password/change succeeds (got ${changeRes.status})`,
     );
     assert(
-      verifyMasterPin('1234'),
+      verifyMasterPin('123456'),
       'the Master PIN set during recovery testing still verifies after an unrelated password change',
     );
   }
@@ -258,7 +258,7 @@ async function runTests() {
     db.prepare("UPDATE users SET role = 'cashier' WHERE id = 'owner-1'").run();
     const res = await request(app).post('/api/auth/recover-password').send({
       email: 'owner@example.com',
-      master_pin: '1234',
+      master_pin: '123456',
       new_password: 'RecoveredOwnerPass123',
     });
     assert(
@@ -287,7 +287,7 @@ async function runTests() {
     // Baseline: a healthy install must not turn recovery into a role promotion.
     const healthy = await request(app).post('/api/auth/recover-password').send({
       email: 'manager@example.com',
-      master_pin: '1234',
+      master_pin: '123456',
       new_password: 'RecoveredManagerPass123',
     });
     assert(
@@ -324,7 +324,7 @@ async function runTests() {
 
     const res = await request(app).post('/api/auth/recover-password').send({
       email: 'manager@example.com',
-      master_pin: '1234',
+      master_pin: '123456',
       new_password: 'StrandedStorePass123',
     });
     assert(
@@ -392,7 +392,7 @@ async function runTests() {
 
     const res = await request(app).post('/api/auth/recover-password').send({
       email: 'cashier@example.com',
-      master_pin: '1234',
+      master_pin: '123456',
       new_password: 'RoleStrandPass123',
     });
     assert(

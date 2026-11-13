@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Ticket criado e enviado para a fila de pagamentos.",
     "ticketNumber": "Número do ticket",
     "paymentTicketInstruction": "Apresente este ticket no balcão de pagamento para pagar.",
-    "selectCounter": "Selecionar balcão"
+    "selectCounter": "Selecionar balcão",
+    "roomNumberLabel": "Número do quarto do hotel",
+    "roomNumberPlaceholder": "Nº do quarto (opcional)"
   },
   "printTest": {
     "amt": "Total",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 horas",
     "refundWindow4h": "4 horas",
     "refundWindowSameDay": "Mesmo dia comercial",
-    "refundOwnerUnlimitedNote": "Os proprietários podem sempre aprovar reembolsos de qualquer pedido anterior com seu PIN de aprovação."
+    "refundOwnerUnlimitedNote": "Os proprietários podem sempre aprovar reembolsos de qualquer pedido anterior com seu PIN de aprovação.",
+    "masterPinCurrentInvalid": "Insira um PIN mestre atual válido de 4 ou 6 dígitos"
   },
   "setup": {
     "alreadyCompleted": "A configuração já foi concluída nesta instalação. Redirecionando para o login…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Eu concordo com o FloPOS",
     "timezoneHint": "Pré-preenchido pelo seu país. Lojas em países com vários fusos horários podem escolher seu fuso horário real.",
     "timezoneLabel": "Fuso horário",
-    "welcome": "Bem-vindo ao FloCafe"
+    "welcome": "Bem-vindo ao FloCafe",
+    "garhJaisalLabel": "Restaurante Garh Jaisal",
+    "garhJaisalDesc": "Configuração do restaurante Garh Jaisal Haveli",
+    "garhJaisalDetails": "Padrões do restaurante Garh Jaisal Haveli: INR, serviço FineDine com pagamento posterior, 10 mesas, UPI, ecrã da cozinha e aplicação para empregados. Adicione o menu e as contas reais da equipa e reveja as definições fiscais antes da primeira venda."
   },
   "staff": {
     "addButton": "Adicionar Funcionário",
@@ -2843,7 +2849,8 @@
     "roleServer": "Servidor",
     "title": "Equipe",
     "updateButton": "Atualizar",
-    "updatedToast": "Funcionário atualizado"
+    "updatedToast": "Funcionário atualizado",
+    "pinMustBeSixDigits": "O PIN deve ter exatamente 6 dígitos"
   },
   "permissionMatrix": {
     "title": "Permissões por função",

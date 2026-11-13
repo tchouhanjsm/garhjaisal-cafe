@@ -3,7 +3,7 @@ import { Router, Request, Response } from 'express';
 import QRCode from 'qrcode';
 import { getLocalIP, getAllLocalIPs } from '../server-state';
 import { getServerAppPort } from '../server-app-state';
-import { isServerAppEnabled } from '../db';
+import { getSettingValue, isServerAppEnabled } from '../db';
 import { asyncHandler } from '../middleware/async-handler';
 
 const router = Router();
@@ -41,6 +41,7 @@ router.get(
         ip_url: ipUrl,
         qr_url: ipUrl,
         qr_data_url: primaryIpData?.qr_data ?? null,
+        room_number_enabled: getSettingValue('room_number_enabled') === 'true',
         ips_data: ipsData,
       });
     } catch (error: any) {

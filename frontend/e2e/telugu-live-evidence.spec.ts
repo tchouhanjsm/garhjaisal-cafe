@@ -535,7 +535,7 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
       if (createdOrderIds.length > 0) {
         const setPinRes = await request.put(`${E2E_BASE_URL}/api/staff/e2e-manager`, {
           headers,
-          data: { pin: '1111' },
+          data: { pin: '111111' },
         });
         expect(setPinRes.ok()).toBeTruthy();
         try {
@@ -544,7 +544,7 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
               headers,
               data: {
                 status: 'cancelled',
-                override_pin: '1111',
+                override_pin: '111111',
                 approver_id: 'e2e-manager',
               },
             });

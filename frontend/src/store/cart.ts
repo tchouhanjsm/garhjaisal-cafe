@@ -26,6 +26,7 @@ interface CartState {
   onlinePlatform: string;
   externalOrderId: string;
   orderNotes: string;
+  roomNumber: string;
   scheduledFor: string;
 
   addItem: (
@@ -60,6 +61,7 @@ interface CartState {
     heldOrderId?: string,
     waivedChargeIds?: string[],
     optedInChargeIds?: string[],
+    roomNumber?: string,
   ) => void;
   setOrderType: (type: CartState['orderType']) => void;
   setTableId: (id: string | null) => void;
@@ -73,6 +75,7 @@ interface CartState {
   setOnlinePlatform: (platform: string) => void;
   setExternalOrderId: (id: string) => void;
   setOrderNotes: (notes: string) => void;
+  setRoomNumber: (roomNumber: string) => void;
   setScheduledFor: (value: string) => void;
   /** Charge ids the cashier has waived in this cart. */
   waivedChargeIds: Set<string>;
@@ -102,6 +105,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   onlinePlatform: '',
   externalOrderId: '',
   orderNotes: '',
+  roomNumber: '',
   scheduledFor: '',
   waivedChargeIds: new Set<string>(),
   optedInChargeIds: new Set<string>(),
@@ -293,6 +297,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       onlinePlatform: '',
       externalOrderId: '',
       orderNotes: '',
+      roomNumber: '',
       scheduledFor: '',
       waivedChargeIds: new Set<string>(),
       optedInChargeIds: new Set<string>(),
@@ -308,6 +313,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     heldOrderId,
     waivedChargeIds,
     optedInChargeIds,
+    roomNumber,
   ) => {
     set({
       items: normalizeCartItems(items),
@@ -317,6 +323,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       customerSource: customerId == null ? null : 'explicit',
       guestCount,
       orderNotes: orderNotes || '',
+      roomNumber: roomNumber || '',
       scheduledFor: '',
       // Independent Sets: a resumed cart must not alias the arrays it came from.
       waivedChargeIds: new Set(waivedChargeIds ?? []),
@@ -340,7 +347,12 @@ export const useCartStore = create<CartState>((set, get) => ({
         ? {}
         : { waivedChargeIds: new Set<string>(), optedInChargeIds: new Set<string>() }),
     })),
-  setTableId: (id) => set({ tableId: id, heldOrderId: null }),
+  setTableId: (id) =>
+    set((state) => ({
+      tableId: id,
+      heldOrderId: null,
+      ...(state.tableId !== id ? { roomNumber: '' } : {}),
+    })),
   setCustomerId: (id) => set({ customerId: id, customerSource: id == null ? null : 'explicit' }),
   setCustomer: (customer) =>
     set({
@@ -362,6 +374,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   setOnlinePlatform: (platform) => set({ onlinePlatform: platform }),
   setExternalOrderId: (id) => set({ externalOrderId: id }),
   setOrderNotes: (notes) => set({ orderNotes: notes }),
+  setRoomNumber: (roomNumber) => set({ roomNumber: roomNumber.slice(0, 32) }),
   setScheduledFor: (value) => set({ scheduledFor: value }),
 
   subtotal: () => {

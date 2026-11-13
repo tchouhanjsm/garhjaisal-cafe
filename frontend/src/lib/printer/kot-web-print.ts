@@ -238,6 +238,7 @@ export function generateKotHtml(order: Order, opts: KotWebPrintOptions = {}): st
       ${stationName ? `<p style="margin:2px 0;">${escapeHtml(tr('print.kot.station'))}: ${directionalValue(directionalText(stationName, base), base)}</p>` : ''}
       <p style="margin:2px 0;font-weight:bold;">${formatOrderNumberLabel(tr('pos.orderNumber'), orderNumber, base)}</p>
       ${order.table?.name ? `<p style="margin:2px 0;">${escapeHtml(labelWithoutPlaceholder(tr('pos.tableLabel')))}: ${directionalValue(directionalText(String(order.table.name), base), base)}</p>` : ''}
+      ${order.room_number?.trim() ? `<p style="margin:2px 0;font-weight:bold;">Room: ${directionalValue(directionalText(order.room_number.trim(), base), base)}</p>` : ''}
       ${orderType ? `<p style="margin:2px 0;">${escapeHtml(tr('print.kot.type'))}: ${escapeHtml(orderType)}</p>` : ''}
       ${order.customer?.name ? `<p style="margin:2px 0;">${escapeHtml(tr('pos.customer'))}: ${directionalValue(directionalText(String(order.customer.name), base), base)}</p>` : ''}
       <p style="margin:2px 0;">${escapeHtml(`${tr('print.time')}: ${formatTime(createdAt, locale, timezone ? { timeZone: timezone } : undefined)}`)}</p>

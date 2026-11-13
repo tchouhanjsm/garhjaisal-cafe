@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Ticket erstellt und an die Zahlungswarteschlange gesendet.",
     "ticketNumber": "Ticketnummer",
     "paymentTicketInstruction": "Bringen Sie dieses Ticket zur Kasse, um zu bezahlen.",
-    "selectCounter": "Theke auswählen"
+    "selectCounter": "Theke auswählen",
+    "roomNumberLabel": "Hotelzimmernummer",
+    "roomNumberPlaceholder": "Zimmernr. (optional)"
   },
   "printTest": {
     "amt": "Betrag",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 Stunden",
     "refundWindow4h": "4 Stunden",
     "refundWindowSameDay": "Gleicher Geschäftstag",
-    "refundOwnerUnlimitedNote": "Inhaber können Rückerstattungen für jede vergangene Bestellung jederzeit mit ihrer Personal-Genehmigungs-PIN genehmigen."
+    "refundOwnerUnlimitedNote": "Inhaber können Rückerstattungen für jede vergangene Bestellung jederzeit mit ihrer Personal-Genehmigungs-PIN genehmigen.",
+    "masterPinCurrentInvalid": "Gib eine gültige aktuelle Master-PIN mit 4 oder 6 Ziffern ein"
   },
   "setup": {
     "alreadyCompleted": "Die Ersteinrichtung wurde bereits abgeschlossen. Weiterleitung zur Anmeldung…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Ich stimme den Nutzungsbedingungen von FloPOS zu",
     "timezoneHint": "Aus Ihrem Land vorausgefüllt. Geschäfte in Ländern mit mehreren Zeitzonen können ihre tatsächliche lokale Zeitzone auswählen.",
     "timezoneLabel": "Zeitzone",
-    "welcome": "Willkommen"
+    "welcome": "Willkommen",
+    "garhJaisalLabel": "Restaurant Garh Jaisal",
+    "garhJaisalDesc": "Restaurant-Einrichtung für Garh Jaisal Haveli",
+    "garhJaisalDetails": "Standardeinstellungen für das Restaurant Garh Jaisal Haveli: INR, Fine-Dine-Service mit nachträglicher Zahlung, 10 Tische, UPI, Küchenanzeige und Kellner-App. Füge deine tatsächliche Speisekarte und Mitarbeiterkonten hinzu und prüfe die Steuereinstellungen vor dem ersten Verkauf."
   },
   "staff": {
     "addButton": "Personal hinzufügen",
@@ -2843,7 +2849,8 @@
     "roleServer": "Bedienung",
     "title": "Mitarbeiter",
     "updateButton": "Aktualisieren",
-    "updatedToast": "Personal aktualisiert"
+    "updatedToast": "Personal aktualisiert",
+    "pinMustBeSixDigits": "Die PIN muss genau 6 Ziffern haben"
   },
   "permissionMatrix": {
     "title": "Berechtigungsmatrix",

@@ -57,7 +57,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
           Authorization: `Bearer ${freshOwnerToken}`,
           'Content-Type': 'application/json',
         },
-        data: { pin: '1111' },
+        data: { pin: '111111' },
       });
       expect(
         ownerPinRes.ok(),
@@ -75,7 +75,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
             },
             data: {
               status: 'cancelled',
-              override_pin: '1111',
+              override_pin: '111111',
               approver_id: 'e2e-owner',
             },
           });
@@ -192,7 +192,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
           email: 'alice.mgr@flo.local',
           password: 'Password123!',
           role: 'manager',
-          pin: '1111',
+          pin: '111111',
         },
       });
       expect(res.ok()).toBeTruthy();
@@ -202,7 +202,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
       managerAliceId = existingAlice.id;
       await page.request.put(`${BASE}/api/staff/${managerAliceId}`, {
         headers,
-        data: { pin: '1111' },
+        data: { pin: '111111' },
       });
     }
 
@@ -217,7 +217,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
           email: 'bob.mgr@flo.local',
           password: 'Password123!',
           role: 'manager',
-          pin: '2222',
+          pin: '222222',
         },
       });
       expect(res.ok()).toBeTruthy();
@@ -227,7 +227,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
       managerBobId = existingBob.id;
       await page.request.put(`${BASE}/api/staff/${managerBobId}`, {
         headers,
-        data: { pin: '2222' },
+        data: { pin: '222222' },
       });
     }
 
@@ -274,7 +274,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
     // --- Scenario 2 (Adversarial): Mismatched manager selection and PIN ---
     await approverSelect.selectOption(managerAliceId);
     // Enter Bob's PIN (2222) while Alice is selected
-    await pinInput.fill('2222');
+    await pinInput.fill('222222');
 
     const paymentResponsePromise = page.waitForResponse(
       (res) => res.url().includes('/payments') && res.request().method() === 'POST',
@@ -295,7 +295,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
     await approverSelect.selectOption(managerBobId);
     // Selecting another approver resets the PIN input
     await expect(pinInput).toHaveValue('');
-    await pinInput.fill('2222');
+    await pinInput.fill('222222');
 
     await page.screenshot({
       path: path.join(EVIDENCE_DIR, 'scenario-1-kitchen-override-select-manager.png'),
@@ -351,7 +351,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
           email: 'alice.mgr@flo.local',
           password: 'Password123!',
           role: 'manager',
-          pin: '1111',
+          pin: '111111',
         },
       });
       await page.request.post(`${BASE}/api/staff`, {
@@ -361,7 +361,7 @@ test.describe('Explicit Manager Selection for Approvals and Kitchen Override', (
           email: 'bob.mgr@flo.local',
           password: 'Password123!',
           role: 'manager',
-          pin: '2222',
+          pin: '222222',
         },
       });
     }

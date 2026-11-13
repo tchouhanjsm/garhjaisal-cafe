@@ -29,7 +29,7 @@ import {
  * unobservable.
  */
 
-const OWNER_APPROVAL_PIN = '1234';
+const OWNER_APPROVAL_PIN = '123456';
 
 let tracked: { id: string; name: string; price: number };
 let cancelProbe: { id: string; name: string; price: number };
@@ -276,7 +276,7 @@ test.describe('@ci-tier2 operations admin - order lifecycle', () => {
     await expect(pinInput).toBeVisible();
 
     // Recoverable rejection (wrong PIN) keeps the dialog open so staff can correct the PIN.
-    await pinInput.fill('9999');
+    await pinInput.fill('999999');
     await sheet.getByRole('button', { name: /Confirm Cancel/i }).click();
     await expect(sheet).toBeVisible();
     await expect(pinInput).toBeVisible();

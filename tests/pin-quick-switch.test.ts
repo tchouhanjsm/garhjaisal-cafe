@@ -384,16 +384,16 @@ async function run() {
     "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('discount_requires_approval', 'true', ?)",
   ).run(ts);
 
-  // Seed owner (PIN 2468) and manager (PIN 1357)
+  // Seed owner (PIN 246810) and manager (PIN 135790)
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('owner-1', 'Alice Owner', 'owner@test.local', ?, 'owner', ?, 1, ?, ?)
-  `).run(bcrypt.hashSync('OwnerPass1!', 10), bcrypt.hashSync('2468', 10), ts, ts);
+  `).run(bcrypt.hashSync('OwnerPass1!', 10), bcrypt.hashSync('246810', 10), ts, ts);
 
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('mgr-1', 'Bob Manager', 'manager@test.local', ?, 'manager', ?, 1, ?, ?)
-  `).run(bcrypt.hashSync('MgrPass1!', 10), bcrypt.hashSync('1357', 10), ts, ts);
+  `).run(bcrypt.hashSync('MgrPass1!', 10), bcrypt.hashSync('135790', 10), ts, ts);
 
   // Seed user without PIN (server) and inactive user with PIN
   db.prepare(`
@@ -404,7 +404,7 @@ async function run() {
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('inactive-pin', 'Inactive Chef', 'inactive@test.local', ?, 'chef', ?, 0, ?, ?)
-  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('9999', 10), ts, ts);
+  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('999999', 10), ts, ts);
 
   const ownerAuth = makeToken('owner-1', 'owner', 'owner@test.local');
   const managerAuth = makeToken('mgr-1', 'manager', 'manager@test.local');
@@ -419,38 +419,34 @@ async function run() {
   });
 
   // ── 1. Cashier setting a PIN and signing in via POST /api/auth/pin-login ──
-  console.log('\n1. Cashier setting a PIN (shared PIN 2468 with owner) and signing in');
+  console.log('\n1. Cashier setting a PIN (shared PIN 246810 with owner) and signing in');
   const createCashierRes = await request(app).post('/api/staff').set(managerAuth).send({
     name: 'Charlie Cashier',
     email: 'cashier@test.local',
     password: 'CashierPass1!',
     role: 'cashier',
-    pin: '2468', // Same PIN as owner-1!
+    pin: '246810', // Same PIN as owner-1!
   });
-  assertEqualOrThrow(
-    createCashierRes.status,
-    201,
-    'Manager can create cashier with a 4-6 digit PIN',
-  );
+  assertEqualOrThrow(createCashierRes.status, 201, 'Manager can create cashier with a 6-digit PIN');
   const cashierId = createCashierRes.body.staff.id as string;
   assertEqualOrThrow(createCashierRes.body.staff.has_pin, 1, 'Created cashier has_pin is 1');
 
-  // Update cashier PIN to 5555 and back to 2468 via PUT /api/staff/:id
+  // Update cashier PIN to 555555 and back to 246810 via PUT /api/staff/:id
   const updateCashierPinRes = await request(app)
     .put(`/api/staff/${cashierId}`)
     .set(managerAuth)
-    .send({ pin: '5555' });
+    .send({ pin: '555555' });
   assertEqualOrThrow(updateCashierPinRes.status, 200, 'Manager can update cashier PIN');
 
   const restoreSharedPinRes = await request(app)
     .put(`/api/staff/${cashierId}`)
     .set(managerAuth)
-    .send({ pin: '2468' });
-  assertEqualOrThrow(restoreSharedPinRes.status, 200, 'Cashier can share PIN 2468 with owner');
+    .send({ pin: '246810' });
+  assertEqualOrThrow(restoreSharedPinRes.status, 200, 'Cashier can share PIN 246810 with owner');
 
   // ── 2. Quick-switch directory omits users without PIN and inactive users ──
   console.log('\n2. GET /api/auth/pin-users returns only active users with PIN');
-  const pickerRes = await request(app).get('/api/auth/pin-users');
+  const pickerRes = await request(app).get('/api/auth/pin-users?scope=pos');
   assertEqualOrThrow(pickerRes.status, 200, 'GET /api/auth/pin-users returns 200');
   const pickerUsers = pickerRes.body.users as Array<Record<string, unknown>>;
   assertEqualOrThrow(pickerUsers.length, 3, 'Picker includes owner, manager, and cashier with PIN');
@@ -471,19 +467,21 @@ async function run() {
   }
 
   // ── 3. Two users with the same PIN each sign in as themselves ──
-  console.log('\n3. Two users sharing PIN 2468 sign in as themselves via POST /api/auth/pin-login');
+  console.log(
+    '\n3. Two users sharing PIN 246810 sign in as themselves via POST /api/auth/pin-login',
+  );
   const ownerPinLogin = await request(app)
     .post('/api/auth/pin-login')
-    .send({ user_id: 'owner-1', pin: '2468' });
-  assertEqualOrThrow(ownerPinLogin.status, 200, 'Owner signs in with PIN 2468');
+    .send({ user_id: 'owner-1', pin: '246810' });
+  assertEqualOrThrow(ownerPinLogin.status, 200, 'Owner signs in with PIN 246810');
   assertEqualOrThrow(ownerPinLogin.body.user.id, 'owner-1', 'Owner PIN login returns owner-1');
   assertEqualOrThrow(ownerPinLogin.body.user.role, 'owner', 'Owner PIN login returns owner role');
   assertOrThrow(Boolean(ownerPinLogin.body.access_token), 'Owner PIN login issues access_token');
 
   const cashierPinLogin = await request(app)
     .post('/api/auth/pin-login')
-    .send({ user_id: cashierId, pin: '2468' });
-  assertEqualOrThrow(cashierPinLogin.status, 200, 'Cashier signs in with same PIN 2468');
+    .send({ user_id: cashierId, pin: '246810' });
+  assertEqualOrThrow(cashierPinLogin.status, 200, 'Cashier signs in with same PIN 246810');
   assertEqualOrThrow(
     cashierPinLogin.body.user.id,
     cashierId,
@@ -499,14 +497,29 @@ async function run() {
     'Owner and cashier receive distinct tokens',
   );
 
+  const serverAppPicker = await request(app).get('/api/auth/pin-users?scope=server-app');
+  assertEqualOrThrow(serverAppPicker.status, 200, 'Server App quick switch returns 200');
+  assertOrThrow(
+    !serverAppPicker.body.users.some((u: Record<string, unknown>) => u.id === cashierId),
+    'Cashier without Server App permission is omitted from Server App quick switch',
+  );
+  const cashierServerAppLogin = await request(app)
+    .post('/api/auth/pin-login')
+    .send({ user_id: cashierId, pin: '246810', scope: 'server-app' });
+  assertEqualOrThrow(
+    cashierServerAppLogin.status,
+    403,
+    'Cashier without Server App permission cannot sign in to the waiter screen',
+  );
+
   // User without PIN cannot sign in via pin-login
   const noPinLogin = await request(app)
     .post('/api/auth/pin-login')
-    .send({ user_id: 'server-no-pin', pin: '2468' });
+    .send({ user_id: 'server-no-pin', pin: '246810' });
   assertEqualOrThrow(noPinLogin.status, 401, 'User without PIN is rejected on pin-login');
 
   // Missing user_id or pin returns 400 and records failure in auth_audit_log
-  const missingUserRes = await request(app).post('/api/auth/pin-login').send({ pin: '2468' });
+  const missingUserRes = await request(app).post('/api/auth/pin-login').send({ pin: '246810' });
   assertEqualOrThrow(missingUserRes.status, 400, 'Missing user_id returns 400');
   const missingPinRes = await request(app).post('/api/auth/pin-login').send({ user_id: 'owner-1' });
   assertEqualOrThrow(missingPinRes.status, 400, 'Missing pin returns 400');
@@ -532,7 +545,7 @@ async function run() {
   for (let i = 0; i < 12; i++) {
     const switchRes = await request(app)
       .post('/api/auth/pin-login')
-      .send({ user_id: i % 2 === 0 ? 'owner-1' : cashierId, pin: '2468' });
+      .send({ user_id: i % 2 === 0 ? 'owner-1' : cashierId, pin: '246810' });
     assertEqualOrThrow(switchRes.status, 200, `Quick switch #${i + 1} from shared IP returns 200`);
   }
 
@@ -542,7 +555,7 @@ async function run() {
   for (let attempt = 1; attempt <= 5; attempt++) {
     const wrongRes = await request(app)
       .post('/api/auth/pin-login')
-      .send({ user_id: cashierId, pin: '0000' });
+      .send({ user_id: cashierId, pin: '000000' });
     assertEqualOrThrow(wrongRes.status, 401, `Wrong PIN attempt ${attempt} returns 401`);
     assertEqualOrThrow(
       wrongRes.body.attempts_remaining,
@@ -552,7 +565,7 @@ async function run() {
   }
   const lockedOutRes = await request(app)
     .post('/api/auth/pin-login')
-    .send({ user_id: cashierId, pin: '2468' });
+    .send({ user_id: cashierId, pin: '246810' });
   assertEqualOrThrow(
     lockedOutRes.status,
     429,
@@ -562,7 +575,7 @@ async function run() {
   // Another user on the same device/IP is NOT locked out by cashierId's failed attempts
   const ownerStillCanLogin = await request(app)
     .post('/api/auth/pin-login')
-    .send({ user_id: 'owner-1', pin: '2468' });
+    .send({ user_id: 'owner-1', pin: '246810' });
   assertEqualOrThrow(
     ownerStillCanLogin.status,
     200,
@@ -571,9 +584,21 @@ async function run() {
 
   const auditRows = db
     .prepare(
-      "SELECT user_id, event_type, outcome FROM auth_audit_log WHERE event_type = 'pin_login' ORDER BY id ASC",
+      "SELECT user_id, event_type, outcome, details_json FROM auth_audit_log WHERE event_type = 'pin_login' ORDER BY id ASC",
     )
-    .all() as Array<{ user_id: string; event_type: string; outcome: string }>;
+    .all() as Array<{
+    user_id: string;
+    event_type: string;
+    outcome: string;
+    details_json: string | null;
+  }>;
+  const auditReason = (row: (typeof auditRows)[number]) => {
+    try {
+      return JSON.parse(row.details_json || '{}').reason;
+    } catch {
+      return null;
+    }
+  };
   assertOrThrow(
     auditRows.some((r) => r.user_id === 'owner-1' && r.outcome === 'success'),
     'Audit log records successful owner PIN sign-in',
@@ -583,9 +608,20 @@ async function run() {
     'Audit log records successful cashier PIN sign-in',
   );
   assertEqualOrThrow(
-    auditRows.filter((r) => r.user_id === cashierId && r.outcome === 'failure').length,
+    auditRows.filter(
+      (r) => r.user_id === cashierId && r.outcome === 'failure' && auditReason(r) === 'invalid_pin',
+    ).length,
     5,
-    'Audit log records 5 failed PIN attempts for cashier',
+    'Audit log records exactly 5 incorrect PIN attempts for cashier',
+  );
+  assertOrThrow(
+    auditRows.some(
+      (r) =>
+        r.user_id === cashierId &&
+        r.outcome === 'failure' &&
+        auditReason(r) === 'surface_permission_denied',
+    ),
+    'Audit log separately records a valid PIN blocked by the Server App permission',
   );
   assertOrThrow(
     auditRows.some((r) => r.user_id === cashierId && r.outcome === 'rate_limited'),
@@ -597,7 +633,7 @@ async function run() {
   // Concurrent wrong-PIN burst is serialized per user and cannot bypass the 5-attempt lockout
   const concurrentWrongResponses = await Promise.all(
     Array.from({ length: 8 }, () =>
-      request(app).post('/api/auth/pin-login').send({ user_id: cashierId, pin: '0000' }),
+      request(app).post('/api/auth/pin-login').send({ user_id: cashierId, pin: '000000' }),
     ),
   );
   assertEqualOrThrow(
@@ -618,7 +654,7 @@ async function run() {
     const resIpA = await request(app)
       .post('/api/auth/pin-login')
       .set('X-Forwarded-For', '10.10.0.1')
-      .send({ user_id: cashierId, pin: '0000' });
+      .send({ user_id: cashierId, pin: '000000' });
     assertEqualOrThrow(
       resIpA.status,
       401,
@@ -633,7 +669,7 @@ async function run() {
   const lockedIpA = await request(app)
     .post('/api/auth/pin-login')
     .set('X-Forwarded-For', '10.10.0.1')
-    .send({ user_id: cashierId, pin: '2468' });
+    .send({ user_id: cashierId, pin: '246810' });
   assertEqualOrThrow(
     lockedIpA.status,
     429,
@@ -653,7 +689,7 @@ async function run() {
   const clientIpBLogin = await request(app)
     .post('/api/auth/pin-login')
     .set('X-Forwarded-For', '10.10.0.2')
-    .send({ user_id: cashierId, pin: '2468' });
+    .send({ user_id: cashierId, pin: '246810' });
   assertEqualOrThrow(
     clientIpBLogin.status,
     200,
@@ -664,7 +700,7 @@ async function run() {
   // Loopback (127.0.0.1) is also unaffected by IP A's lockout, and is subject to its own 5-attempt lockout without exemption
   const loopbackLoginWhileIpALocked = await request(app)
     .post('/api/auth/pin-login')
-    .send({ user_id: cashierId, pin: '2468' });
+    .send({ user_id: cashierId, pin: '246810' });
   assertEqualOrThrow(
     loopbackLoginWhileIpALocked.status,
     200,
@@ -673,7 +709,7 @@ async function run() {
   for (let attempt = 1; attempt <= 5; attempt++) {
     const loopbackWrong = await request(app)
       .post('/api/auth/pin-login')
-      .send({ user_id: cashierId, pin: '0000' });
+      .send({ user_id: cashierId, pin: '000000' });
     assertEqualOrThrow(
       loopbackWrong.status,
       401,
@@ -682,7 +718,7 @@ async function run() {
   }
   const loopbackLocked = await request(app)
     .post('/api/auth/pin-login')
-    .send({ user_id: cashierId, pin: '2468' });
+    .send({ user_id: cashierId, pin: '246810' });
   assertEqualOrThrow(
     loopbackLocked.status,
     429,
@@ -699,7 +735,7 @@ async function run() {
     const resV6Host1 = await request(app)
       .post('/api/auth/pin-login')
       .set('X-Forwarded-For', '2001:db8:1:2::10')
-      .send({ user_id: cashierId, pin: '0000' });
+      .send({ user_id: cashierId, pin: '000000' });
     assertEqualOrThrow(
       resV6Host1.status,
       401,
@@ -710,7 +746,7 @@ async function run() {
     const resV6Host2 = await request(app)
       .post('/api/auth/pin-login')
       .set('X-Forwarded-For', '2001:db8:1:2::20')
-      .send({ user_id: cashierId, pin: '0000' });
+      .send({ user_id: cashierId, pin: '000000' });
     assertEqualOrThrow(
       resV6Host2.status,
       401,
@@ -725,7 +761,7 @@ async function run() {
   const lockedSameV6Prefix = await request(app)
     .post('/api/auth/pin-login')
     .set('X-Forwarded-For', '2001:db8:1:2::30')
-    .send({ user_id: cashierId, pin: '2468' });
+    .send({ user_id: cashierId, pin: '246810' });
   assertEqualOrThrow(
     lockedSameV6Prefix.status,
     429,
@@ -734,7 +770,7 @@ async function run() {
   const differentV6PrefixLogin = await request(app)
     .post('/api/auth/pin-login')
     .set('X-Forwarded-For', '2001:db8:1:3::10')
-    .send({ user_id: cashierId, pin: '2468' });
+    .send({ user_id: cashierId, pin: '246810' });
   assertEqualOrThrow(
     differentV6PrefixLogin.status,
     200,
@@ -773,8 +809,8 @@ async function run() {
     'Cashier with PIN is excluded from GET /api/staff/approvers',
   );
 
-  // Set a distinct PIN on cashier (7777) so fallback PIN scanning cannot match owner-1 (2468)
-  await request(app).put(`/api/staff/${cashierId}`).set(managerAuth).send({ pin: '7777' });
+  // Set a distinct PIN on cashier so fallback PIN scanning cannot match the owner PIN.
+  await request(app).put(`/api/staff/${cashierId}`).set(managerAuth).send({ pin: '777777' });
 
   // Even when a store grants cashier route permissions for discounts, item cancel, and refunds,
   // cashier PINs must STILL be rejected on every PIN approval check (only owner/manager PINs approve).
@@ -856,7 +892,7 @@ async function run() {
   const billDiscCashierScan = await request(app)
     .post(`/api/bills/${billId}/discount`)
     .set(cashierAuth)
-    .send({ type: 'percentage', value: 10, override_pin: '7777' });
+    .send({ type: 'percentage', value: 10, override_pin: '777777' });
   assertEqualOrThrow(
     billDiscCashierScan.status,
     403,
@@ -866,7 +902,7 @@ async function run() {
   const billDiscCashierTargeted = await request(app)
     .post(`/api/bills/${billId}/discount`)
     .set(cashierAuth)
-    .send({ type: 'percentage', value: 10, approver_id: cashierId, override_pin: '7777' });
+    .send({ type: 'percentage', value: 10, approver_id: cashierId, override_pin: '777777' });
   assertEqualOrThrow(
     billDiscCashierTargeted.status,
     403,
@@ -878,13 +914,13 @@ async function run() {
   const orderDiscCashier = await request(app)
     .patch(`/api/orders/${orderId}/discount`)
     .set(cashierAuth)
-    .send({ discount_type: 'percentage', discount_value: 10, override_pin: '7777' });
+    .send({ discount_type: 'percentage', discount_value: 10, override_pin: '777777' });
   assertEqualOrThrow(orderDiscCashier.status, 403, 'Order discount rejects cashier PIN with 403');
 
   const itemDiscCashier = await request(app)
     .patch(`/api/orders/${orderId}/items/${orderItemId}/discount`)
     .set(cashierAuth)
-    .send({ discount_type: 'percentage', discount_value: 10, override_pin: '7777' });
+    .send({ discount_type: 'percentage', discount_value: 10, override_pin: '777777' });
   assertEqualOrThrow(
     itemDiscCashier.status,
     403,
@@ -896,7 +932,7 @@ async function run() {
   const itemVoidCashierScan = await request(app)
     .patch(`/api/orders/${orderId}/items/${orderItemId}/cancel`)
     .set(cashierAuth)
-    .send({ reason: 'Customer changed mind', override_pin: '7777' });
+    .send({ reason: 'Customer changed mind', override_pin: '777777' });
   assertEqualOrThrow(
     itemVoidCashierScan.status,
     403,
@@ -906,7 +942,7 @@ async function run() {
   const itemVoidCashierTargeted = await request(app)
     .patch(`/api/orders/${orderId}/items/${orderItemId}/cancel`)
     .set(cashierAuth)
-    .send({ reason: 'Customer changed mind', approver_id: cashierId, override_pin: '7777' });
+    .send({ reason: 'Customer changed mind', approver_id: cashierId, override_pin: '777777' });
   assertEqualOrThrow(
     itemVoidCashierTargeted.status,
     403,
@@ -935,7 +971,7 @@ async function run() {
       reason: 'Customer changed mind',
       manager_id: '',
       approver_id: '  mgr-1  ',
-      override_pin: '1357',
+      override_pin: '135790',
     });
   assertEqualOrThrow(
     itemVoidTrimmedManager.status,
@@ -948,7 +984,7 @@ async function run() {
   const orderCancelCashier = await request(app)
     .patch(`/api/orders/${orderId}/status`)
     .set(cashierAuth)
-    .send({ status: 'cancelled', override_pin: '7777' });
+    .send({ status: 'cancelled', override_pin: '777777' });
   assertEqualOrThrow(
     orderCancelCashier.status,
     403,
@@ -958,7 +994,7 @@ async function run() {
   const orderCompleteCashier = await request(app)
     .patch(`/api/orders/${orderId}/status`)
     .set(cashierAuth)
-    .send({ status: 'completed', approver_id: cashierId, override_pin: '7777' });
+    .send({ status: 'completed', approver_id: cashierId, override_pin: '777777' });
   assertEqualOrThrow(
     orderCompleteCashier.status,
     403,
@@ -984,7 +1020,7 @@ async function run() {
       charge_id: 'service_charge',
       waived: true,
       approver_id: cashierId,
-      override_pin: '7777',
+      override_pin: '777777',
     });
   assertEqualOrThrow(
     chargeWaiveCashierPin.status,
@@ -999,7 +1035,7 @@ async function run() {
       charge_id: 'service_charge',
       waived: true,
       approver_id: 'mgr-1',
-      override_pin: '1357',
+      override_pin: '135790',
     });
   assertEqualOrThrow(
     chargeWaiveManagerPin.status,
@@ -1024,7 +1060,7 @@ async function run() {
     .set(cashierAuth)
     .send({
       payments: [{ method: 'card', amount: 110 }],
-      override_pin: '7777',
+      override_pin: '777777',
       approver_id: cashierId,
     });
   assertEqualOrThrow(
@@ -1039,7 +1075,7 @@ async function run() {
     .send({
       method: 'card',
       amount: 110,
-      override_pin: '7777',
+      override_pin: '777777',
     });
   assertEqualOrThrow(
     singlePayKitchenOverrideCashier.status,
@@ -1054,7 +1090,7 @@ async function run() {
     .send({
       payments: [{ method: 'card', amount: 110 }],
       approver_id: 'mgr-1',
-      override_pin: '1357',
+      override_pin: '135790',
     });
   assertEqualOrThrow(
     billPayWithManagerPin.status,
@@ -1070,7 +1106,7 @@ async function run() {
     reason: 'Customer complaint',
     method: 'card',
     approver_id: cashierId,
-    override_pin: '7777',
+    override_pin: '777777',
   });
   assertEqualOrThrow(refundCashierPin.status, 403, 'Refund rejects cashier PIN with 403');
 
@@ -1080,7 +1116,7 @@ async function run() {
     reason: 'Customer complaint',
     method: 'card',
     approver_id: 'owner-1',
-    override_pin: '2468',
+    override_pin: '246810',
   });
   assertEqualOrThrow(
     refundValidOwnerPin.status,
@@ -1140,7 +1176,7 @@ async function run() {
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES (?, 'Reports Staff', 'reports@test.local', ?, 'server', ?, 1, ?, ?)
-  `).run(reportsOnlyId, bcrypt.hashSync('Pass123!', 10), bcrypt.hashSync('8888', 10), ts, ts);
+  `).run(reportsOnlyId, bcrypt.hashSync('Pass123!', 10), bcrypt.hashSync('888888', 10), ts, ts);
 
   for (const perm of [
     'pos.use',
@@ -1249,7 +1285,7 @@ async function run() {
   };
 
   // Sign in as owner via pinLogin
-  await useAuthStore.getState().pinLogin('owner-1', '2468');
+  await useAuthStore.getState().pinLogin('owner-1', '246810');
   assertEqualOrThrow(useAuthStore.getState().user?.id, 'owner-1', 'Store signed in as owner-1');
   assertEqualOrThrow(
     useAuthStore.getState().isLocked,
@@ -1327,7 +1363,7 @@ async function run() {
   );
 
   // Quick-switch to cashier via pinLogin
-  await useAuthStore.getState().pinLogin(cashierId, '7777');
+  await useAuthStore.getState().pinLogin(cashierId, '777777');
   assertEqualOrThrow(useAuthStore.getState().user?.id, cashierId, 'Quick switch sets cashier user');
   assertEqualOrThrow(useAuthStore.getState().isLocked, false, 'Quick switch clears isLocked');
 
@@ -2209,17 +2245,17 @@ async function run() {
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('chef-pin', 'Chef With Pin', 'chefpin@test.local', ?, 'chef', ?, 1, ?, ?)
-  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('4321', 10), ts, ts);
+  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('432198', 10), ts, ts);
 
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('chef-inactive-station', 'Chef Inactive Station', 'chefinactive@test.local', ?, 'chef', ?, 1, ?, ?)
-  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('8765', 10), ts, ts);
+  `).run(bcrypt.hashSync('ChefPass1!', 10), bcrypt.hashSync('876543', 10), ts, ts);
 
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
     VALUES ('server-pin', 'Waiter With Pin', 'serverpin@test.local', ?, 'server', ?, 1, ?, ?)
-  `).run(bcrypt.hashSync('SrvPass1!', 10), bcrypt.hashSync('3456', 10), ts, ts);
+  `).run(bcrypt.hashSync('SrvPass1!', 10), bcrypt.hashSync('345678', 10), ts, ts);
 
   // Create an inactive kitchen station and assign chef-inactive-station ONLY to it
   db.prepare(`
@@ -2300,7 +2336,7 @@ async function run() {
     const kdsCashierDenied = await fetch(`${kdsUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: cashierId, pin: '7777' }),
+      body: JSON.stringify({ user_id: cashierId, pin: '777777' }),
     });
     assertEqualOrThrow(
       kdsCashierDenied.status,
@@ -2311,7 +2347,7 @@ async function run() {
     const kdsInactiveStationDenied = await fetch(`${kdsUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'chef-inactive-station', pin: '8765' }),
+      body: JSON.stringify({ user_id: 'chef-inactive-station', pin: '876543' }),
     });
     assertEqualOrThrow(
       kdsInactiveStationDenied.status,
@@ -2322,7 +2358,7 @@ async function run() {
     const kdsWrongPin = await fetch(`${kdsUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'chef-pin', pin: '0000' }),
+      body: JSON.stringify({ user_id: 'chef-pin', pin: '000000' }),
     });
     assertEqualOrThrow(kdsWrongPin.status, 401, 'KDS pin-login rejects wrong PIN with 401');
     const kdsWrongBody = (await kdsWrongPin.json()) as { attempts_remaining?: number };
@@ -2335,7 +2371,7 @@ async function run() {
     const kdsValidLogin = await fetch(`${kdsUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'chef-pin', pin: '4321' }),
+      body: JSON.stringify({ user_id: 'chef-pin', pin: '432198' }),
     });
     assertEqualOrThrow(kdsValidLogin.status, 200, 'KDS pin-login succeeds for chef-pin');
     const kdsValidBody = (await kdsValidLogin.json()) as {
@@ -2367,7 +2403,7 @@ async function run() {
     const saChefDenied = await fetch(`${serverAppUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'chef-pin', pin: '4321' }),
+      body: JSON.stringify({ user_id: 'chef-pin', pin: '432198' }),
     });
     assertEqualOrThrow(
       saChefDenied.status,
@@ -2378,14 +2414,14 @@ async function run() {
     const saWrongPin = await fetch(`${serverAppUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'server-pin', pin: '0000' }),
+      body: JSON.stringify({ user_id: 'server-pin', pin: '000000' }),
     });
     assertEqualOrThrow(saWrongPin.status, 401, 'Server App pin-login rejects wrong PIN with 401');
 
     const saValidLogin = await fetch(`${serverAppUrl}/api/auth/pin-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: 'server-pin', pin: '3456' }),
+      body: JSON.stringify({ user_id: 'server-pin', pin: '345678' }),
     });
     assertEqualOrThrow(saValidLogin.status, 200, 'Server App pin-login succeeds for server-pin');
     const saValidBody = (await saValidLogin.json()) as {

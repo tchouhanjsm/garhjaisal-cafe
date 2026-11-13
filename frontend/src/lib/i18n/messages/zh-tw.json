@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "單據已建立並送至待結帳佇列。",
     "ticketNumber": "單據編號",
     "paymentTicketInstruction": "請持此單據至收銀台付款。",
-    "selectCounter": "選擇櫃檯"
+    "selectCounter": "選擇櫃檯",
+    "roomNumberLabel": "飯店房間號碼",
+    "roomNumberPlaceholder": "房號（選填）"
   },
   "printTest": {
     "amt": "金額",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 小時",
     "refundWindow4h": "4 小時",
     "refundWindowSameDay": "同一營業日",
-    "refundOwnerUnlimitedNote": "店主始終可以使用其員工核准 PIN 碼核准任何歷史訂單的退款。"
+    "refundOwnerUnlimitedNote": "店主始終可以使用其員工核准 PIN 碼核准任何歷史訂單的退款。",
+    "masterPinCurrentInvalid": "請輸入有效的目前 4 位或 6 位主 PIN"
   },
   "setup": {
     "alreadyCompleted": "此安裝已完成設定。正在跳轉到登入…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "我同意 FloPOS 的",
     "timezoneHint": "根據您的國家/地區預填。多時區國家/地區的店家可選擇實際本機時區。",
     "timezoneLabel": "時區",
-    "welcome": "歡迎使用 FloCafe"
+    "welcome": "歡迎使用 FloCafe",
+    "garhJaisalLabel": "加爾賈伊薩爾餐廳",
+    "garhJaisalDesc": "Garh Jaisal Haveli 餐廳設定",
+    "garhJaisalDetails": "Garh Jaisal Haveli 餐廳預設值：INR、FineDine 先用餐後付款、10 張餐桌、UPI、廚房顯示器與服務生 App。首次銷售前，請新增實際菜單與員工帳戶，並檢查稅務設定。"
   },
   "staff": {
     "addButton": "新增員工",
@@ -2843,7 +2849,8 @@
     "roleServer": "服務員",
     "title": "員工",
     "updateButton": "更新",
-    "updatedToast": "員工已更新"
+    "updatedToast": "員工已更新",
+    "pinMustBeSixDigits": "PIN 必須剛好為 6 位數"
   },
   "permissionMatrix": {
     "title": "角色權限",

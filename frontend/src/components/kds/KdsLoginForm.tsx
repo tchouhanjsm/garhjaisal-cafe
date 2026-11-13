@@ -44,7 +44,7 @@ export function KdsLoginForm({ conn }: { conn: UseKdsConnectionResult }) {
 
   const handlePinSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
-    if (!selectedPinUser || pin.length < 4 || conn.loginLoading) return;
+    if (!selectedPinUser || pin.length < 6 || conn.loginLoading) return;
     conn.setLoginError?.('');
     try {
       await conn.handlePinLogin(selectedPinUser.id, pin);
@@ -183,7 +183,7 @@ export function KdsLoginForm({ conn }: { conn: UseKdsConnectionResult }) {
                     conn.setLoginError?.('');
                     setPin(e.target.value.replace(/\D/g, '').slice(0, 6));
                   }}
-                  placeholder="••••"
+                  placeholder="••••••"
                   className="w-full h-11 px-3 text-center tracking-[0.5em] text-lg font-mono rounded-lg border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
 

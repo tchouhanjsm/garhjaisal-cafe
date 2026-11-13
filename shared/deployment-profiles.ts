@@ -1,0 +1,30 @@
+/** First-run defaults for the Garh Jaisal Haveli restaurant deployment. */
+export const GARH_JAISAL_PROFILE = {
+  id: 'garh-jaisal',
+  hotelName: 'Garh Jaisal Haveli',
+  businessName: "Garh Jaisal's Kitchen",
+  businessAddress: 'Inside fort kotari para, Jaisalmer',
+  businessPhone: '+917727047567',
+  country: 'IN',
+  currency: 'INR',
+  timezone: 'Asia/Kolkata',
+  language: 'en',
+  instagramHandle: '@garhjaisal',
+  serviceModel: 'finedine',
+  billingType: 'postpaid',
+  // GST is optional at onboarding; the owner can add the GSTIN and configure 5% later.
+  taxRegistered: false,
+  tablesRequired: true,
+  tableCount: 10,
+  kdsEnabled: true,
+  serverAppEnabled: true,
+  splitChecksEnabled: true,
+  roomNumberEnabled: true,
+  paymentMethods: ['UPI'],
+  rolePermissionOverrides: [
+    {
+      role: 'manager',
+      permissionId: 'reports.financial.view',
+    },
+  ],
+} as const;

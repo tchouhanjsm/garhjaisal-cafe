@@ -38,6 +38,7 @@ interface HeldOrderRow {
   customer_id: string | null;
   guest_count: number;
   order_notes: string | null;
+  room_number: string | null;
   waived_charge_ids: unknown;
   opted_in_charge_ids: unknown;
   created_at: string;
@@ -146,13 +147,14 @@ function validateHeldOrderInput(
   customerId: string | number | null;
   guestCount: number;
   orderNotes: string;
+  roomNumber: string;
   waivedChargeIds: string[];
   optedInChargeIds: string[];
 } {
   if (!isRecord(body)) {
     throw new Error('Request body must be an object');
   }
-  const { tableId, items, customerId, guestCount, orderNotes } = body;
+  const { tableId, items, customerId, guestCount, orderNotes, roomNumber } = body;
   if (
     typeof tableId !== 'string' ||
     tableId.trim().length === 0 ||
@@ -174,12 +176,22 @@ function validateHeldOrderInput(
     throw new Error('orderNotes must be a string');
   }
   validateOrderNotes(db, orderNotes);
+  if (
+    roomNumber !== undefined &&
+    roomNumber !== null &&
+    (typeof roomNumber !== 'string' ||
+      roomNumber.trim().length > 32 ||
+      /[\u0000-\u001f]/.test(roomNumber))
+  ) {
+    throw new Error('roomNumber must be text no longer than 32 characters');
+  }
   return {
     tableId,
     items,
     customerId: customerId ?? null,
     guestCount: guestCount ?? 1,
     orderNotes: orderNotes ?? '',
+    roomNumber: typeof roomNumber === 'string' ? roomNumber.trim() : '',
     waivedChargeIds: sanitizeChargeSelection(body.waivedChargeIds, 'waivedChargeIds'),
     optedInChargeIds: sanitizeChargeSelection(body.optedInChargeIds, 'optedInChargeIds'),
   };
@@ -204,6 +216,7 @@ function parseStoredHeldOrder(row: HeldOrderRow): Record<string, unknown> | null
       guestCount:
         Number.isSafeInteger(row.guest_count) && row.guest_count > 0 ? row.guest_count : 1,
       orderNotes: row.order_notes || '',
+      roomNumber: row.room_number || '',
       waivedChargeIds: parseStoredChargeSelection(row.waived_charge_ids),
       optedInChargeIds: parseStoredChargeSelection(row.opted_in_charge_ids),
       heldAt: row.created_at,
@@ -261,6 +274,7 @@ router.post(
         customerId,
         guestCount,
         orderNotes,
+        roomNumber,
         waivedChargeIds,
         optedInChargeIds,
       } = input;
@@ -304,7 +318,7 @@ router.post(
         if (existing) {
           db.prepare(`
           UPDATE held_orders
-          SET id = ?, items = ?, customer_id = ?, guest_count = ?, order_notes = ?,
+          SET id = ?, items = ?, customer_id = ?, guest_count = ?, order_notes = ?, room_number = ?,
               waived_charge_ids = ?, opted_in_charge_ids = ?, updated_at = ?
           WHERE id = ?
         `).run(
@@ -313,6 +327,7 @@ router.post(
             customerId || null,
             guestCount || 1,
             orderNotes || '',
+            roomNumber || null,
             serializedWaivedChargeIds,
             serializedOptedInChargeIds,
             now(),
@@ -320,9 +335,9 @@ router.post(
           );
         } else {
           db.prepare(`
-          INSERT INTO held_orders (id, table_id, items, customer_id, guest_count, order_notes,
+          INSERT INTO held_orders (id, table_id, items, customer_id, guest_count, order_notes, room_number,
                                    waived_charge_ids, opted_in_charge_ids, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             heldOrderId,
             tableId,
@@ -330,6 +345,7 @@ router.post(
             customerId || null,
             guestCount || 1,
             orderNotes || '',
+            roomNumber || null,
             serializedWaivedChargeIds,
             serializedOptedInChargeIds,
             now(),

@@ -59,7 +59,7 @@ import { registerIpcHandlers } from '../main/ipc';
 import { setMasterPin } from '../main/services/master-pin';
 
 async function run(): Promise<void> {
-  setMasterPin('1234');
+  setMasterPin('123456');
   delete process.env.GOOGLE_DRIVE_CLIENT_ID;
   delete process.env.GOOGLE_DRIVE_CLIENT_SECRET;
   const backupDir = path.join(testDir, 'backups');
@@ -111,7 +111,7 @@ async function run(): Promise<void> {
   };
 
   // Attempt to restore unmanaged external database path
-  const unmanagedResult = await restoreHandler(trustedSender, '1234', outside);
+  const unmanagedResult = await restoreHandler(trustedSender, '123456', outside);
   assert.deepEqual(
     unmanagedResult,
     {
@@ -122,7 +122,7 @@ async function run(): Promise<void> {
   );
 
   // Attempt to restore file with invalid name inside backup dir
-  const invalidNameResult = await restoreHandler(trustedSender, '1234', wrongName);
+  const invalidNameResult = await restoreHandler(trustedSender, '123456', wrongName);
   assert.deepEqual(
     invalidNameResult,
     {
@@ -136,7 +136,7 @@ async function run(): Promise<void> {
   if (process.platform !== 'win32') {
     const symlinkResult = await restoreHandler(
       trustedSender,
-      '1234',
+      '123456',
       path.join(backupDir, 'flo-backup-link.db'),
     );
     assert.deepEqual(
@@ -152,7 +152,7 @@ async function run(): Promise<void> {
   // Attempt to restore missing file
   const missingResult = await restoreHandler(
     trustedSender,
-    '1234',
+    '123456',
     path.join(backupDir, 'flo-backup-missing.db'),
   );
   assert.deepEqual(
@@ -165,7 +165,7 @@ async function run(): Promise<void> {
   );
 
   // Attempt to restore managed file (passes boundary check and reaches schema validation)
-  const managedResult = await restoreHandler(trustedSender, '1234', managed);
+  const managedResult = await restoreHandler(trustedSender, '123456', managed);
   assert.deepEqual(
     managedResult,
     {
@@ -180,7 +180,7 @@ async function run(): Promise<void> {
   const validManaged = path.join(backupDir, 'flo-backup-2026-08-15T00-00-00-000Z-valid123.db');
   await createBackup(validManaged);
 
-  const cleanUnconfiguredRestore = await restoreHandler(trustedSender, '1234', validManaged);
+  const cleanUnconfiguredRestore = await restoreHandler(trustedSender, '123456', validManaged);
   assert.equal(
     cleanUnconfiguredRestore.success,
     true,
@@ -204,7 +204,7 @@ async function run(): Promise<void> {
     olderDb.close();
   }
   messageBoxCalls.length = 0;
-  const olderRestore = await restoreHandler(trustedSender, '1234', olderManaged);
+  const olderRestore = await restoreHandler(trustedSender, '123456', olderManaged);
   assert.equal(olderRestore.success, true, 'older-schema IPC restore succeeds');
   assert.equal(olderRestore.mode, 'direct', 'older-schema IPC restore uses direct mode');
   assert.equal(
@@ -232,7 +232,7 @@ async function run(): Promise<void> {
     { mode: 0o600 },
   );
   fs.writeFileSync(tokenPath, 'unreadable-token', { mode: 0o600 });
-  const ambiguousRestore = await restoreHandler(trustedSender, '1234', validManaged);
+  const ambiguousRestore = await restoreHandler(trustedSender, '123456', validManaged);
   assert.deepEqual(
     ambiguousRestore,
     { success: false, error: 'conflict' },

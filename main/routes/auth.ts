@@ -61,6 +61,7 @@ import {
   resolveEffectivePermissions,
 } from '../services/authorization';
 import { serializeOperationFailure } from '../lib/operation-failure';
+import { GARH_JAISAL_PROFILE } from '../../shared/deployment-profiles';
 import { capturePostHogUsage, syncPostHogIdentity } from '../services/posthog';
 import {
   PRODUCT_ANALYTICS_LEVEL_SETTING,
@@ -82,7 +83,7 @@ function tokenExpSeconds(remember = false): number {
 
 const INITIAL_ADMIN_ROLE = 'owner';
 const VALID_BUSINESS_TYPES = new Set(['restaurant']);
-const VALID_SETUP_PROFILES = new Set(['empty', 'express', 'demo']);
+const VALID_SETUP_PROFILES = new Set(['empty', 'express', 'demo', GARH_JAISAL_PROFILE.id]);
 const VALID_SERVICE_MODELS = new Set(['qsr', 'finedine']);
 const LOCAL_SETUP_HOSTS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
@@ -135,6 +136,8 @@ function buildLocalTenant(db: ReturnType<typeof getDatabase>, userId: string, us
     bill_language_policy: s.bill_language_policy || null,
     kot_language_policy: s.kot_language_policy || null,
     service_model: s.service_model || 'finedine',
+    room_number_enabled: s.room_number_enabled === 'true',
+    hotel_name: s.hotel_name || '',
     currency_display: snapshot?.preferences.currencyDisplay || s.currency_display || 'rial',
     number_digits: snapshot?.preferences.digits || s.number_digits || 'locale',
     calendar: snapshot?.preferences.calendar || s.calendar || 'locale',
@@ -341,7 +344,8 @@ router.post(
 
 router.get('/pin-users', authRateLimit({ max: 600 }), (req: Request, res: Response) => {
   try {
-    const scope = typeof req.query.scope === 'string' ? req.query.scope : '';
+    const requestedScope = typeof req.query.scope === 'string' ? req.query.scope : 'pos';
+    const scope = ['pos', 'kds', 'server-app'].includes(requestedScope) ? requestedScope : 'pos';
     if (scope === 'kds' && !isKdsEnabled()) {
       return res.json({ users: [] });
     }
@@ -372,7 +376,9 @@ router.get('/pin-users', authRateLimit({ max: 600 }), (req: Request, res: Respon
             if (stationAssignmentsConfigured && stationIds.length === 0) return false;
             return true;
           })
-        : rows;
+        : scope === 'server-app'
+          ? rows.filter((row) => hasPermission(row.id, 'server-app.use'))
+          : rows.filter((row) => hasPermission(row.id, 'pos.use'));
 
     res.json({
       users: filteredRows.map((row) => ({
@@ -413,6 +419,8 @@ router.post(
     try {
       const ip = req.ip || req.socket.remoteAddress || 'unknown';
       const { user_id, pin, rememberMe } = req.body || {};
+      const requestedScope = typeof req.body?.scope === 'string' ? req.body.scope : 'pos';
+      const scope = ['pos', 'kds', 'server-app'].includes(requestedScope) ? requestedScope : 'pos';
       const userId = typeof user_id === 'string' ? user_id.trim() : '';
       const rawPin = typeof pin === 'string' || typeof pin === 'number' ? String(pin) : '';
 
@@ -475,7 +483,7 @@ router.post(
             };
           }
 
-          if (!/^\d{4,6}$/.test(rawPin)) {
+          if (!/^\d{6}$/.test(rawPin)) {
             const attemptsRemaining = incrementFailedLogin(pinRateKey);
             recordAuthAudit(db, {
               userId,
@@ -554,6 +562,18 @@ router.post(
       }
 
       const { user } = verificationResult;
+      const requiredPermission =
+        scope === 'kds' ? 'kitchen.use' : scope === 'server-app' ? 'server-app.use' : 'pos.use';
+      if (!hasPermission(user.id, requiredPermission)) {
+        recordAuthAudit(db, {
+          userId: user.id,
+          eventType: 'pin_login',
+          outcome: 'failure',
+          ipAddress: ip,
+          details: { reason: 'surface_permission_denied', scope },
+        });
+        return res.status(403).json({ error: 'This account cannot sign in to this screen' });
+      }
       const remember = !!rememberMe;
       const token = jwt.sign(
         {
@@ -1201,38 +1221,57 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
     const email = normalizeEmail(req.body.email);
     // Regional settings come from signup, never from a fallback — see
     // docs/reference/product-invariants.md. There is no default country.
-    const resolvedCountry = typeof country === 'string' ? getCountryByCode(country) : undefined;
+    const normalizedSetupProfile = String(setup_profile || 'express')
+      .trim()
+      .toLowerCase();
+    const isGarhJaisalSetup = normalizedSetupProfile === GARH_JAISAL_PROFILE.id;
+    let selectedCountryCode = country;
+    if (isGarhJaisalSetup) {
+      selectedCountryCode = GARH_JAISAL_PROFILE.country;
+    }
+    const resolvedCountry =
+      typeof selectedCountryCode === 'string' ? getCountryByCode(selectedCountryCode) : undefined;
     if (!resolvedCountry) {
       return res.status(400).json({ error: 'A valid country is required' });
     }
     const displayName = String(name || '').trim();
     const normalizedBusinessType = String(business_type || 'restaurant').trim();
-    const normalizedSetupProfile = String(setup_profile || 'express')
+    let normalizedServiceModel = String(service_model || 'qsr')
       .trim()
       .toLowerCase();
-    const normalizedServiceModel = String(service_model || 'qsr')
-      .trim()
-      .toLowerCase();
+    if (isGarhJaisalSetup) {
+      normalizedServiceModel = GARH_JAISAL_PROFILE.serviceModel;
+    }
     // Omitted currency derives from the country profile; an explicitly-invalid
     // one is rejected rather than silently replaced (resolveTenantCurrency's
     // read-time leniency is the wrong tool for validating a write).
-    const normalizedCurrency =
-      currency === undefined
-        ? resolvedCountry.currency
-        : typeof currency === 'string'
-          ? currency.trim().toUpperCase()
-          : currency;
+    let normalizedCurrency = currency;
+    if (isGarhJaisalSetup) {
+      normalizedCurrency = GARH_JAISAL_PROFILE.currency;
+    } else if (currency === undefined) {
+      normalizedCurrency = resolvedCountry.currency;
+    } else if (typeof currency === 'string') {
+      normalizedCurrency = currency.trim().toUpperCase();
+    }
     if (!isSupportedCurrencyCode(normalizedCurrency)) {
       return res.status(400).json({ error: 'Invalid currency' });
     }
-    const resolvedTimezone = timezone === undefined ? resolvedCountry.timezone : timezone;
+    let resolvedTimezone = timezone === undefined ? resolvedCountry.timezone : timezone;
+    if (isGarhJaisalSetup) {
+      resolvedTimezone = GARH_JAISAL_PROFILE.timezone;
+    }
     if (!isValidTimeZone(resolvedTimezone)) {
       return res.status(400).json({ error: 'Invalid timezone' });
     }
     const storeName = String(store_name || business_name || '').trim();
-    const resolvedStoreName = storeName || 'Store';
-    const outletAddress = String(business_address || address || '').trim();
-    const rawOutletPhone = String(business_phone || phone || '').trim();
+    let resolvedStoreName = storeName || 'Store';
+    let outletAddress = String(business_address || address || '').trim();
+    let rawOutletPhone = String(business_phone || phone || '').trim();
+    if (isGarhJaisalSetup) {
+      resolvedStoreName = GARH_JAISAL_PROFILE.businessName;
+      outletAddress = GARH_JAISAL_PROFILE.businessAddress;
+      rawOutletPhone = GARH_JAISAL_PROFILE.businessPhone;
+    }
     let outletPhone = '';
     if (rawOutletPhone) {
       const normPhone = normalizeOptionalPhone(rawOutletPhone, resolvedCountry.code);
@@ -1262,15 +1301,15 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
     }
 
     const masterPinRequired = isMasterPinAvailable();
-    if (masterPinRequired && !/^\d{4}$/.test(String(master_pin || ''))) {
-      return res.status(400).json({ error: 'A 4-digit Master PIN is required to complete setup' });
+    if (masterPinRequired && !/^\d{6}$/.test(String(master_pin || ''))) {
+      return res.status(400).json({ error: 'A 6-digit Master PIN is required to complete setup' });
     }
 
     const ownerApprovalPin = String(owner_approval_pin || '');
-    if (!/^\d{4,6}$/.test(ownerApprovalPin)) {
+    if (!/^\d{6}$/.test(ownerApprovalPin)) {
       return res
         .status(400)
-        .json({ error: 'A 4-6 digit owner Approval PIN is required to complete setup' });
+        .json({ error: 'A 6-digit owner Approval PIN is required to complete setup' });
     }
     if (ownerApprovalPin !== String(owner_approval_pin_confirmation || '')) {
       return res.status(400).json({ error: 'Owner Approval PINs do not match' });
@@ -1289,7 +1328,7 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
     }
 
     // New installs start with cloud coordination enabled.
-    const cloudSyncEnabled = true;
+    const cloudSyncEnabled = normalizedSetupProfile !== GARH_JAISAL_PROFILE.id;
     let normalizedCloudServerUrl: string | undefined;
     if (cloudSyncEnabled) {
       try {
@@ -1300,6 +1339,24 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Cloud server URL must be a valid HTTPS URL' });
       }
     }
+
+    const resolvedInstagramHandle = String(
+      isGarhJaisalSetup ? GARH_JAISAL_PROFILE.instagramHandle : instagram_handle || '',
+    )
+      .trim()
+      .slice(0, 100);
+    const resolvedTaxRegistrationNumber = isGarhJaisalSetup ? '' : tax_registration_number;
+    const resolvedStateCode = isGarhJaisalSetup ? 'RJ' : state_code;
+    const resolvedTaxRegistered = isGarhJaisalSetup ? 'false' : tax_registered;
+    const resolvedBillingType = isGarhJaisalSetup
+      ? GARH_JAISAL_PROFILE.billingType
+      : billing_type || (normalizedServiceModel === 'qsr' ? 'prepaid' : 'postpaid');
+    const resolvedTablesRequired = isGarhJaisalSetup
+      ? String(GARH_JAISAL_PROFILE.tablesRequired)
+      : normalizedServiceModel === 'finedine';
+    const resolvedSplitChecks = isGarhJaisalSetup
+      ? String(GARH_JAISAL_PROFILE.splitChecksEnabled)
+      : 'false';
 
     let userId = '';
     const hashedPassword = bcrypt.hashSync(password, 10);
@@ -1323,7 +1380,10 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
 
       userId = randomUUID();
       db.prepare(`
-        INSERT INTO users (id, name, email, password, role, pin_hash, is_active, terms_accepted_at, created_at, updated_at)
+        INSERT INTO users (
+          id, name, email, password, role, pin_hash, is_active, terms_accepted_at,
+          created_at, updated_at
+        )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         userId,
@@ -1351,15 +1411,13 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         business_phone: outletPhone,
         address: outletAddress,
         phone: outletPhone,
-        instagram_handle: String(instagram_handle || '')
-          .trim()
-          .slice(0, 100),
+        instagram_handle: resolvedInstagramHandle,
         email,
-        tax_registration_number,
-        state_code,
-        tax_registered,
-        billing_type: billing_type || (normalizedServiceModel === 'qsr' ? 'prepaid' : 'postpaid'),
-        tables_required: normalizedServiceModel === 'finedine' ? 'true' : 'false',
+        tax_registration_number: resolvedTaxRegistrationNumber,
+        state_code: resolvedStateCode,
+        tax_registered: resolvedTaxRegistered,
+        billing_type: resolvedBillingType,
+        tables_required: String(resolvedTablesRequired),
         service_model: normalizedServiceModel,
         setup_profile: pendingCurrencyReset ? 'empty' : normalizedSetupProfile,
         onboarding_completed: 'true',
@@ -1374,14 +1432,23 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         ...(analyticsLevel ? { [PRODUCT_ANALYTICS_LEVEL_SETTING]: analyticsLevel } : {}),
         telemetry_scope:
           'usage_stats,country,app_version,platform,session_duration,feature_usage,error_diagnostics',
-        split_checks_enabled: 'false',
+        split_checks_enabled: resolvedSplitChecks,
+        ...(isGarhJaisalSetup
+          ? {
+              hotel_name: GARH_JAISAL_PROFILE.hotelName,
+              room_number_enabled: String(GARH_JAISAL_PROFILE.roomNumberEnabled),
+              kds_enabled: String(GARH_JAISAL_PROFILE.kdsEnabled),
+              server_app_enabled: String(GARH_JAISAL_PROFILE.serverAppEnabled),
+              business_day_start_time: '00:00',
+            }
+          : {}),
         // '1'/'0', not 'true'/'false' — mirrors FloAdmin's own `stores` table and
         // matches how cloud-sync.ts reads this key everywhere else.
         cloud_sync_enabled: cloudSyncEnabled ? '1' : '0',
         cloud_server_url: normalizedCloudServerUrl || DEFAULT_CLOUD_SERVER_URL,
         email_product_updates: email_product_updates === true ? 'true' : 'false',
         email_marketing: email_marketing === true ? 'true' : 'false',
-        cloud_services_disabled_by_user: 'false',
+        cloud_services_disabled_by_user: cloudSyncEnabled ? 'false' : 'true',
       });
 
       if (!pendingCurrencyReset) {
@@ -1392,6 +1459,23 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
           language,
           resolvedCountry.code,
         );
+        if (normalizedSetupProfile === GARH_JAISAL_PROFILE.id) {
+          const saveRoleOverride = db.prepare(`
+            INSERT OR IGNORE INTO role_permission_overrides
+              (role, permission_id, effect, updated_by, created_at, updated_at)
+            VALUES (?, ?, 'allow', ?, ?, ?)
+          `);
+          const timestamp = now();
+          for (const override of GARH_JAISAL_PROFILE.rolePermissionOverrides) {
+            saveRoleOverride.run(
+              override.role,
+              override.permissionId,
+              userId,
+              timestamp,
+              timestamp,
+            );
+          }
+        }
       }
       if (pendingCurrencyReset) {
         db.prepare("DELETE FROM _flo_meta WHERE key = 'currency_reset_pending'").run();

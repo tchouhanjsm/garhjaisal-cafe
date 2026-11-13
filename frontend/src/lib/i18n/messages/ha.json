@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "An ƙirƙiri tikiti kuma an tura shi zuwa layin biya.",
     "ticketNumber": "Lambar Tikiti",
     "paymentTicketInstruction": "Kai wannan tikitin zuwa kantar biya don biyan kuɗi.",
-    "selectCounter": "Zaɓi Kanta"
+    "selectCounter": "Zaɓi Kanta",
+    "roomNumberLabel": "Lambar ɗakin otal",
+    "roomNumberPlaceholder": "Lambar ɗaki (na zaɓi)"
   },
   "printTest": {
     "amt": "Kuɗi",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "Awanni 2",
     "refundWindow4h": "Awanni 4",
     "refundWindowSameDay": "Rana ɗaya ta kasuwanci",
-    "refundOwnerUnlimitedNote": "Masu shago za su iya amincewa da mayar da kuɗi a kowane lokaci don kowace tsohuwar oda da PIN ɗinsu na amincewa."
+    "refundOwnerUnlimitedNote": "Masu shago za su iya amincewa da mayar da kuɗi a kowane lokaci don kowace tsohuwar oda da PIN ɗinsu na amincewa.",
+    "masterPinCurrentInvalid": "Shigar da ingantaccen Master PIN na yanzu mai lambobi 4 ko 6"
   },
   "setup": {
     "alreadyCompleted": "An riga an kammala saitin farko a wannan manhajar da aka girka. Ana turawa zuwa shafin shiga…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Na amince da na FloPOS",
     "timezoneHint": "An cika tun farko daga ƙasarka. Shaguna a ƙasashe masu yankunan lokaci da yawa suna iya zaɓar ainihin yankin lokacinsu.",
     "timezoneLabel": "Yankin lokaci",
-    "welcome": "Barka da zuwa FloCafe"
+    "welcome": "Barka da zuwa FloCafe",
+    "garhJaisalLabel": "Gidan cin abinci na Garh Jaisal",
+    "garhJaisalDesc": "Saitin gidan cin abinci na Garh Jaisal Haveli",
+    "garhJaisalDetails": "Tsoffin saitunan gidan cin abinci na Garh Jaisal Haveli: INR, biyan kuɗi bayan an yi oda na FineDine, tebura 10, UPI, allon kicin da manhajar ma'aikacin hidima. Ƙara ainihin menu da asusun ma'aikata, sannan duba saitunan haraji kafin sayarwa ta farko."
   },
   "staff": {
     "addButton": "Ƙara Ma'aikaci",
@@ -2843,7 +2849,8 @@
     "roleServer": "Mai hidima",
     "title": "Ma'aikata",
     "updateButton": "Sabunta",
-    "updatedToast": "An sabunta ma'aikaci"
+    "updatedToast": "An sabunta ma'aikaci",
+    "pinMustBeSixDigits": "Dole PIN ya ƙunshi lambobi 6 daidai"
   },
   "permissionMatrix": {
     "title": "Izinin matsayi",

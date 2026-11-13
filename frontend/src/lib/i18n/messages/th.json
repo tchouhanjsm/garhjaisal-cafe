@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "สร้างตั๋วและส่งเข้าคิวรอชำระเงินแล้ว",
     "ticketNumber": "หมายเลขตั๋ว",
     "paymentTicketInstruction": "นำตั๋วนี้ไปชำระเงินที่เคาน์เตอร์ชำระเงิน",
-    "selectCounter": "เลือกเคาน์เตอร์"
+    "selectCounter": "เลือกเคาน์เตอร์",
+    "roomNumberLabel": "หมายเลขห้องพักของโรงแรม",
+    "roomNumberPlaceholder": "หมายเลขห้อง (ไม่บังคับ)"
   },
   "printTest": {
     "amt": "จำนวนเงิน",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 ชั่วโมง",
     "refundWindow4h": "4 ชั่วโมง",
     "refundWindowSameDay": "วันทำการเดียวกัน",
-    "refundOwnerUnlimitedNote": "เจ้าของร้านสามารถอนุมัติการคืนเงินสำหรับออเดอร์ย้อนหลังได้เสมอด้วยรหัส PIN อนุมัติของตน"
+    "refundOwnerUnlimitedNote": "เจ้าของร้านสามารถอนุมัติการคืนเงินสำหรับออเดอร์ย้อนหลังได้เสมอด้วยรหัส PIN อนุมัติของตน",
+    "masterPinCurrentInvalid": "กรอกรหัส Master PIN ปัจจุบันที่ถูกต้อง 4 หรือ 6 หลัก"
   },
   "setup": {
     "alreadyCompleted": "ตั้งค่าการติดตั้งนี้เสร็จสมบูรณ์แล้ว กำลังกลับไปหน้าเข้าสู่ระบบ…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "ฉันยอมรับ FloPOS",
     "timezoneHint": "กรอกจากประเทศของคุณ ร้านในประเทศที่มีหลายเขตเวลาสามารถเลือกเขตเวลาท้องถิ่นจริงได้",
     "timezoneLabel": "เขตเวลา",
-    "welcome": "ยินดีต้อนรับสู่ FloCafe"
+    "welcome": "ยินดีต้อนรับสู่ FloCafe",
+    "garhJaisalLabel": "ร้านอาหาร Garh Jaisal",
+    "garhJaisalDesc": "ตั้งค่าร้านอาหาร Garh Jaisal Haveli",
+    "garhJaisalDetails": "ค่าเริ่มต้นของร้านอาหาร Garh Jaisal Haveli: INR, บริการ FineDine แบบชำระภายหลัง, 10 โต๊ะ, UPI, หน้าจอครัว และแอปพนักงานเสิร์ฟ เพิ่มเมนูและบัญชีพนักงานจริง แล้วตรวจสอบการตั้งค่าภาษีก่อนการขายครั้งแรก"
   },
   "staff": {
     "addButton": "เพิ่มพนักงาน",
@@ -2843,7 +2849,8 @@
     "roleServer": "พนักงานเสิร์ฟ",
     "title": "พนักงาน",
     "updateButton": "อัปเดต",
-    "updatedToast": "อัปเดตพนักงานแล้ว"
+    "updatedToast": "อัปเดตพนักงานแล้ว",
+    "pinMustBeSixDigits": "PIN ต้องมี 6 หลักพอดี"
   },
   "permissionMatrix": {
     "title": "สิทธิ์ตามบทบาท",

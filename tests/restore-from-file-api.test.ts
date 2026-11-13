@@ -238,12 +238,12 @@ async function run() {
 
     // --- backup endpoint and trailing slash support ---------------------------
     const { setMasterPin } = require('../main/services/master-pin');
-    setMasterPin('1234');
+    setMasterPin('123456');
 
     const noSlashBackup = await request(app)
       .post('/api/db/backup')
       .set('Authorization', `Bearer ${ownerToken()}`)
-      .send({ master_pin: '1234' });
+      .send({ master_pin: '123456' });
     assert.equal(
       noSlashBackup.status,
       200,
@@ -254,7 +254,7 @@ async function run() {
     const trailingSlashBackup = await request(app)
       .post('/api/db/backup/')
       .set('Authorization', `Bearer ${ownerToken()}`)
-      .send({ master_pin: '1234' });
+      .send({ master_pin: '123456' });
     assert.equal(
       trailingSlashBackup.status,
       200,

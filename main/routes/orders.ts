@@ -1854,6 +1854,7 @@ router.post(
       const body = req.body || {};
       const {
         table_id,
+        room_number,
         customer_id,
         type,
         guest_count,
@@ -1906,6 +1907,27 @@ router.post(
             ),
           );
       }
+
+      if (
+        room_number !== undefined &&
+        room_number !== null &&
+        (typeof room_number !== 'string' ||
+          room_number.trim().length > 32 ||
+          /[\u0000-\u001f]/.test(room_number))
+      ) {
+        return res
+          .status(400)
+          .json(
+            structuredOperationFailure(
+              req,
+              'fc.backend.order.create.other_validation',
+              'not_applied',
+              'room_number must be text no longer than 32 characters',
+            ),
+          );
+      }
+      const normalizedRoomNumber =
+        typeof room_number === 'string' && room_number.trim() ? room_number.trim() : null;
 
       if (!type || !['dine_in', 'takeaway', 'delivery', 'online'].includes(type)) {
         return res
@@ -2345,17 +2367,18 @@ router.post(
 
         const orderResult = db
           .prepare(`
-        INSERT INTO orders (order_number, table_id, customer_id, user_id, type, delivery_address, expected_payment_method, expected_payment_method_id, delivery_note, guest_count, special_instructions,
+        INSERT INTO orders (order_number, table_id, room_number, customer_id, user_id, type, delivery_address, expected_payment_method, expected_payment_method_id, delivery_note, guest_count, special_instructions,
           packaging_charge, delivery_charge, packaging_tax_category_id, delivery_tax_category_id,
           service_charge, service_charge_tax_category_id, online_platform, external_order_id,
           scheduled_for, release_status, released_at, release_blocked_reason,
           checkout_stage, dispatch_policy,
           status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 'pending', ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 'pending', ?, ?)
       `)
           .run(
             orderNumber,
             table_id || null,
+            normalizedRoomNumber,
             orderCustomerId,
             authenticatedUserId,
             type,

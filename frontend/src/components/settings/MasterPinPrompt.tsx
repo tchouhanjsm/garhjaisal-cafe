@@ -24,9 +24,18 @@ interface MasterPinPromptProps {
   onSubmit: (pin: string, currentPin?: string) => Promise<{ success: boolean; error?: string }>;
 }
 
-const PIN_REGEX = /^\d{4}$/;
+const NEW_PIN_REGEX = /^\d{6}$/;
+const ACCEPTED_PIN_REGEX = /^(?:\d{4}|\d{6})$/;
 
-export function MasterPinPrompt({ open, mode, title, description, currentPinRequired = false, onCancel, onSubmit }: MasterPinPromptProps) {
+export function MasterPinPrompt({
+  open,
+  mode,
+  title,
+  description,
+  currentPinRequired = false,
+  onCancel,
+  onSubmit,
+}: MasterPinPromptProps) {
   const t = useTranslations('settings');
   const tCommon = useTranslations('common');
   const [pin, setPin] = useState('');
@@ -51,11 +60,11 @@ export function MasterPinPrompt({ open, mode, title, description, currentPinRequ
   const handleSubmit = async () => {
     setError(null);
 
-    if (mode === 'set' && currentPinRequired && !PIN_REGEX.test(currentPin)) {
-      setError(t('pinFourDigits'));
+    if (mode === 'set' && currentPinRequired && !ACCEPTED_PIN_REGEX.test(currentPin)) {
+      setError(t('masterPinCurrentInvalid'));
       return;
     }
-    if (!PIN_REGEX.test(pin)) {
+    if (!(mode === 'set' ? NEW_PIN_REGEX : ACCEPTED_PIN_REGEX).test(pin)) {
       setError(t('pinFourDigits'));
       return;
     }
@@ -85,9 +94,7 @@ export function MasterPinPrompt({ open, mode, title, description, currentPinRequ
         <DialogHeader>
           <DialogTitle>{title || t('masterPin')}</DialogTitle>
           <DialogDescription>
-            {description || (mode === 'set'
-              ? t('setPinDescription')
-              : t('verifyPinDescription'))}
+            {description || (mode === 'set' ? t('setPinDescription') : t('verifyPinDescription'))}
           </DialogDescription>
         </DialogHeader>
 
@@ -100,11 +107,11 @@ export function MasterPinPrompt({ open, mode, title, description, currentPinRequ
                 type="password"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={4}
+                maxLength={6}
                 autoFocus
                 value={currentPin}
-                onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                placeholder="••••"
+                onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="••••••"
                 className="text-center text-lg tracking-[0.5em]"
               />
             </div>
@@ -117,12 +124,12 @@ export function MasterPinPrompt({ open, mode, title, description, currentPinRequ
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={4}
+              maxLength={6}
               autoFocus={!currentPinRequired}
               value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
               onKeyDown={(e) => e.key === 'Enter' && mode === 'verify' && handleSubmit()}
-              placeholder="••••"
+              placeholder="••••••"
               className="text-center text-lg tracking-[0.5em]"
             />
           </div>
@@ -135,11 +142,11 @@ export function MasterPinPrompt({ open, mode, title, description, currentPinRequ
                 type="password"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={4}
+                maxLength={6}
                 value={confirmPin}
-                onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                placeholder="••••"
+                placeholder="••••••"
                 className="text-center text-lg tracking-[0.5em]"
               />
             </div>
@@ -152,8 +159,17 @@ export function MasterPinPrompt({ open, mode, title, description, currentPinRequ
           <Button variant="outline" onClick={handleCancel} disabled={submitting}>
             {tCommon('cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || pin.length !== 4}>
-            {submitting ? tCommon('loading') : mode === 'set' ? t('setPinButton') : t('confirmButton')}
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              submitting || (mode === 'set' ? pin.length !== 6 : !ACCEPTED_PIN_REGEX.test(pin))
+            }
+          >
+            {submitting
+              ? tCommon('loading')
+              : mode === 'set'
+                ? t('setPinButton')
+                : t('confirmButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

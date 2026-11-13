@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "تم إنشاء التذكرة وإرسالها إلى قائمة انتظار الدفع.",
     "ticketNumber": "رقم التذكرة",
     "paymentTicketInstruction": "تفضل بأخذ هذه التذكرة إلى الصندوق لإتمام الدفع.",
-    "selectCounter": "اختيار المحطة"
+    "selectCounter": "اختيار المحطة",
+    "roomNumberLabel": "رقم غرفة الفندق",
+    "roomNumberPlaceholder": "رقم الغرفة (اختياري)"
   },
   "printTest": {
     "amt": "المبلغ",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "ساعتان",
     "refundWindow4h": "4 ساعات",
     "refundWindowSameDay": "نفس يوم العمل",
-    "refundOwnerUnlimitedNote": "يمكن للمالكين دائماً الموافقة على استرداد أي طلب سابق باستخدام رمز PIN للموافقة الخاص بهم."
+    "refundOwnerUnlimitedNote": "يمكن للمالكين دائماً الموافقة على استرداد أي طلب سابق باستخدام رمز PIN للموافقة الخاص بهم.",
+    "masterPinCurrentInvalid": "أدخل رمز PIN رئيسيًا حاليًا صالحًا من 4 أو 6 أرقام"
   },
   "setup": {
     "alreadyCompleted": "تم الانتهاء من عملية الإعداد في هذا التثبيت. يتم إعادة التوجيه إلى صفحة تسجيل الدخول…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "أوافق على شروط FloPOS",
     "timezoneHint": "يتم ملؤها مسبقًا من بلدك. يمكن للمتاجر الموجودة في البلدان التي تضم مناطق زمنية متعددة اختيار المنطقة الزمنية المحلية الفعلية الخاصة بها.",
     "timezoneLabel": "المنطقة الزمنية",
-    "welcome": "مرحبًا بكم في FloCafe"
+    "welcome": "مرحبًا بكم في FloCafe",
+    "garhJaisalLabel": "مطعم Garh Jaisal",
+    "garhJaisalDesc": "إعداد مطعم Garh Jaisal Haveli",
+    "garhJaisalDetails": "الإعدادات الافتراضية لمطعم Garh Jaisal Haveli: الروبية الهندية، خدمة FineDine بالدفع بعد الطلب، 10 طاولات، UPI، شاشة المطبخ وتطبيق النادل. أضف قائمتك الفعلية وحسابات الموظفين، ثم راجع إعدادات الضريبة قبل أول عملية بيع."
   },
   "staff": {
     "addButton": "إضافة موظف",
@@ -2843,7 +2849,8 @@
     "roleServer": "الخادم",
     "title": "الموظفون",
     "updateButton": "تحديث",
-    "updatedToast": "تم تحديث قائمة الموظفين"
+    "updatedToast": "تم تحديث قائمة الموظفين",
+    "pinMustBeSixDigits": "يجب أن يتكون رمز PIN من 6 أرقام بالضبط"
   },
   "permissionMatrix": {
     "title": "أذونات الأدوار",

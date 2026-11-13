@@ -217,8 +217,8 @@ async function main() {
         country: 'CA',
         currency: 'CAD',
         timezone: 'America/Vancouver',
-        owner_approval_pin: '5678',
-        owner_approval_pin_confirmation: '5679',
+        owner_approval_pin: '567890',
+        owner_approval_pin_confirmation: '567891',
       }),
     });
     assert.equal(
@@ -293,8 +293,8 @@ async function main() {
         setup_profile: 'express',
         service_model: 'qsr',
         terms_accepted: true,
-        owner_approval_pin: '5678',
-        owner_approval_pin_confirmation: '5678',
+        owner_approval_pin: '567890',
+        owner_approval_pin_confirmation: '567890',
         country: 'CA',
         currency: 'ZZZ',
         timezone: 'America/Vancouver',
@@ -355,8 +355,8 @@ async function main() {
         setup_profile: 'express',
         service_model: 'qsr',
         terms_accepted: true,
-        owner_approval_pin: '5678',
-        owner_approval_pin_confirmation: '5678',
+        owner_approval_pin: '567890',
+        owner_approval_pin_confirmation: '567890',
         // A Canadian store on the west coast selects its true timezone rather
         // than the country profile's America/Toronto default (#389).
         country: 'CA',
@@ -383,7 +383,7 @@ async function main() {
     );
     assert.ok(ownerRow.pin_hash, 'setup stores an owner Staff Approval PIN hash');
     assert.equal(
-      bcrypt.compareSync('5678', ownerRow.pin_hash),
+      bcrypt.compareSync('567890', ownerRow.pin_hash),
       true,
       'owner Staff Approval PIN verifies against users.pin_hash',
     );
@@ -533,8 +533,8 @@ async function main() {
         service_model: 'qsr',
         terms_accepted: true,
         country: 'US',
-        owner_approval_pin: '5678',
-        owner_approval_pin_confirmation: '5678',
+        owner_approval_pin: '567890',
+        owner_approval_pin_confirmation: '567890',
         cloud_sync_enabled: true,
         cloud_server_url: 'not-a-valid-url',
       }),
@@ -558,8 +558,8 @@ async function main() {
         service_model: 'qsr',
         terms_accepted: true,
         country: 'US',
-        owner_approval_pin: '5678',
-        owner_approval_pin_confirmation: '5678',
+        owner_approval_pin: '567890',
+        owner_approval_pin_confirmation: '567890',
         cloud_sync_enabled: true,
         cloud_server_url: 'https://cloud.example.test/relay',
       }),
@@ -582,6 +582,98 @@ async function main() {
     console.log('   ✓ setup persists an explicit cloud_sync_enabled + custom cloud_server_url');
   } finally {
     await new Promise<void>((resolve) => cloudServer.close(() => resolve()));
+  }
+
+  // ── Garh Jaisal first-run deployment preset: local-only operational setup ──
+  console.log('\n   Garh Jaisal local-first deployment preset');
+  closeDatabase();
+  fs.rmSync(testDir, { recursive: true, force: true });
+  testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flo-first-run-garh-jaisal-'));
+  initDatabase();
+
+  const garhApi = express();
+  garhApi.use(express.json());
+  garhApi.use('/api/auth', authRoutes);
+  const garhServer = await listen(garhApi);
+  const garhBaseUrl = `http://127.0.0.1:${(garhServer.address() as { port: number }).port}/api/auth`;
+  try {
+    const refreshesBeforeGarhSetup = profileRefreshes;
+    const garhSetup = await request(garhBaseUrl, '/setup/initialize', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Garh Jaisal Owner',
+        email: 'garh-owner@example.com',
+        password: 'TestPass123',
+        business_type: 'restaurant',
+        setup_profile: 'garh-jaisal',
+        service_model: 'finedine',
+        terms_accepted: true,
+        owner_approval_pin: '678901',
+        owner_approval_pin_confirmation: '678901',
+      }),
+    });
+    assert.equal(
+      garhSetup.status,
+      200,
+      `Garh Jaisal first-run setup succeeds (got ${garhSetup.status}, ${JSON.stringify(garhSetup.data)})`,
+    );
+    assert.equal(setting('country'), 'IN', 'Garh Jaisal preset fixes country to India');
+    assert.equal(setting('currency'), 'INR', 'Garh Jaisal preset fixes currency to INR');
+    assert.equal(setting('timezone'), 'Asia/Kolkata', 'Garh Jaisal preset fixes Asia/Kolkata');
+    assert.equal(setting('service_model'), 'finedine', 'Garh Jaisal uses FineDine service');
+    assert.equal(setting('billing_type'), 'postpaid', 'Garh Jaisal starts postpaid');
+    assert.equal(setting('tables_required'), 'true', 'Garh Jaisal requires dine-in tables');
+    assert.equal(setting('room_number_enabled'), 'true', 'optional room references are enabled');
+    assert.equal(setting('kds_enabled'), 'true', 'KDS is enabled');
+    assert.equal(setting('server_app_enabled'), 'true', 'waiter Server App is enabled');
+    assert.equal(setting('tax_registered'), 'false', 'GST remains disabled at first run');
+    assert.equal(
+      setting('tax_registration_number'),
+      '',
+      'GSTIN is left blank for later owner setup',
+    );
+    assert.equal(setting('cloud_sync_enabled'), '0', 'Garh Jaisal has no cloud-sync dependency');
+    assert.equal(
+      setting('cloud_services_disabled_by_user'),
+      'true',
+      'cloud services are explicitly disabled for this local installation',
+    );
+    assert.equal(count('users'), 1, 'setup creates only the owner account');
+    assert.equal(count('tables'), 10, 'setup creates the ten approved restaurant tables');
+    assert.equal(count('kitchen_stations'), 1, 'setup creates one default Kitchen station');
+    const defaultKitchen = getDatabase()
+      .prepare(
+        'SELECT name, category_ids, printer_id, is_active FROM kitchen_stations WHERE id = ?',
+      )
+      .get('stn-garh-jaisal-kitchen') as
+      | { name: string; category_ids: string | null; printer_id: string | null; is_active: number }
+      | undefined;
+    assert.equal(defaultKitchen?.name, 'Kitchen', 'default station is named Kitchen');
+    assert.equal(
+      defaultKitchen?.category_ids,
+      null,
+      'default station waits for the real menu categories',
+    );
+    assert.equal(
+      defaultKitchen?.printer_id,
+      null,
+      'default station does not invent printer hardware',
+    );
+    assert.equal(defaultKitchen?.is_active, 1, 'default Kitchen station starts active');
+    assert.equal(count('station_users'), 0, 'setup does not invent kitchen staff assignments');
+    assert.equal(count('products'), 0, 'setup does not invent menu products or prices');
+    assert.equal(count('categories'), 0, 'setup does not invent menu categories');
+    assert.equal(count('payment_methods'), 1, 'setup adds only the configured UPI payment method');
+    assert.equal(
+      profileRefreshes,
+      refreshesBeforeGarhSetup,
+      'local-only Garh Jaisal setup does not invoke cloud registration refresh',
+    );
+    console.log(
+      '   ✓ Garh Jaisal preset is local-first and seeds only approved operational defaults',
+    );
+  } finally {
+    await new Promise<void>((resolve) => garhServer.close(() => resolve()));
   }
 }
 

@@ -29,7 +29,7 @@ test.describe('PIN Quick User Switch and Lock Flow (#1338 / #1516)', () => {
     // Ensure owner has a PIN and create/update a cashier with a PIN (4321)
     const ownerPinRes = await request.put(`${BASE}/api/staff/e2e-owner`, {
       headers: ownerHeaders,
-      data: { pin: '1111' },
+      data: { pin: '111111' },
     });
     expect(ownerPinRes.ok()).toBeTruthy();
     ownerToken = getE2eToken('e2e-owner', 'owner@flo.local', 'owner');
@@ -63,7 +63,7 @@ test.describe('PIN Quick User Switch and Lock Flow (#1338 / #1516)', () => {
       }
       const updateRes = await request.put(`${BASE}/api/staff/${cashierId}`, {
         headers: ownerHeaders,
-        data: { role: 'cashier', pin: '4321' },
+        data: { role: 'cashier', pin: '432198' },
       });
       expect(updateRes.ok()).toBeTruthy();
     } else {
@@ -74,7 +74,7 @@ test.describe('PIN Quick User Switch and Lock Flow (#1338 / #1516)', () => {
           email: 'pin-cashier@flo.local',
           password: E2E_PASSWORD,
           role: 'cashier',
-          pin: '4321',
+          pin: '432198',
         },
       });
       expect(createRes.ok()).toBeTruthy();
@@ -142,7 +142,7 @@ test.describe('PIN Quick User Switch and Lock Flow (#1338 / #1516)', () => {
           headers: ownerHeaders,
           data: {
             status: 'cancelled',
-            override_pin: '1111',
+            override_pin: '111111',
             approver_id: 'e2e-owner',
           },
         });
@@ -200,6 +200,8 @@ test.describe('PIN Quick User Switch and Lock Flow (#1338 / #1516)', () => {
     await page.getByTestId('pin-pad-digit-3').click();
     await page.getByTestId('pin-pad-digit-2').click();
     await page.getByTestId('pin-pad-digit-1').click();
+    await page.getByTestId('pin-pad-digit-9').click();
+    await page.getByTestId('pin-pad-digit-8').click();
     await page.getByTestId('pin-login-submit').click();
 
     // Verify redirect to POS, active user switched to cashier, and unfinished cart preserved
@@ -259,10 +261,14 @@ test.describe('PIN Quick User Switch and Lock Flow (#1338 / #1516)', () => {
     await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-pad-digit-9').click();
+    await page.getByTestId('pin-pad-digit-9').click();
+    await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-login-submit').click();
     await expect(page.getByTestId('pin-login-error')).toBeVisible();
     await expect(page.getByTestId('pin-login-input')).toHaveValue('');
 
+    await page.getByTestId('pin-pad-digit-1').click();
+    await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
@@ -292,10 +298,14 @@ test.describe('PIN Quick User Switch and Lock Flow (#1338 / #1516)', () => {
     await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-pad-digit-9').click();
+    await page.getByTestId('pin-pad-digit-9').click();
+    await page.getByTestId('pin-pad-digit-9').click();
     await page.getByTestId('pin-login-submit').click();
     await expect(page.getByTestId('pin-login-error')).toBeVisible();
     await expect(page.getByTestId('pin-login-input')).toHaveValue('');
 
+    await page.getByTestId('pin-pad-digit-1').click();
+    await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();
     await page.getByTestId('pin-pad-digit-1').click();

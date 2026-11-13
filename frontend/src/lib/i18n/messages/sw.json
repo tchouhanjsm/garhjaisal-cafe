@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Tiketi imeundwa na kutumwa kwenye foleni ya malipo.",
     "ticketNumber": "Nambari ya Tiketi",
     "paymentTicketInstruction": "Peleka tiketi hii kwenye kaunta ya malipo ili kulipa.",
-    "selectCounter": "Chagua Kaunta"
+    "selectCounter": "Chagua Kaunta",
+    "roomNumberLabel": "Nambari ya chumba cha hoteli",
+    "roomNumberPlaceholder": "Na. ya chumba (si lazima)"
   },
   "printTest": {
     "amt": "Kiasi",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "Saa 2",
     "refundWindow4h": "Saa 4",
     "refundWindowSameDay": "Siku hiyo hiyo ya biashara",
-    "refundOwnerUnlimitedNote": "Wamiliki wanaweza kuidhinisha marejesho ya pesa kwa oda yoyote ya zamani wakati wowote kwa kutumia PIN yao ya Uidhinishaji."
+    "refundOwnerUnlimitedNote": "Wamiliki wanaweza kuidhinisha marejesho ya pesa kwa oda yoyote ya zamani wakati wowote kwa kutumia PIN yao ya Uidhinishaji.",
+    "masterPinCurrentInvalid": "Weka PIN kuu ya sasa iliyo sahihi yenye tarakimu 4 au 6"
   },
   "setup": {
     "alreadyCompleted": "Usanidi tayari umekamilishwa kwenye usakinishaji huu. Inaelekeza kwenye kuingia…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Ninakubaliana na FloPOS",
     "timezoneHint": "Imejaziwa awali kutoka kwenye nchi yako. Maduka katika nchi zenye saa za maeneo mengi yanaweza kuchagua saa za eneo lao halisi.",
     "timezoneLabel": "Saa za Eneo",
-    "welcome": "Karibu FloCafe"
+    "welcome": "Karibu FloCafe",
+    "garhJaisalLabel": "Mgahawa wa Garh Jaisal",
+    "garhJaisalDesc": "Usanidi wa mgahawa wa Garh Jaisal Haveli",
+    "garhJaisalDetails": "Mipangilio chaguomsingi ya mgahawa wa Garh Jaisal Haveli: INR, huduma ya FineDine ya kulipa baada ya oda, meza 10, UPI, skrini ya jikoni na programu ya mhudumu. Ongeza menyu yako halisi na akaunti za wafanyakazi, kisha kagua mipangilio ya kodi kabla ya mauzo ya kwanza."
   },
   "staff": {
     "addButton": "Ongeza Mfanyakazi",
@@ -2843,7 +2849,8 @@
     "roleServer": "Mhudumu",
     "title": "Wafanyakazi",
     "updateButton": "Sasisha",
-    "updatedToast": "Mfanyakazi amesasishwa"
+    "updatedToast": "Mfanyakazi amesasishwa",
+    "pinMustBeSixDigits": "PIN lazima iwe na tarakimu 6 haswa"
   },
   "permissionMatrix": {
     "title": "Ruhusa za majukumu",

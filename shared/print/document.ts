@@ -865,6 +865,8 @@ export interface KotOrderSnapshot {
   readonly orderNumber: string;
   readonly createdAt: string;
   readonly tableName: string;
+  /** Optional hotel room reference; it never represents a room-account payment. */
+  readonly roomNumber?: string;
   readonly orderType: string;
   /** Customer display name, when the order carries one. */
   readonly customerName?: string;
@@ -893,6 +895,8 @@ export interface KotHeaderBlock {
   readonly orderNumber: DirectionalText;
   /** Table reference with its (uninterpolated) label concept. */
   readonly table: { readonly label: SemanticLabel; readonly name: DirectionalText } | null;
+  /** Optional hotel room reference printed beside the table. */
+  readonly roomNumber: DirectionalText | null;
   readonly orderType: {
     readonly label: SemanticLabel;
     readonly value: DirectionalText;
@@ -1611,6 +1615,11 @@ export function buildKotDocument(printData: KotPrintData, printContext: PrintCon
             label: resolveSemanticLabel(labels, 'pos.tableLabel'),
             name: directionalText(printData.order.tableName, base),
           })
+        : null,
+    roomNumber:
+      typeof printData.order?.roomNumber === 'string' &&
+      printData.order.roomNumber.trim().length > 0
+        ? directionalText(printData.order.roomNumber.trim(), base)
         : null,
     orderType:
       typeof printData.order?.orderType === 'string' && printData.order.orderType.length > 0

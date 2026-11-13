@@ -202,7 +202,7 @@ async function main() {
     });
     assert.equal(duplicateStaff.status, 400, 'a duplicate staff email is rejected');
 
-    setMasterPin('1234');
+    setMasterPin('123456');
     const passwordBeforeRecovery = db
       .prepare('SELECT password FROM users WHERE id = ?')
       .get(owner.userId).password;
@@ -219,7 +219,7 @@ async function main() {
     try {
       const recoveryRace = await api(baseUrl, '/api/auth/recover-password', {
         method: 'POST',
-        body: { email: 'owner@test.local', master_pin: '1234', new_password: 'TestPass1234' },
+        body: { email: 'owner@test.local', master_pin: '123456', new_password: 'TestPass1234' },
       });
       assert.equal(recoveryRace.status, 409, 'password recovery rejects an owner-state race');
       assert.equal(
@@ -820,7 +820,7 @@ async function main() {
       try {
         const recoveryWithReporterFailure = await api(baseUrl, '/api/auth/recover-password', {
           method: 'POST',
-          body: { email: 'owner@test.local', master_pin: '1234', new_password: 'TestPass1234' },
+          body: { email: 'owner@test.local', master_pin: '123456', new_password: 'TestPass1234' },
         });
         assert.equal(
           recoveryWithReporterFailure.status,

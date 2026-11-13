@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Bileta u krijua dhe u dërgua në radhën e pagesave.",
     "ticketNumber": "Numri i biletës",
     "paymentTicketInstruction": "Dërgojeni këtë biletë te sporteli i pagesave për të paguar.",
-    "selectCounter": "Zgjidh sportelin"
+    "selectCounter": "Zgjidh sportelin",
+    "roomNumberLabel": "Numri i dhomës së hotelit",
+    "roomNumberPlaceholder": "Nr. i dhomës (opsionale)"
   },
   "printTest": {
     "amt": "Shuma",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 orë",
     "refundWindow4h": "4 orë",
     "refundWindowSameDay": "E njëjta ditë pune",
-    "refundOwnerUnlimitedNote": "Pronarët mund të miratojnë gjithmonë rimbursime për çdo porosi të kaluar me PIN-in e tyre të miratimit të stafit."
+    "refundOwnerUnlimitedNote": "Pronarët mund të miratojnë gjithmonë rimbursime për çdo porosi të kaluar me PIN-in e tyre të miratimit të stafit.",
+    "masterPinCurrentInvalid": "Vendosni një PIN kryesor aktual të vlefshëm me 4 ose 6 shifra"
   },
   "setup": {
     "alreadyCompleted": "Konfigurimi në këtë instalim është përfunduar. Po ridrejtohemi te hyrja...",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Jam dakord me FloPOS",
     "timezoneHint": "E mbushur paraprakisht nga vendi juaj. Dyqanet në vendet me shumë zona kohore mund të zgjedhin zonën e tyre aktuale lokale kohore.",
     "timezoneLabel": "Zona kohore",
-    "welcome": "Mirë se vini në FloCafe"
+    "welcome": "Mirë se vini në FloCafe",
+    "garhJaisalLabel": "Restoranti Garh Jaisal",
+    "garhJaisalDesc": "Konfigurimi i restorantit Garh Jaisal Haveli",
+    "garhJaisalDetails": "Parazgjedhjet e restorantit Garh Jaisal Haveli: INR, shërbim FineDine me pagesë pas porosisë, 10 tavolina, UPI, ekran kuzhine dhe aplikacion për kamarierët. Shtoni menunë dhe llogaritë reale të stafit, pastaj kontrolloni cilësimet e taksave para shitjes së parë."
   },
   "staff": {
     "addButton": "Shto staf",
@@ -2843,7 +2849,8 @@
     "roleServer": "Shërbyes",
     "title": "Stafi",
     "updateButton": "Përditëso",
-    "updatedToast": "Stafi i përditësuar"
+    "updatedToast": "Stafi i përditësuar",
+    "pinMustBeSixDigits": "PIN-i duhet të ketë saktësisht 6 shifra"
   },
   "permissionMatrix": {
     "title": "Lejet e roleve",

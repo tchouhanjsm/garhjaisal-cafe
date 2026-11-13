@@ -2095,6 +2095,8 @@ export default function POSPage() {
           : undefined;
         const orderPayload = {
           table_id: cart.tableId,
+          room_number:
+            cart.orderType === 'dine_in' ? cart.roomNumber.trim() || undefined : undefined,
           customer_id: cart.customerId,
           type: cart.orderType,
           guest_count: cart.guestCount,
@@ -3338,6 +3340,7 @@ export default function POSPage() {
           held.id,
           held.waivedChargeIds,
           held.optedInChargeIds,
+          held.roomNumber,
         );
       } else {
         await heldOrders.fetchHeldOrders();
@@ -3366,6 +3369,7 @@ export default function POSPage() {
         cart.orderNotes,
         [...cart.waivedChargeIds],
         [...cart.optedInChargeIds],
+        cart.roomNumber,
       );
       cart.clearCart();
       setShowTablePicker(false);
@@ -3383,6 +3387,7 @@ export default function POSPage() {
     cart.setOrderType('dine_in');
     cart.setGuestCount(order.guest_count || 1);
     cart.setOrderNotes(order.special_instructions || '');
+    cart.setRoomNumber(order.room_number || '');
     setPendingOrder(order);
     toast(`${t('addingItemsToOrder', { number: order.order_number })} ${t('placeOrderReady')}`, {
       icon: 'ℹ️',

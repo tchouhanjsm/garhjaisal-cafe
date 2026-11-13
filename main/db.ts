@@ -10371,6 +10371,24 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       `);
     },
   },
+  {
+    version: 127,
+    name: 'add_order_room_number',
+    up: () => {
+      if (!getColumns(db, 'orders').includes('room_number')) {
+        db.exec('ALTER TABLE orders ADD COLUMN room_number TEXT DEFAULT NULL');
+      }
+    },
+  },
+  {
+    version: 128,
+    name: 'add_held_order_room_number',
+    up: () => {
+      if (!getColumns(db, 'held_orders').includes('room_number')) {
+        db.exec('ALTER TABLE held_orders ADD COLUMN room_number TEXT DEFAULT NULL');
+      }
+    },
+  },
 ];
 
 export function backfillWhatsAppMessageAttempts(
@@ -10740,6 +10758,7 @@ function createSchema(): void {
       delivery_address TEXT DEFAULT NULL,
       expected_payment_method TEXT DEFAULT NULL,
       delivery_note TEXT DEFAULT NULL,
+      room_number TEXT DEFAULT NULL,
       guest_count INTEGER,
       special_instructions TEXT,
       packaging_charge REAL DEFAULT 0,

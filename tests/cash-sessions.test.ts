@@ -748,7 +748,7 @@ async function main() {
     'partial payment leaves paid_at unset',
   );
   db.prepare(`UPDATE users SET pin_hash = ? WHERE id = 'owner-sess'`).run(
-    bcrypt.hashSync('1234', 10),
+    bcrypt.hashSync('123456', 10),
   );
   const ownedOwnerToken = jwt.sign(
     { userId: 'owner-sess', email: 'owner-sess@test.local', role: 'owner' },
@@ -766,7 +766,7 @@ async function main() {
     amount: 10,
     method: 'cash',
     approver_id: 'owner-sess',
-    override_pin: '1234',
+    override_pin: '123456',
   };
   const ownedRefund = await request(app)
     .post('/api/refunds')
@@ -1238,7 +1238,7 @@ async function main() {
       amount: 10,
       method: 'cash',
       approver_id: 'owner-sess',
-      override_pin: '1234',
+      override_pin: '123456',
     });
   assert(recentStaleRefund.status === 201, 'stale candidate receives a recent cash refund');
   const refundStaleBlocked = await request(app)
@@ -2612,7 +2612,7 @@ async function main() {
             amount: 10,
             method: 'cash',
             approver_id: 'owner-sess',
-            override_pin: '1234',
+            override_pin: '123456',
           });
         assert(refundA.status === 201, '#1339: User A records 10.00 cash refund (201)');
         const refundARow = db
@@ -2734,7 +2734,7 @@ async function main() {
             method: 'card',
             reason: 'Wrong button',
             approver_id: 'owner-sess',
-            override_pin: '1234',
+            override_pin: '123456',
           });
         assert(
           correctSessionless.status === 409 && correctSessionless.body?.reason === 'shift_closed',
@@ -3125,19 +3125,19 @@ async function main() {
       ).run(now(), now());
 
       db.prepare('UPDATE users SET pin_hash = ? WHERE id = ?').run(
-        bcrypt.hashSync('1111', 10),
+        bcrypt.hashSync('111111', 10),
         'cashier-sess',
       );
       db.prepare('UPDATE users SET pin_hash = ? WHERE id = ?').run(
-        bcrypt.hashSync('2222', 10),
+        bcrypt.hashSync('222222', 10),
         'cashier2-sess',
       );
       db.prepare('UPDATE users SET pin_hash = ? WHERE id = ?').run(
-        bcrypt.hashSync('4321', 10),
+        bcrypt.hashSync('432198', 10),
         'manager-sess',
       );
 
-      await withFixedClock('2026-11-13T10:00:00.000Z', async () => {
+      await withFixedClock('2026-11-14T10:00:00.000Z', async () => {
         // Step 1: Enable one_shift_per_staff = 'true'
         const enableComboPerStaff = await request(app)
           .put('/api/settings/one_shift_per_staff')
@@ -3187,7 +3187,7 @@ async function main() {
 
         const pinSwitchToB = await request(app)
           .post('/api/auth/pin-login')
-          .send({ user_id: 'cashier2-sess', pin: '2222' });
+          .send({ user_id: 'cashier2-sess', pin: '222222' });
         assert(
           pinSwitchToB.status === 200 &&
             pinSwitchToB.body?.user?.id === 'cashier2-sess' &&
@@ -3235,7 +3235,7 @@ async function main() {
             transaction_id: 'TX-BLOCKED-B',
             reason: 'Cashier attempting correction with manager PIN',
             approver_id: 'manager-sess',
-            override_pin: '4321',
+            override_pin: '432198',
           });
         assert(
           cashierCorrectAttempt.status === 403 &&
@@ -3262,7 +3262,7 @@ async function main() {
         // Step 6: Manager M signs in via PIN login and corrects tender from cash to card -> stays in Staff B's shift
         const pinSwitchToMgr = await request(app)
           .post('/api/auth/pin-login')
-          .send({ user_id: 'manager-sess', pin: '4321' });
+          .send({ user_id: 'manager-sess', pin: '432198' });
         assert(
           pinSwitchToMgr.status === 200 &&
             pinSwitchToMgr.body?.user?.id === 'manager-sess' &&
@@ -3280,7 +3280,7 @@ async function main() {
             transaction_id: 'TX-COMBO-1339',
             reason: 'Customer paid by card terminal',
             approver_id: 'manager-sess',
-            override_pin: '4321',
+            override_pin: '432198',
           });
         assert(
           mgrCorrectRes.status === 200 &&
@@ -3304,7 +3304,7 @@ async function main() {
         );
 
         const xComboShiftB = await request(app)
-          .get(`/api/reports/x-report?date=2026-11-13&session_id=${comboShiftBId}`)
+          .get(`/api/reports/x-report?date=2026-11-14&session_id=${comboShiftBId}`)
           .set('Authorization', `Bearer ${managerPinToken}`);
         const xComboShiftBRep = xComboShiftB.body?.xReport;
         assert(
@@ -3324,7 +3324,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-13',
+            business_date: '2026-11-14',
             opening_float_cents: 10000,
             counted_cash_cents: 10000,
           });
@@ -3347,7 +3347,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-13',
+            business_date: '2026-11-14',
             opening_float_cents: 10000,
             counted_cash_cents: 10000,
           });
@@ -3371,7 +3371,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-13',
+            business_date: '2026-11-14',
             opening_float_cents: 10000,
             counted_cash_cents: 10000,
           });
@@ -3389,10 +3389,10 @@ async function main() {
 
         // Step 8: Verify X report and Z report JSON and CSV exports reconcile with the corrected payment method and totals
         const xComboDay = await request(app)
-          .get('/api/reports/x-report?date=2026-11-13')
+          .get('/api/reports/x-report?date=2026-11-14')
           .set('Authorization', `Bearer ${managerPinToken}`);
         const zComboDay = await request(app)
-          .get('/api/reports/z-report?date=2026-11-13')
+          .get('/api/reports/z-report?date=2026-11-14')
           .set('Authorization', `Bearer ${managerPinToken}`);
         assert(
           xComboDay.status === 200 &&
@@ -3410,10 +3410,10 @@ async function main() {
         );
 
         const xCsvExport = await request(app)
-          .get('/api/reports/x-report/export?date=2026-11-13&format=csv')
+          .get('/api/reports/x-report/export?date=2026-11-14&format=csv')
           .set('Authorization', `Bearer ${managerPinToken}`);
         const zCsvExport = await request(app)
-          .get('/api/reports/z-report/export?date=2026-11-13&format=csv')
+          .get('/api/reports/z-report/export?date=2026-11-14&format=csv')
           .set('Authorization', `Bearer ${managerPinToken}`);
         assert(
           xCsvExport.status === 200 &&
@@ -4766,7 +4766,7 @@ async function main() {
               status: 'cancelled',
               reason: 'Guest walked out after partial deposit',
               approver_id: 'manager-sess',
-              override_pin: '4321',
+              override_pin: '432198',
             }),
         );
         const s13iPart1 = await withFixedClock('2026-11-24T08:25:00.000Z', async () => {
@@ -4883,7 +4883,7 @@ async function main() {
                 status: 'cancelled',
                 reason: 'Guest 2 cancelled',
                 approver_id: 'manager-sess',
-                override_pin: '4321',
+                override_pin: '432198',
               }),
           );
           const s13i = await withFixedClock('2026-11-24T09:00:00.000Z', async () => {

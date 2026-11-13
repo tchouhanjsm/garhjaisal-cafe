@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "ٹکٹ تیار کر کے ادائیگی کی قطار میں بھیج دیا گیا ہے۔",
     "ticketNumber": "ٹکٹ نمبر",
     "paymentTicketInstruction": "ادائیگی کے لیے یہ ٹکٹ کیش کاؤنٹر پر لے جائیں۔",
-    "selectCounter": "کاؤنٹر منتخب کریں"
+    "selectCounter": "کاؤنٹر منتخب کریں",
+    "roomNumberLabel": "ہوٹل کے کمرے کا نمبر",
+    "roomNumberPlaceholder": "کمرہ نمبر (اختیاری)"
   },
   "printTest": {
     "amt": "رقم",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 گھنٹے",
     "refundWindow4h": "4 گھنٹے",
     "refundWindowSameDay": "ایک ہی کاروباری دن",
-    "refundOwnerUnlimitedNote": "مالکان اپنے اسٹاف منظوری پن کے ذریعے کسی بھی سابقہ آرڈر کی رقم واپسی کی ہمیشہ منظوری دے سکتے ہیں۔"
+    "refundOwnerUnlimitedNote": "مالکان اپنے اسٹاف منظوری پن کے ذریعے کسی بھی سابقہ آرڈر کی رقم واپسی کی ہمیشہ منظوری دے سکتے ہیں۔",
+    "masterPinCurrentInvalid": "درست موجودہ 4 یا 6 ہندسوں کا ماسٹر PIN درج کریں"
   },
   "setup": {
     "alreadyCompleted": "اس انسٹال کا سیٹ اپ پہلے ہی مکمل ہو چکا ہے۔ سائن ان پر بھیج رہا ہے…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "میں FloPOS کی",
     "timezoneHint": "آپ کے ملک سے خودکار طور پر بھرا جاتا ہے۔ متعدد ٹائم زون والے ممالک کے اسٹور اپنا اصل مقامی ٹائم زون منتخب کر سکتے ہیں۔",
     "timezoneLabel": "ٹائم زون",
-    "welcome": "FloCafe میں خوش آمدید"
+    "welcome": "FloCafe میں خوش آمدید",
+    "garhJaisalLabel": "Garh Jaisal کا ریسٹورنٹ",
+    "garhJaisalDesc": "Garh Jaisal Haveli ریسٹورنٹ سیٹ اپ",
+    "garhJaisalDetails": "Garh Jaisal Haveli ریسٹورنٹ کی ابتدائی ترتیبات: INR، FineDine پوسٹ پیڈ بلنگ، 10 میزیں، UPI، کچن ڈسپلے اور ویٹر ایپ۔ پہلی فروخت سے پہلے اپنا اصل مینو اور عملے کے اکاؤنٹس شامل کریں، پھر ٹیکس کی ترتیبات کا جائزہ لیں۔"
   },
   "staff": {
     "addButton": "ملازم شامل کریں",
@@ -2843,7 +2849,8 @@
     "roleServer": "ویٹر",
     "title": "ملازمین",
     "updateButton": "اپ ڈیٹ",
-    "updatedToast": "ملازم اپ ڈیٹ ہو گیا"
+    "updatedToast": "ملازم اپ ڈیٹ ہو گیا",
+    "pinMustBeSixDigits": "PIN بالکل 6 ہندسوں کا ہونا چاہیے"
   },
   "permissionMatrix": {
     "title": "کردار کی اجازتیں",

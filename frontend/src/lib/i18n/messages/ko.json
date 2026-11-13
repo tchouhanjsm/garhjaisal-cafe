@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "티켓이 생성되어 결제 대기열로 전송되었습니다.",
     "ticketNumber": "티켓 번호",
     "paymentTicketInstruction": "이 티켓을 결제 카운터로 가져가 결제해 주세요.",
-    "selectCounter": "카운터 선택"
+    "selectCounter": "카운터 선택",
+    "roomNumberLabel": "호텔 객실 번호",
+    "roomNumberPlaceholder": "객실 번호(선택 사항)"
   },
   "printTest": {
     "amt": "금액",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2시간",
     "refundWindow4h": "4시간",
     "refundWindowSameDay": "동일 영업일",
-    "refundOwnerUnlimitedNote": "점주는 직원 승인 PIN으로 과거 모든 주문의 환불을 언제든지 승인할 수 있습니다."
+    "refundOwnerUnlimitedNote": "점주는 직원 승인 PIN으로 과거 모든 주문의 환불을 언제든지 승인할 수 있습니다.",
+    "masterPinCurrentInvalid": "유효한 현재 마스터 PIN 4자리 또는 6자리를 입력하세요"
   },
   "setup": {
     "alreadyCompleted": "이 설치에서는 초기 설정이 이미 완료되었습니다. 로그인으로 이동합니다…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "FloPOS에 동의합니다",
     "timezoneHint": "국가에 따라 미리 채워집니다. 다중 시간대 국가의 매장은 실제 현지 시간대를 선택할 수 있습니다.",
     "timezoneLabel": "시간대",
-    "welcome": "FloCafe에 오신 것을 환영합니다"
+    "welcome": "FloCafe에 오신 것을 환영합니다",
+    "garhJaisalLabel": "Garh Jaisal 레스토랑",
+    "garhJaisalDesc": "Garh Jaisal Haveli 레스토랑 설정",
+    "garhJaisalDetails": "Garh Jaisal Haveli 레스토랑 기본값: INR, FineDine 후불 서비스, 테이블 10개, UPI, 주방 디스플레이 및 웨이터 앱. 첫 판매 전에 실제 메뉴와 직원 계정을 추가하고 세금 설정을 확인하세요."
   },
   "staff": {
     "addButton": "직원 추가",
@@ -2843,7 +2849,8 @@
     "roleServer": "웨이터",
     "title": "직원",
     "updateButton": "업데이트",
-    "updatedToast": "직원 정보가 업데이트되었습니다"
+    "updatedToast": "직원 정보가 업데이트되었습니다",
+    "pinMustBeSixDigits": "PIN은 정확히 6자리여야 합니다"
   },
   "permissionMatrix": {
     "title": "역할 권한",

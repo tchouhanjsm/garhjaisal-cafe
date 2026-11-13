@@ -40,7 +40,7 @@ const { staffRoutes } = require('../main/routes/staff');
 const { authorizationRoutes } = require('../main/routes/authorization');
 const { getJWTSecret } = require('../main/routes/auth');
 
-function seedUser(db: any, id: string, role: string, pin = '1234') {
+function seedUser(db: any, id: string, role: string, pin = '123456') {
   const email = `${id}@test.local`;
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, pin_hash, is_active, created_at, updated_at)
@@ -266,9 +266,9 @@ async function main() {
     email: 'pinned-cashier@test.local',
     password: 'StrongPass1',
     role: 'cashier',
-    pin: '1234',
+    pin: '123456',
   });
-  assertEqual(result.status, 201, 'operational roles accept a valid 4-6 digit PIN');
+  assertEqual(result.status, 201, 'operational roles accept a valid six-digit PIN');
   assertEqual(
     result.body.staff.has_pin,
     1,
@@ -276,7 +276,7 @@ async function main() {
   );
 
   console.log('\n── PIN policy ─────────────────────────────────────────────────');
-  for (const pin of ['abcd', '123', '1234567']) {
+  for (const pin of ['abcd', '123', '1234', '1234567']) {
     result = await request(app)
       .post('/api/staff')
       .set(ownerAuth)
@@ -287,7 +287,11 @@ async function main() {
         role: 'manager',
         pin,
       });
-    assertEqual(result.status, 400, `PIN ${pin} is rejected unless it is 4-6 numeric digits`);
+    assertEqual(
+      result.status,
+      400,
+      `PIN ${pin} is rejected unless it is exactly six numeric digits`,
+    );
   }
 
   result = await request(app)
@@ -350,7 +354,7 @@ async function main() {
     email: 'owner-created-manager@test.local',
     password: 'StrongPass1',
     role: 'manager',
-    pin: '9876',
+    pin: '987654',
   });
   assertEqual(result.status, 201, 'owner can create a manager with a valid PIN');
   assertEqual(result.body.staff.has_pin, 1, 'staff responses expose has_pin for configured PINs');
@@ -390,7 +394,7 @@ async function main() {
         { permission_id: 'staff.operational.manage', effect: 'deny' },
         { permission_id: 'settings.manage', effect: 'deny' },
       ],
-      override_pin: '1234',
+      override_pin: '123456',
     });
   assertEqual(
     stripOperational.status,

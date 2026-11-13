@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "तिकीट तयार केले आणि पेमेंट रांगेत पाठवले.",
     "ticketNumber": "तिकीट क्रमांक",
     "paymentTicketInstruction": "पेमेंट करण्यासाठी हे तिकीट पेमेंट काउंटरवर घेऊन जा.",
-    "selectCounter": "काउंटर निवडा"
+    "selectCounter": "काउंटर निवडा",
+    "roomNumberLabel": "हॉटेलचा खोली क्रमांक",
+    "roomNumberPlaceholder": "खोली क्र. (ऐच्छिक)"
   },
   "printTest": {
     "amt": "रक्कम",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "२ तास",
     "refundWindow4h": "४ तास",
     "refundWindowSameDay": "तोच व्यावसायिक दिवस",
-    "refundOwnerUnlimitedNote": "मालक त्यांच्या स्टाफ मंजुरी पिनने कोणत्याही जुन्या ऑर्डरचा परतावा नेहमी मंजूर करू शकतात."
+    "refundOwnerUnlimitedNote": "मालक त्यांच्या स्टाफ मंजुरी पिनने कोणत्याही जुन्या ऑर्डरचा परतावा नेहमी मंजूर करू शकतात.",
+    "masterPinCurrentInvalid": "वैध सध्याचा ४ किंवा ६ अंकी मास्टर PIN प्रविष्ट करा"
   },
   "setup": {
     "alreadyCompleted": "या इन्स्टॉलवर सेटअप आधीच पूर्ण झाला आहे. लॉगिनवर रीडायरेक्ट करत आहे…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "मी FloPOS च्या खालील बाबींशी सहमत आहे:",
     "timezoneHint": "तुमच्या देशावरून आधीच भरलेले. एकापेक्षा जास्त टाइमझोन असलेल्या देशांमधील स्टोअर्स त्यांचा प्रत्यक्ष स्थानिक टाइमझोन निवडू शकतात.",
     "timezoneLabel": "टाइमझोन",
-    "welcome": "FloCafe मध्ये तुमचे स्वागत आहे"
+    "welcome": "FloCafe मध्ये तुमचे स्वागत आहे",
+    "garhJaisalLabel": "Garh Jaisal रेस्टॉरंट",
+    "garhJaisalDesc": "Garh Jaisal Haveli रेस्टॉरंट सेटअप",
+    "garhJaisalDetails": "Garh Jaisal Haveli रेस्टॉरंटची डीफॉल्ट सेटिंग्ज: INR, FineDine पोस्टपेड बिलिंग, १० टेबल, UPI, किचन डिस्प्ले आणि वेटर ॲप. पहिल्या विक्रीपूर्वी तुमचा प्रत्यक्ष मेनू आणि कर्मचारी खाती जोडा व कर सेटिंग्ज तपासा."
   },
   "staff": {
     "addButton": "कर्मचारी जोडा",
@@ -2843,7 +2849,8 @@
     "roleServer": "वेटर (Server)",
     "title": "कर्मचारी",
     "updateButton": "अपडेट करा",
-    "updatedToast": "कर्मचारी अपडेट केला"
+    "updatedToast": "कर्मचारी अपडेट केला",
+    "pinMustBeSixDigits": "PIN नेमका ६ अंकी असला पाहिजे"
   },
   "permissionMatrix": {
     "title": "भूमिका परवानग्या",

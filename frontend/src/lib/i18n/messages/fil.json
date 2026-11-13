@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Nalikha ang ticket at naipadala sa pila ng pagbabayad.",
     "ticketNumber": "Numero ng Ticket",
     "paymentTicketInstruction": "Dalhin ang ticket na ito sa payment counter upang magbayad.",
-    "selectCounter": "Pumili ng Counter"
+    "selectCounter": "Pumili ng Counter",
+    "roomNumberLabel": "Numero ng kuwarto sa hotel",
+    "roomNumberPlaceholder": "Room no. (opsyonal)"
   },
   "printTest": {
     "amt": "Halaga",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 oras",
     "refundWindow4h": "4 na oras",
     "refundWindowSameDay": "Parehong araw ng negosyo",
-    "refundOwnerUnlimitedNote": "Maaaring aprubahan palagi ng mga may-ari ang refund para sa anumang nakaraang order gamit ang kanilang Staff Approval PIN."
+    "refundOwnerUnlimitedNote": "Maaaring aprubahan palagi ng mga may-ari ang refund para sa anumang nakaraang order gamit ang kanilang Staff Approval PIN.",
+    "masterPinCurrentInvalid": "Maglagay ng wastong kasalukuyang 4 o 6 na digit na Master PIN"
   },
   "setup": {
     "alreadyCompleted": "Nakumpleto na ang setup sa installation na ito. Nireredirect sa pag-login…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Sumasang-ayon ako sa FloPOS",
     "timezoneHint": "Kusang napunan mula sa iyong bansa.",
     "timezoneLabel": "Timezone",
-    "welcome": "Maligayang Pagdating sa FloCafe"
+    "welcome": "Maligayang Pagdating sa FloCafe",
+    "garhJaisalLabel": "Restawran ng Garh Jaisal",
+    "garhJaisalDesc": "Setup ng restaurant ng Garh Jaisal Haveli",
+    "garhJaisalDetails": "Mga default ng restaurant ng Garh Jaisal Haveli: INR, FineDine na postpaid billing, 10 mesa, UPI, kitchen display at waiter app. Idagdag ang aktuwal na menu at mga staff account, saka suriin ang mga setting ng buwis bago ang unang benta."
   },
   "staff": {
     "addButton": "Magdagdag ng Staff",
@@ -2843,7 +2849,8 @@
     "roleServer": "Server",
     "title": "Pamamahala ng Staff",
     "updateButton": "I-update",
-    "updatedToast": "Na-update ang staff"
+    "updatedToast": "Na-update ang staff",
+    "pinMustBeSixDigits": "Dapat eksaktong 6 na digit ang PIN"
   },
   "permissionMatrix": {
     "title": "Matrix ng Pahintulot",

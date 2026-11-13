@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Phiếu đã được tạo và gửi đến hàng đợi thanh toán.",
     "ticketNumber": "Số phiếu",
     "paymentTicketInstruction": "Mang phiếu này đến quầy thu ngân để thanh toán.",
-    "selectCounter": "Chọn quầy"
+    "selectCounter": "Chọn quầy",
+    "roomNumberLabel": "Số phòng khách sạn",
+    "roomNumberPlaceholder": "Số phòng (không bắt buộc)"
   },
   "printTest": {
     "amt": "Số tiền",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 giờ",
     "refundWindow4h": "4 giờ",
     "refundWindowSameDay": "Cùng ngày kinh doanh",
-    "refundOwnerUnlimitedNote": "Chủ quán luôn có thể phê duyệt hoàn tiền cho bất kỳ đơn hàng cũ nào bằng mã PIN phê duyệt của mình."
+    "refundOwnerUnlimitedNote": "Chủ quán luôn có thể phê duyệt hoàn tiền cho bất kỳ đơn hàng cũ nào bằng mã PIN phê duyệt của mình.",
+    "masterPinCurrentInvalid": "Nhập Master PIN hiện tại hợp lệ gồm 4 hoặc 6 chữ số"
   },
   "setup": {
     "alreadyCompleted": "Bản cài đặt này đã hoàn tất thiết lập. Đang chuyển đến đăng nhập…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Tôi đồng ý với FloPOS",
     "timezoneHint": "Tự động điền theo quốc gia. Cửa hàng tại quốc gia có nhiều múi giờ có thể chọn múi giờ địa phương thực tế.",
     "timezoneLabel": "Múi giờ",
-    "welcome": "Chào mừng đến với FloCafe"
+    "welcome": "Chào mừng đến với FloCafe",
+    "garhJaisalLabel": "Nhà hàng Garh Jaisal",
+    "garhJaisalDesc": "Thiết lập nhà hàng Garh Jaisal Haveli",
+    "garhJaisalDetails": "Thiết lập mặc định cho nhà hàng Garh Jaisal Haveli: INR, dịch vụ FineDine trả sau, 10 bàn, UPI, màn hình bếp và ứng dụng phục vụ. Thêm thực đơn và tài khoản nhân viên thực tế, sau đó kiểm tra cài đặt thuế trước lần bán đầu tiên."
   },
   "staff": {
     "addButton": "Thêm nhân viên",
@@ -2843,7 +2849,8 @@
     "roleServer": "Nhân viên phục vụ",
     "title": "Nhân viên",
     "updateButton": "Cập nhật",
-    "updatedToast": "Đã cập nhật nhân viên"
+    "updatedToast": "Đã cập nhật nhân viên",
+    "pinMustBeSixDigits": "PIN phải có đúng 6 chữ số"
   },
   "permissionMatrix": {
     "title": "Quyền theo vai trò",

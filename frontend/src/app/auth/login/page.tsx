@@ -116,7 +116,7 @@ function LoginContent() {
       })
       .catch(() => {});
 
-    fetch('/api/auth/pin-users')
+    fetch('/api/auth/pin-users?scope=pos')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (active && Array.isArray(data?.users)) {
@@ -205,7 +205,7 @@ function LoginContent() {
 
   const handlePinLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPinUser || pin.length < 4) return;
+    if (!selectedPinUser || pin.length < 6) return;
     setLoading(true);
     setPinError(null);
     try {
@@ -400,7 +400,7 @@ function LoginContent() {
                         setPin(e.target.value.replace(/\D/g, '').slice(0, 6));
                         if (pinError) setPinError(null);
                       }}
-                      placeholder="••••"
+                      placeholder="••••••"
                       className="text-center tracking-widest text-lg font-mono"
                     />
                   </div>
@@ -483,7 +483,7 @@ function LoginContent() {
                     <Button
                       type="submit"
                       data-testid="pin-login-submit"
-                      disabled={loading || pin.length < 4}
+                      disabled={loading || pin.length !== 6}
                       className="flex-1"
                     >
                       {loading ? t('signingIn') : t('signIn')}

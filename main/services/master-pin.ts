@@ -3,7 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
 
-const PIN_REGEX = /^\d{4}$/;
+const PIN_REGEX = /^\d{6}$/;
+const ACCEPTED_PIN_REGEX = /^(?:\d{4}|\d{6})$/;
 const RATE_LIMIT_MAX_ATTEMPTS = 5;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
@@ -48,7 +49,7 @@ function writeBlob(blob: MasterPinBlob): void {
 
 function savePin(pin: string): void {
   if (!PIN_REGEX.test(pin)) {
-    throw new Error('Master PIN must be exactly 4 digits');
+    throw new Error('Master PIN must be exactly 6 digits');
   }
   const existing = readBlob();
   const now = new Date().toISOString();
@@ -71,7 +72,7 @@ export function resetMasterPin(pin: string): void {
 
 export function verifyMasterPin(pin: string): boolean {
   const blob = readBlob();
-  if (!blob) return false;
+  if (!blob || !ACCEPTED_PIN_REGEX.test(pin)) return false;
   return bcrypt.compareSync(pin, blob.hash);
 }
 
@@ -113,33 +114,49 @@ export type MasterPinAuthResult =
   | { ok: false; status: number; error: string };
 
 /** Authorizes master PIN for Express middleware and ipcMain handlers. */
-export function authorizeMasterPin(pin: string | undefined, rateLimitKey: string): MasterPinAuthResult {
+export function authorizeMasterPin(
+  pin: string | undefined,
+  rateLimitKey: string,
+): MasterPinAuthResult {
   if (!isMasterPinAvailable()) {
     // Block operations when OS-backed encryption is unavailable to prevent bypasses.
     return {
       ok: false,
       status: 503,
-      error: 'Master PIN is not available on this device (OS encryption unavailable). ' +
-             'Master PIN-gated operations require a desktop environment with keyring support.',
+      error:
+        'Master PIN is not available on this device (OS encryption unavailable). ' +
+        'Master PIN-gated operations require a desktop environment with keyring support.',
     };
   }
 
   if (!isMasterPinSet()) {
-    return { ok: false, status: 409, error: 'Master PIN is not set on this device yet. Set one in Settings first.' };
+    return {
+      ok: false,
+      status: 409,
+      error: 'Master PIN is not set on this device yet. Set one in Settings first.',
+    };
   }
 
   if (isMasterPinRateLimited(rateLimitKey)) {
-    return { ok: false, status: 429, error: 'Too many incorrect Master PIN attempts. Try again later.' };
+    return {
+      ok: false,
+      status: 429,
+      error: 'Too many incorrect Master PIN attempts. Try again later.',
+    };
   }
 
-  if (!pin || typeof pin !== 'string' || !PIN_REGEX.test(pin)) {
+  if (!pin || typeof pin !== 'string' || !ACCEPTED_PIN_REGEX.test(pin)) {
     return { ok: false, status: 403, error: 'Invalid Master PIN' };
   }
 
   if (!verifyMasterPin(pin)) {
     recordMasterPinFailedAttempt(rateLimitKey);
     if (isMasterPinRateLimited(rateLimitKey)) {
-      return { ok: false, status: 429, error: 'Too many incorrect Master PIN attempts. Try again later.' };
+      return {
+        ok: false,
+        status: 429,
+        error: 'Too many incorrect Master PIN attempts. Try again later.',
+      };
     }
     return { ok: false, status: 403, error: 'Invalid Master PIN' };
   }

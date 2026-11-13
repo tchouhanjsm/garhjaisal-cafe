@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "టికెట్ సృష్టించబడి చెల్లింపు క్యూకు పంపబడింది.",
     "ticketNumber": "టికెట్ నంబర్",
     "paymentTicketInstruction": "చెల్లించడానికి ఈ టికెట్ను చెల్లింపు కౌంటర్కు తీసుకెళ్లండి.",
-    "selectCounter": "కౌంటర్ ఎంచుకోండి"
+    "selectCounter": "కౌంటర్ ఎంచుకోండి",
+    "roomNumberLabel": "హోటల్ గది నంబర్",
+    "roomNumberPlaceholder": "గది నం. (ఐచ్ఛికం)"
   },
   "printTest": {
     "amt": "మొత్తం",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 గంటలు",
     "refundWindow4h": "4 గంటలు",
     "refundWindowSameDay": "అదే వ్యాపార రోజు",
-    "refundOwnerUnlimitedNote": "యజమానులు తమ స్టాఫ్ ఆమోద పిన్తో ఏదైనా గత ఆర్డర్కు ఎప్పుడైనా రీఫండ్ను ఆమోదించగలరు."
+    "refundOwnerUnlimitedNote": "యజమానులు తమ స్టాఫ్ ఆమోద పిన్తో ఏదైనా గత ఆర్డర్కు ఎప్పుడైనా రీఫండ్ను ఆమోదించగలరు.",
+    "masterPinCurrentInvalid": "చెల్లుబాటు అయ్యే ప్రస్తుత 4 లేదా 6 అంకెల మాస్టర్ PIN నమోదు చేయండి"
   },
   "setup": {
     "alreadyCompleted": "ఈ ఇన్స్టాల్లో సెటప్ ఇప్పటికే పూర్తయింది. లాగిన్కు మళ్లిస్తోంది…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "నేను FloPOS యొక్క",
     "timezoneHint": "మీ దేశం నుండి ముందే నింపబడింది. బహుళ-టైమ్జోన్ దేశాలలోని స్టోర్లు తమ వాస్తవ స్థానిక టైమ్జోన్ను ఎంచుకోవచ్చు.",
     "timezoneLabel": "టైమ్జోన్",
-    "welcome": "FloCafe కు స్వాగతం"
+    "welcome": "FloCafe కు స్వాగతం",
+    "garhJaisalLabel": "Garh Jaisal రెస్టாரెంట్",
+    "garhJaisalDesc": "Garh Jaisal Haveli రెస్టారెంట్ సెటప్",
+    "garhJaisalDetails": "Garh Jaisal Haveli రెస్టారెంట్ ప్రాథమిక అమరికలు: INR, FineDine తర్వాత చెల్లింపు విధానం, 10 టేబుళ్లు, UPI, కిచెన్ తెర మరియు వెయిటర్ యాప్. మొదటి అమ్మకానికి ముందు మీ మెనూ, సిబ్బంది ఖాతాలు జోడించి పన్ను అమరికలు పరిశీలించండి."
   },
   "staff": {
     "addButton": "సిబ్బందిని జోడించు",
@@ -2843,7 +2849,8 @@
     "roleServer": "సర్వర్",
     "title": "సిబ్బంది",
     "updateButton": "అప్డేట్",
-    "updatedToast": "సిబ్బంది అప్డేట్ చేయబడ్డారు"
+    "updatedToast": "సిబ్బంది అప్డేట్ చేయబడ్డారు",
+    "pinMustBeSixDigits": "PIN ఖచ్చితంగా 6 అంకెలు ఉండాలి"
   },
   "permissionMatrix": {
     "title": "పాత్ర అనుమతులు",
