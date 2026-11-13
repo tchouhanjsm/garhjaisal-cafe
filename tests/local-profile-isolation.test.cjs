@@ -62,7 +62,8 @@ assert.equal(
   'the dedicated Garh Jaisal test-profile launcher must be available',
 );
 assert.ok(
-  profileLauncherSource.includes("FLO_PROFILE: 'garh-jaisal-test'"),
+  profileLauncherSource.includes("const profileName = 'garh-jaisal-test'") &&
+    profileLauncherSource.includes('FLO_PROFILE: profileName'),
   'the Garh Jaisal test launcher must force the isolated test profile',
 );
 assert.ok(

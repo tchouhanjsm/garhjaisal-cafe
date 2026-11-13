@@ -1,4 +1,4 @@
-/** Daily automatic database backups kept outside the app's data folder. */
+/** Daily backups; named profiles keep their copies inside their isolated data directory. */
 
 import { app } from 'electron';
 import { randomUUID } from 'node:crypto';
@@ -20,11 +20,7 @@ const BACKUP_FILE_PATTERN =
 export function getLocalBackupDir(): string {
   const isolatedDatabasePath = process.env.FLO_E2E_DB_PATH?.trim();
   if (isolatedDatabasePath) {
-    return path.join(
-      path.dirname(path.resolve(isolatedDatabasePath)),
-      'FloCafe',
-      'Backups',
-    );
+    return path.join(path.dirname(path.resolve(isolatedDatabasePath)), 'FloCafe', 'Backups');
   }
 
   // Named profiles and native E2E userData must never share the default
