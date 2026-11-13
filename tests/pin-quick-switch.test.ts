@@ -584,9 +584,21 @@ async function run() {
 
   const auditRows = db
     .prepare(
-      "SELECT user_id, event_type, outcome FROM auth_audit_log WHERE event_type = 'pin_login' ORDER BY id ASC",
+      "SELECT user_id, event_type, outcome, details_json FROM auth_audit_log WHERE event_type = 'pin_login' ORDER BY id ASC",
     )
-    .all() as Array<{ user_id: string; event_type: string; outcome: string }>;
+    .all() as Array<{
+    user_id: string;
+    event_type: string;
+    outcome: string;
+    details_json: string | null;
+  }>;
+  const auditReason = (row: (typeof auditRows)[number]) => {
+    try {
+      return JSON.parse(row.details_json || '{}').reason;
+    } catch {
+      return null;
+    }
+  };
   assertOrThrow(
     auditRows.some((r) => r.user_id === 'owner-1' && r.outcome === 'success'),
     'Audit log records successful owner PIN sign-in',
@@ -596,9 +608,20 @@ async function run() {
     'Audit log records successful cashier PIN sign-in',
   );
   assertEqualOrThrow(
-    auditRows.filter((r) => r.user_id === cashierId && r.outcome === 'failure').length,
+    auditRows.filter(
+      (r) => r.user_id === cashierId && r.outcome === 'failure' && auditReason(r) === 'invalid_pin',
+    ).length,
     5,
-    'Audit log records 5 failed PIN attempts for cashier',
+    'Audit log records exactly 5 incorrect PIN attempts for cashier',
+  );
+  assertOrThrow(
+    auditRows.some(
+      (r) =>
+        r.user_id === cashierId &&
+        r.outcome === 'failure' &&
+        auditReason(r) === 'surface_permission_denied',
+    ),
+    'Audit log separately records a valid PIN blocked by the Server App permission',
   );
   assertOrThrow(
     auditRows.some((r) => r.user_id === cashierId && r.outcome === 'rate_limited'),
