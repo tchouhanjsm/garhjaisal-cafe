@@ -77,6 +77,8 @@ function testWaiterMobileTableFirst(): void {
 
   assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = loadedTables\[0\]\.id/);
   assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = firstTable\.id/);
+  assert.match(serverApp, /selectedTableIdRef\.current = localDraft\.tableId/);
+  assert.match(serverApp, /setSelectedTableId\(localDraft\.tableId\)/);
   assert.match(serverApp, /disabled=\{sending \|\| !selectedTableId\}/);
   assert.match(serverApp, /TABLE_STATUS_LABEL_KEYS\[table\.status \?\? 'available'\]/);
   assert.match(serverApp, /table\.status === 'cleaning'/);
