@@ -77,22 +77,22 @@ function testInlinePickerPreservesGlobalShortcuts(): void {
   const inlineModalGuard = [
     'const anyModalOpen =',
     "    (showTablePicker && tablePickerPresentation === 'modal') || anyOtherModalOpen;",
-  ].join('\\n');
+  ].join('\n');
   const f2ToggleGuard = [
     '      onToggleTables: () => {',
     '        if (isRestaurant && cart.orderType === \'dine_in\' && tablesRequired) {',
     "          if (showTablePicker && tablePickerPresentation === 'modal') closeTablePicker();",
     '          else openTablePicker();',
-  ].join('\\n');
+  ].join('\n');
   const escapeGuard = [
     "        if (showTablePicker && tablePickerPresentation === 'modal') {",
     '          closeTablePicker();',
     '          return true;',
-  ].join('\\n');
+  ].join('\n');
   const keyboardPickerGuard = [
     '      tablePickerOpen:',
     "        showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,",
-  ].join('\\n');
+  ].join('\n');
 
   assert.ok(posPage.includes(inlineModalGuard));
   assert.ok(posPage.includes(f2ToggleGuard));
