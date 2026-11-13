@@ -386,7 +386,7 @@ async function run() {
     assertEqual(login1.status, 200, 'Issuer 1 (/api/auth/login) succeeds');
     const pinLogin1 = await request(app)
       .post('/api/auth/pin-login')
-      .send({ user_id: 'jwt-owner-1', pin: '2468' });
+      .send({ user_id: 'jwt-owner-1', pin: '246810' });
     assertEqual(pinLogin1.status, 200, 'Issuer 2 (/api/auth/pin-login) succeeds');
     const select1 = await request(app)
       .post('/api/auth/tenants/select')
@@ -430,7 +430,7 @@ async function run() {
     const pinChangeRes = await request(app)
       .put('/api/staff/jwt-owner-1')
       .set('Authorization', `Bearer ${login1.body.access_token}`)
-      .send({ pin: '1357' });
+      .send({ pin: '135790' });
     assertEqual(pinChangeRes.status, 200, 'Staff PIN change in same frozen millisecond succeeds');
 
     // Every pre-change token across Main API, Server App, and KDS must now be rejected (401)
@@ -532,9 +532,9 @@ async function run() {
       currency: 'INR',
       timezone: 'Asia/Kolkata',
       terms_accepted: true,
-      master_pin: '1234',
-      owner_approval_pin: '2468',
-      owner_approval_pin_confirmation: '2468',
+      master_pin: '123456',
+      owner_approval_pin: '246810',
+      owner_approval_pin_confirmation: '246810',
     });
     assertEqual(setupRes.status, 200, 'Issuer 5 (/api/auth/setup/initialize) succeeds');
     const setupToken = setupRes.body.access_token;
