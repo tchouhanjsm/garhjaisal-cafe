@@ -1285,7 +1285,9 @@
     "paymentTicketDesc": "Ticket creado y enviado a la cola de pagos.",
     "ticketNumber": "Número de ticket",
     "paymentTicketInstruction": "Lleve este ticket al mostrador de pago para abonar.",
-    "selectCounter": "Seleccionar mostrador"
+    "selectCounter": "Seleccionar mostrador",
+    "roomNumberLabel": "Número de habitación del hotel",
+    "roomNumberPlaceholder": "N.º de habitación (opcional)"
   },
   "printTest": {
     "amt": "Total",
@@ -2710,7 +2712,8 @@
     "refundWindow2h": "2 horas",
     "refundWindow4h": "4 horas",
     "refundWindowSameDay": "Mismo día comercial",
-    "refundOwnerUnlimitedNote": "Los propietarios siempre pueden aprobar reembolsos de cualquier pedido anterior con su PIN de aprobación de personal."
+    "refundOwnerUnlimitedNote": "Los propietarios siempre pueden aprobar reembolsos de cualquier pedido anterior con su PIN de aprobación de personal.",
+    "masterPinCurrentInvalid": "Introduce un PIN maestro actual válido de 4 o 6 dígitos"
   },
   "setup": {
     "alreadyCompleted": "La configuración ya se completó en esta instalación. Redirigiendo al inicio de sesión…",
@@ -2807,7 +2810,10 @@
     "termsIntro": "Acepto los",
     "timezoneHint": "Se completa con tu país. Los locales en países con varias zonas horarias pueden elegir su zona horaria real.",
     "timezoneLabel": "Zona horaria",
-    "welcome": "Bienvenido a FloCafe"
+    "welcome": "Bienvenido a FloCafe",
+    "garhJaisalLabel": "Garh Jaisal",
+    "garhJaisalDesc": "Configuración del restaurante Garh Jaisal Haveli",
+    "garhJaisalDetails": "Configuración inicial del restaurante Garh Jaisal Haveli: INR, servicio FineDine con pago posterior, 10 mesas, UPI, pantalla de cocina y aplicación para camareros. Añade tu menú y personal reales y configura los impuestos cuando estés listo."
   },
   "staff": {
     "addButton": "Agregar Personal",
@@ -2843,7 +2849,8 @@
     "roleServer": "Servidor",
     "title": "Personal",
     "updateButton": "Actualizar",
-    "updatedToast": "Personal actualizado"
+    "updatedToast": "Personal actualizado",
+    "pinMustBeSixDigits": "El PIN debe tener exactamente 6 dígitos"
   },
   "permissionMatrix": {
     "title": "Permisos por rol",
