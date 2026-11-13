@@ -1224,8 +1224,11 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
     const normalizedSetupProfile = String(setup_profile || 'express')
       .trim()
       .toLowerCase();
-    const selectedCountryCode =
-      normalizedSetupProfile === GARH_JAISAL_PROFILE.id ? GARH_JAISAL_PROFILE.country : country;
+    const isGarhJaisalSetup = normalizedSetupProfile === GARH_JAISAL_PROFILE.id;
+    let selectedCountryCode = country;
+    if (isGarhJaisalSetup) {
+      selectedCountryCode = GARH_JAISAL_PROFILE.country;
+    }
     const resolvedCountry =
       typeof selectedCountryCode === 'string' ? getCountryByCode(selectedCountryCode) : undefined;
     if (!resolvedCountry) {
@@ -1233,46 +1236,40 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
     }
     const displayName = String(name || '').trim();
     const normalizedBusinessType = String(business_type || 'restaurant').trim();
-    const normalizedServiceModel =
-      normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-        ? GARH_JAISAL_PROFILE.serviceModel
-        : String(service_model || 'qsr').trim().toLowerCase();
+    let normalizedServiceModel = String(service_model || 'qsr').trim().toLowerCase();
+    if (isGarhJaisalSetup) {
+      normalizedServiceModel = GARH_JAISAL_PROFILE.serviceModel;
+    }
     // Omitted currency derives from the country profile; an explicitly-invalid
     // one is rejected rather than silently replaced (resolveTenantCurrency's
     // read-time leniency is the wrong tool for validating a write).
-    const normalizedCurrency =
-      normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-        ? GARH_JAISAL_PROFILE.currency
-        : currency === undefined
-          ? resolvedCountry.currency
-          : typeof currency === 'string'
-            ? currency.trim().toUpperCase()
-            : currency;
+    let normalizedCurrency = currency;
+    if (isGarhJaisalSetup) {
+      normalizedCurrency = GARH_JAISAL_PROFILE.currency;
+    } else if (currency === undefined) {
+      normalizedCurrency = resolvedCountry.currency;
+    } else if (typeof currency === 'string') {
+      normalizedCurrency = currency.trim().toUpperCase();
+    }
     if (!isSupportedCurrencyCode(normalizedCurrency)) {
       return res.status(400).json({ error: 'Invalid currency' });
     }
-    const resolvedTimezone =
-      normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-        ? GARH_JAISAL_PROFILE.timezone
-        : timezone === undefined
-          ? resolvedCountry.timezone
-          : timezone;
+    let resolvedTimezone = timezone === undefined ? resolvedCountry.timezone : timezone;
+    if (isGarhJaisalSetup) {
+      resolvedTimezone = GARH_JAISAL_PROFILE.timezone;
+    }
     if (!isValidTimeZone(resolvedTimezone)) {
       return res.status(400).json({ error: 'Invalid timezone' });
     }
     const storeName = String(store_name || business_name || '').trim();
-    const resolvedStoreName =
-      normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-        ? GARH_JAISAL_PROFILE.businessName
-        : storeName || 'Store';
-    const outletAddress =
-      normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-        ? GARH_JAISAL_PROFILE.businessAddress
-        : String(business_address || address || '').trim();
-    const rawOutletPhone =
-      normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-        ? GARH_JAISAL_PROFILE.businessPhone
-        : String(business_phone || phone || '').trim();
+    let resolvedStoreName = storeName || 'Store';
+    let outletAddress = String(business_address || address || '').trim();
+    let rawOutletPhone = String(business_phone || phone || '').trim();
+    if (isGarhJaisalSetup) {
+      resolvedStoreName = GARH_JAISAL_PROFILE.businessName;
+      outletAddress = GARH_JAISAL_PROFILE.businessAddress;
+      rawOutletPhone = GARH_JAISAL_PROFILE.businessPhone;
+    }
     let outletPhone = '';
     if (rawOutletPhone) {
       const normPhone = normalizeOptionalPhone(rawOutletPhone, resolvedCountry.code);
@@ -1341,6 +1338,24 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
       }
     }
 
+    const resolvedInstagramHandle = String(
+      isGarhJaisalSetup ? GARH_JAISAL_PROFILE.instagramHandle : instagram_handle || '',
+    )
+      .trim()
+      .slice(0, 100);
+    const resolvedTaxRegistrationNumber = isGarhJaisalSetup ? '' : tax_registration_number;
+    const resolvedStateCode = isGarhJaisalSetup ? 'RJ' : state_code;
+    const resolvedTaxRegistered = isGarhJaisalSetup ? 'false' : tax_registered;
+    const resolvedBillingType = isGarhJaisalSetup
+      ? GARH_JAISAL_PROFILE.billingType
+      : billing_type || (normalizedServiceModel === 'qsr' ? 'prepaid' : 'postpaid');
+    const resolvedTablesRequired = isGarhJaisalSetup
+      ? String(GARH_JAISAL_PROFILE.tablesRequired)
+      : normalizedServiceModel === 'finedine';
+    const resolvedSplitChecks = isGarhJaisalSetup
+      ? String(GARH_JAISAL_PROFILE.splitChecksEnabled)
+      : 'false';
+
     let userId = '';
     const hashedPassword = bcrypt.hashSync(password, 10);
     const hashedApprovalPin = bcrypt.hashSync(ownerApprovalPin, 10);
@@ -1394,29 +1409,13 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         business_phone: outletPhone,
         address: outletAddress,
         phone: outletPhone,
-        instagram_handle: String(
-          normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-            ? GARH_JAISAL_PROFILE.instagramHandle
-            : instagram_handle || '',
-        )
-          .trim()
-          .slice(0, 100),
+        instagram_handle: resolvedInstagramHandle,
         email,
-        tax_registration_number:
-          normalizedSetupProfile === GARH_JAISAL_PROFILE.id ? '' : tax_registration_number,
-        state_code: normalizedSetupProfile === GARH_JAISAL_PROFILE.id ? 'RJ' : state_code,
-        tax_registered:
-          normalizedSetupProfile === GARH_JAISAL_PROFILE.id ? 'false' : tax_registered,
-        billing_type:
-          normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-            ? GARH_JAISAL_PROFILE.billingType
-            : billing_type || (normalizedServiceModel === 'qsr' ? 'prepaid' : 'postpaid'),
-        tables_required:
-          normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-            ? String(GARH_JAISAL_PROFILE.tablesRequired)
-            : normalizedServiceModel === 'finedine'
-              ? 'true'
-              : 'false',
+        tax_registration_number: resolvedTaxRegistrationNumber,
+        state_code: resolvedStateCode,
+        tax_registered: resolvedTaxRegistered,
+        billing_type: resolvedBillingType,
+        tables_required: String(resolvedTablesRequired),
         service_model: normalizedServiceModel,
         setup_profile: pendingCurrencyReset ? 'empty' : normalizedSetupProfile,
         onboarding_completed: 'true',
@@ -1431,11 +1430,8 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         ...(analyticsLevel ? { [PRODUCT_ANALYTICS_LEVEL_SETTING]: analyticsLevel } : {}),
         telemetry_scope:
           'usage_stats,country,app_version,platform,session_duration,feature_usage,error_diagnostics',
-        split_checks_enabled:
-          normalizedSetupProfile === GARH_JAISAL_PROFILE.id
-            ? String(GARH_JAISAL_PROFILE.splitChecksEnabled)
-            : 'false',
-        ...(normalizedSetupProfile === GARH_JAISAL_PROFILE.id
+        split_checks_enabled: resolvedSplitChecks,
+        ...(isGarhJaisalSetup
           ? {
               hotel_name: GARH_JAISAL_PROFILE.hotelName,
               room_number_enabled: String(GARH_JAISAL_PROFILE.roomNumberEnabled),
