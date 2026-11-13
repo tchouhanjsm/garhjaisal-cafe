@@ -12,6 +12,8 @@ const rootDir = path.resolve(__dirname, '..');
 const resetScript = path.join(rootDir, 'scripts/dev/nuclear-reset.sh');
 const i18nAddScript = path.join(rootDir, 'scripts/i18n-add.cjs');
 const buildFrontendScript = path.join(rootDir, 'scripts/build-frontend.cjs');
+const devSyncScriptPath = path.join(rootDir, 'scripts/dev/sync.sh');
+const devSyncScript = fs.readFileSync(devSyncScriptPath, 'utf8');
 
 function mkdirp(target: string) {
   fs.mkdirSync(target, { recursive: true });
@@ -31,6 +33,21 @@ function runReset(platform: string, env: NodeJS.ProcessEnv) {
 }
 
 function runTest() {
+  console.log('Testing safe development sync workflow...');
+  assert.match(devSyncScript, /git status --porcelain/);
+  assert.match(devSyncScript, /git fetch --prune/);
+  assert.match(devSyncScript, /git merge --ff-only/);
+  assert.match(devSyncScript, /package-lock\.json/);
+  assert.match(devSyncScript, /npm ci/);
+  assert.match(devSyncScript, /npm --prefix frontend ci/);
+  assert.match(devSyncScript, /exec npm run dev/);
+  assert.doesNotMatch(
+    devSyncScript,
+    /nuclear-reset|dev:reset|rm -rf[^\n]*(?:flo\.db|backups|Application Support)/i,
+    'development sync must not run a reset or remove application data',
+  );
+  console.log('✓ dev:sync fast-forwards safely, installs only on lockfile drift, and preserves local data');
+
   console.log('Testing i18n:add scaffolding validation...');
   const existingLanguage = spawnSync(process.execPath, [i18nAddScript, 'en'], {
     encoding: 'utf8',
