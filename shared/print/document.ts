@@ -1617,7 +1617,8 @@ export function buildKotDocument(printData: KotPrintData, printContext: PrintCon
           })
         : null,
     roomNumber:
-      typeof printData.order?.roomNumber === 'string' && printData.order.roomNumber.trim().length > 0
+      typeof printData.order?.roomNumber === 'string' &&
+      printData.order.roomNumber.trim().length > 0
         ? directionalText(printData.order.roomNumber.trim(), base)
         : null,
     orderType:
