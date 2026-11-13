@@ -260,7 +260,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
         email: `scheduled-refund-${runId}@flo.local`,
         password: 'Password123!',
         role: 'manager',
-        pin: '2468',
+        pin: '246810',
       },
     });
     expect(managerRes.ok()).toBeTruthy();
@@ -272,7 +272,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
         email: `scheduled-manager-${runId}@flo.local`,
         password: 'Password123!',
         role: 'manager',
-        pin: '1357',
+        pin: '135790',
       },
     });
     expect(extraApproverRes.ok()).toBeTruthy();
@@ -291,7 +291,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
         amount: 10,
         method: 'cash',
         approver_id: managerId,
-        override_pin: '2468',
+        override_pin: '246810',
       },
     });
     expect(partialRefundRes.status()).toBe(201);
@@ -313,7 +313,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
         amount: remainingRefund,
         method: 'cash',
         approver_id: managerId,
-        override_pin: '2468',
+        override_pin: '246810',
       },
     });
     expect(fullRefundRes.status()).toBe(201);
@@ -542,7 +542,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     if (await cancelOverlay.locator('#cancelApproverSelect').count()) {
       await cancelOverlay.locator('#cancelApproverSelect').selectOption(managerId!);
     }
-    await cancelOverlay.locator('#overridePin').fill('2468');
+    await cancelOverlay.locator('#overridePin').fill('246810');
     const blockedCancelRespPromise = page.waitForResponse((res) => {
       const url = new URL(res.url());
       return (
@@ -583,14 +583,14 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     const freshApproverOverlay = page.locator('.fixed.inset-0.z-50').last();
     await expect(freshApproverOverlay.locator('#refundApprover')).toBeVisible();
     await freshApproverOverlay.locator('#refundApprover').selectOption(managerId!);
-    await freshApproverOverlay.locator('#refundPin').fill('2468');
+    await freshApproverOverlay.locator('#refundPin').fill('246810');
     const staleApproversResponse = page.waitForResponse(
       (response) => new URL(response.url()).pathname === '/api/staff/approvers',
     );
     releaseStaleApprovers();
     await staleApproversResponse;
     await expect(freshApproverOverlay.locator('#refundApprover')).toHaveValue(managerId!);
-    await expect(freshApproverOverlay.locator('#refundPin')).toHaveValue('2468');
+    await expect(freshApproverOverlay.locator('#refundPin')).toHaveValue('246810');
     await freshApproverOverlay.getByRole('button', { name: 'Cancel', exact: true }).click();
 
     await page.route(
@@ -660,31 +660,31 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await refundOverlay1.locator('#refundAmount').fill('5');
     await expect(refundOverlay1.locator('#refundApprover')).toBeVisible();
     await refundOverlay1.locator('#refundApprover').selectOption(managerId!);
-    await refundOverlay1.locator('#refundPin').fill('2468');
+    await refundOverlay1.locator('#refundPin').fill('246810');
     await page.clock.fastForward(30000);
     await expect(refundOverlay1.locator('#refundApprover')).toHaveValue(managerId!);
-    await expect(refundOverlay1.locator('#refundPin')).toHaveValue('2468');
+    await expect(refundOverlay1.locator('#refundPin')).toHaveValue('246810');
     const earlyRefundTime = await page.evaluate(() => Date.now());
     await refundOverlay1.locator('#refundApprover').selectOption('refund-test-owner');
-    await refundOverlay1.locator('#refundPin').fill('1357');
+    await refundOverlay1.locator('#refundPin').fill('135790');
     await page.clock.fastForward(61 * 60 * 1000);
     await expect(refundOverlay1.getByText('Refund test owner')).toBeVisible();
-    await expect(refundOverlay1.locator('#refundPin')).toHaveValue('1357');
+    await expect(refundOverlay1.locator('#refundPin')).toHaveValue('135790');
     await page.clock.setSystemTime(earlyRefundTime);
     await page.clock.fastForward(30000);
     await refundOverlay1.locator('#refundApprover').selectOption(managerId!);
-    await refundOverlay1.locator('#refundPin').fill('2468');
+    await refundOverlay1.locator('#refundPin').fill('246810');
     await page.clock.fastForward(61 * 60 * 1000);
     await expect(refundOverlay1.getByText('Refund test owner')).toBeVisible();
     await expect(refundOverlay1.locator('#refundPin')).toHaveValue('');
     await page.clock.setSystemTime(earlyRefundTime);
     await page.clock.fastForward(30000);
     await refundOverlay1.locator('#refundApprover').selectOption(managerId!);
-    await refundOverlay1.locator('#refundPin').fill('2468');
+    await refundOverlay1.locator('#refundPin').fill('246810');
     await refundOverlay1.locator('#refundApprover').selectOption(extraApproverId!);
     await expect(refundOverlay1.locator('#refundPin')).toHaveValue('');
     await refundOverlay1.locator('#refundApprover').selectOption(managerId!);
-    await refundOverlay1.locator('#refundPin').fill('2468');
+    await refundOverlay1.locator('#refundPin').fill('246810');
     await expect(refundOverlay1.getByRole('button', { name: /Issue refund/i })).toBeEnabled();
     await refundOverlay1.getByRole('button', { name: /Issue refund/i }).click();
     await expect(page.getByText(/Refund issued/i).first()).toBeVisible();
@@ -701,7 +701,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await expect(refundOverlay2).toBeVisible();
     await expect(refundOverlay2.locator('#refundApprover')).toBeVisible();
     await refundOverlay2.locator('#refundApprover').selectOption(managerId!);
-    await refundOverlay2.locator('#refundPin').fill('2468');
+    await refundOverlay2.locator('#refundPin').fill('246810');
     await expect(refundOverlay2.getByRole('button', { name: /Issue refund/i })).toBeEnabled();
     await refundOverlay2.getByRole('button', { name: /Issue refund/i }).click();
     await expect(page.getByText(/Refund issued/i).first()).toBeVisible();
@@ -721,7 +721,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
       await finalCancelOverlay.locator('#cancelApproverSelect').selectOption(managerId!);
     }
     if (await finalCancelOverlay.locator('#overridePin').count()) {
-      await finalCancelOverlay.locator('#overridePin').fill('2468');
+      await finalCancelOverlay.locator('#overridePin').fill('246810');
     }
     await finalCancelOverlay.getByRole('button', { name: 'Confirm Cancel', exact: true }).click();
     await expect(page.getByText(/Order cancelled successfully/i).first()).toBeVisible();
