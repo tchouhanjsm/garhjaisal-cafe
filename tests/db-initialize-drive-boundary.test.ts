@@ -69,7 +69,7 @@ async function run(): Promise<void> {
   getDatabase().prepare(
     "INSERT OR IGNORE INTO users (id, name, password, role, is_active) VALUES ('owner-1', 'Owner', 'hash', 'owner', 1)"
   ).run();
-  resetMasterPin('1234');
+  resetMasterPin('123456');
 
   const app = express();
   app.use(express.json());
@@ -80,7 +80,7 @@ async function run(): Promise<void> {
   app.use('/api/db-tools', databaseToolsRoutes);
 
   const initialize = () => request(app).post('/api/db-tools/initialize')
-    .send({ master_pin: '1234', confirmation_phrase: 'INITIALIZE' });
+    .send({ master_pin: '123456', confirmation_phrase: 'INITIALIZE' });
 
   // Mirror app startup: the Drive service reconciles the boundary before any request.
   writeStaleIntent();
