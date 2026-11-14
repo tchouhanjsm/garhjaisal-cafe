@@ -20,7 +20,14 @@ Module._load = function (request: string, parent: unknown, isMain: boolean) {
   return originalLoad.apply(this, arguments as any);
 };
 
-const { MIGRATIONS, initDatabase, getDatabase, closeDatabase, now, upsertSettings } = require('../main/db');
+const {
+  MIGRATIONS,
+  initDatabase,
+  getDatabase,
+  closeDatabase,
+  now,
+  upsertSettings,
+} = require('../main/db');
 
 function runProfileUpgrade(profile: string, shouldGrantManager: boolean): void {
   activeTestDir = fs.mkdtempSync(path.join(os.tmpdir(), `flo-migration-v129-${profile}-`));
@@ -32,7 +39,9 @@ function runProfileUpgrade(profile: string, shouldGrantManager: boolean): void {
     const db = getDatabase();
     const timestamp = now();
     db.prepare(
-      'INSERT INTO users (id, name, email, password, role, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)',
+      `INSERT INTO users (
+        id, name, email, password, role, is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
     ).run(
       'migration-v129-owner',
       'Migration Owner',
@@ -54,7 +63,9 @@ function runProfileUpgrade(profile: string, shouldGrantManager: boolean): void {
     initDatabase();
     const grant = getDatabase()
       .prepare(
-        "SELECT effect FROM role_permission_overrides WHERE role = 'manager' AND permission_id = 'cash.day-close'",
+        `SELECT effect
+         FROM role_permission_overrides
+         WHERE role = 'manager' AND permission_id = 'cash.day-close'`,
       )
       .get() as { effect: string } | undefined;
 
