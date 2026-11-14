@@ -12,7 +12,7 @@
     "dev": "npm run clean && npm run build:frontend && npm run build && electron .",
     "dev:restart": "bash scripts/dev/restart.sh",
     "dev:sync": "bash scripts/dev/sync.sh",
-    "dev:garh-jaisal-test": "FLO_PROFILE=garh-jaisal-dev npm run dev",
+    "dev:garh-jaisal-test": "node scripts/dev/garh-jaisal-test.cjs",
     "dev:garh-jaisal-pilot": "FLO_PROFILE=garh-jaisal-pilot npm run dev",
     "dev:reset": "bash scripts/dev/nuclear-reset.sh",
     "dev:frontend": "cd frontend && npm run dev",
@@ -346,9 +346,8 @@
     "test:variant-pos-surface": "ts-node --transpile-only -P tests/tsconfig.json tests/variant-pos-surface.test.ts",
     "test:product-variants-screen": "ts-node --transpile-only -P tests/tsconfig.json tests/product-variants-screen.test.ts",
     "test:printer-text-size": "ts-node --transpile-only -P tests/tsconfig.json tests/printer-text-size.test.ts && node tests/run-electron-node-test.cjs tests/migration-printer-text-size.test.ts",
-    "test:local-profile-isolation": "node tests/local-profile-isolation.test.cjs",
-    "dev:staging": "FLO_PROFILE=staging FLO_MATRIX_OFFLINE=1 npm run dev",
-    "dev:garh-jaisal-test": "node scripts/dev/garh-jaisal-test.cjs"
+    "test:local-profile-isolation": "node tests/local-profile-isolation.test.cjs && node tests/garh-jaisal-pilot-contract.test.cjs",
+    "dev:staging": "FLO_PROFILE=staging FLO_MATRIX_OFFLINE=1 npm run dev"
   },
   "author": {
     "name": "Flo",
