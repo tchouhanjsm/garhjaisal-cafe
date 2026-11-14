@@ -66,6 +66,7 @@ Build the same tagged release from the approved commit with `npm run build:win`.
 - Before any schema migration, complete and validate a local backup in the same data profile.
 - Preserve the existing SQLite database and profile settings during update/uninstall-reinstall.
 - Require an owner/manager to approve an update window and close the app before installation.
+- The main-process installation gate refuses restart while a cash shift is open, active orders or kitchen items remain, a held order exists, a bill is unsettled, database maintenance is active, or the current business day has activity that has not been closed. It checks before PIN authorization, rechecks after PIN approval, and fails closed if state cannot be verified.
 - After update, verify schema version, database integrity, active menu, table/order access, and a test receipt before resuming service.
 - Keep the previous installer and a tested backup available with recovery instructions. Do not downgrade a database with a newer schema; use the app's existing recovery path.
 
