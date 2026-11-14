@@ -133,6 +133,7 @@ export function buildBillPrintData(
       orderNumber: String(order?.order_number ?? ''),
       createdAt: String(order?.created_at ?? ''),
       tableName: String(order?.table?.name ?? ''),
+      roomNumber: String(order?.room_number ?? '').trim(),
       onlinePlatform: String(order?.online_platform ?? ''),
       externalOrderId: String(order?.external_order_id ?? ''),
       deliveryAddress: String(order?.delivery_address ?? ''),
@@ -708,6 +709,22 @@ export function renderBillDocumentToClassicLines(
           segment.sourceLines.main.push(
             block.table.label.primary.replace('{name}', block.table.name.text),
           );
+          segment.sourceControlLines.main.push(segment.main.at(-1) ?? '');
+        }
+        if (block.roomNumber) {
+          const roomLine = `Room: ${block.roomNumber.text}`;
+          segment.main.push(
+            '{CENTER}' +
+              truncateShapedLine(
+                roomLine,
+                cols,
+                options.arabicShaping,
+                options.language,
+                options.capabilities,
+              ) +
+              '{/CENTER}',
+          );
+          segment.sourceLines.main.push(roomLine);
           segment.sourceControlLines.main.push(segment.main.at(-1) ?? '');
         }
         segment.main.push(dash);
