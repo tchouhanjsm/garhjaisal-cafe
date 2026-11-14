@@ -629,6 +629,16 @@ async function main() {
     assert.equal(setting('tax_registered'), 'pending', 'GST remains pending accountant confirmation');
     assert.equal(setting('taxes_enabled'), 'false', 'tax calculation remains disabled until approved');
     assert.equal(
+      count('country_packs'),
+      1,
+      'Garh Jaisal does not activate an India tax pack while GST registration is pending',
+    );
+    assert.equal(
+      count('country_pack_versions'),
+      0,
+      'Garh Jaisal has no installed country tax pack versions before approval',
+    );
+    assert.equal(
       setting('tax_registration_number'),
       '',
       'GSTIN is left blank for later owner setup',

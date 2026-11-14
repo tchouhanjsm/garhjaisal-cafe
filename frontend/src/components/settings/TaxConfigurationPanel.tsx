@@ -380,7 +380,7 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
   );
 
   const loadList = useCallback(async () => {
-    const [response, settingResponse] = await Promise.all([
+    const [response, settingResponse, taxRegistrationResponse] = await Promise.all([
       api.get('/tax-packs'),
       api.get('/settings/taxes_enabled'),
       api.get('/settings/tax_registered'),
@@ -392,8 +392,7 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
     setPluginRequested(Boolean(requestId));
     setCountryPackUnavailable(Boolean(requestId));
     setTaxesEnabled(settingResponse.data.setting?.value === 'true');
-    const registrationResponse = await api.get('/settings/tax_registered');
-    setGstRegistrationPending(registrationResponse.data.setting?.value === 'pending');
+    setGstRegistrationPending(taxRegistrationResponse.data.setting?.value === 'pending');
     setSelectedPackId((current) => {
       if (current && nextPacks.some((pack) => pack.id === current)) return current;
       return nextPacks.find((pack) => pack.active_for_store)?.id || nextPacks[0]?.id || '';
