@@ -103,14 +103,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Temporary Oxfmt diagnostics
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'm5/garh-jaisal-mac-pilot-onboarding' }}
-        shell: bash
-        run: |
-          npx oxfmt --write -- main/db.ts main/update-install-safety.ts main/updater-shutdown.ts
-          git --no-pager diff -- main/db.ts main/update-install-safety.ts main/updater-shutdown.ts
-          exit 1
-
       - name: Validate default test-script coverage
         run: npm run test:script-coverage
 
