@@ -10399,9 +10399,7 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       if (profile?.value !== 'garh-jaisal') return;
 
       const owner = db
-        .prepare(
-          "SELECT id FROM users WHERE role = 'owner' AND is_active = 1 ORDER BY created_at, id LIMIT 1",
-        )
+        .prepare("SELECT id FROM users WHERE role = 'owner' AND is_active = 1 LIMIT 1")
         .get() as { id: string } | undefined;
       if (!owner) return;
 
