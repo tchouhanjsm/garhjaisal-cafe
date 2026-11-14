@@ -97,6 +97,7 @@ async function main() {
     });
     assertEqual(createRes.status, 200, 'owner can save an initial manual config');
     const packId = createRes.data.pack_id;
+    db.prepare("UPDATE products SET tax_category_id = 'standard' WHERE id = ?").run(product.id);
 
     console.log('   ✓ omitted manual price mode defaults to exclusive GST');
     const defaultModePreview = await api(baseUrl, '/api/tax/preview', {
@@ -185,6 +186,19 @@ async function main() {
       },
     });
     assertEqual(updateRes.status, 200, 'owner can remove a category by resubmitting without it');
+    const inclusivePreview = await api(baseUrl, '/api/tax/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { items: [{ product_id: product.id, quantity: 1 }] },
+    });
+    assertEqual(inclusivePreview.status, 200, 'manual inclusive tax preview succeeds');
+    assertEqual(inclusivePreview.data.summary.subtotal, 100, 'inclusive preview preserves menu subtotal');
+    assertEqual(inclusivePreview.data.summary.total, 100, 'inclusive preview keeps GST inside the menu price');
+    assertEqual(
+      Number(inclusivePreview.data.summary.tax_amount.toFixed(2)),
+      4.76,
+      'inclusive preview exposes the 5% GST component inside the ₹100 menu amount',
+    );
     const remappedEntities = updateRes.data.remapped.map((entry: any) => entry.entity).sort();
     assertEqual(
       remappedEntities.join(','),
