@@ -71,6 +71,7 @@ export interface BusinessForm {
   billingType: 'postpaid' | 'prepaid';
   tablesRequired: boolean;
   taxRegistered: boolean;
+  taxRegistrationStatus: 'pending' | 'registered' | 'unregistered';
   taxRegistrationNumber: string;
   businessPhone: string;
   businessAddress: string;
@@ -412,21 +413,31 @@ export function GeneralSettingsTab({
           </div>
           <div data-setting-section="store-tax-id" className="rounded-lg">
             <label className="block text-sm text-muted-foreground mb-1">{t('taxRegistered')}</label>
-            {isAdmin ? (
+            {isOwner ? (
               <select
-                value={form.taxRegistered ? 'yes' : 'no'}
+                value={form.taxRegistrationStatus}
                 onChange={(e) => {
-                  markHydrationTouched('taxRegistered');
-                  setForm((p) => ({ ...p, taxRegistered: e.target.value === 'yes' }));
+                  const status = e.target.value as BusinessForm['taxRegistrationStatus'];
+                  markHydrationTouched('taxRegistrationStatus');
+                  setForm((p) => ({
+                    ...p,
+                    taxRegistrationStatus: status,
+                    taxRegistered: status === 'registered',
+                  }));
                 }}
                 className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:ring-2 focus:ring-brand bg-card"
               >
-                <option value="yes">{t('yes')}</option>
-                <option value="no">{t('no')}</option>
+                <option value="pending">Pending accountant confirmation</option>
+                <option value="registered">{t('yes')}</option>
+                <option value="unregistered">{t('no')}</option>
               </select>
             ) : (
               <p className="font-medium text-foreground">
-                {form.taxRegistered ? t('yes') : t('no')}
+                {form.taxRegistrationStatus === 'pending'
+                  ? 'Pending accountant confirmation'
+                  : form.taxRegistrationStatus === 'registered'
+                    ? t('yes')
+                    : t('no')}
               </p>
             )}
           </div>
