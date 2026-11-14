@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/m5-format-once.yml
       - tests/print-parity.test.ts
+      - tests/manual-tax-config.test.ts
 
 permissions:
   contents: write
@@ -24,15 +25,15 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Format the parity test with pinned Oxfmt
-        run: npx oxfmt --write -- tests/print-parity.test.ts
+        run: npx oxfmt --write -- tests/print-parity.test.ts tests/manual-tax-config.test.ts
       - name: Commit formatter output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- tests/print-parity.test.ts
+          git add -- tests/print-parity.test.ts tests/manual-tax-config.test.ts
           if git diff --cached --quiet; then
             echo "Oxfmt found no changes."
           else
-            git commit -m "style: format backend room diagnostic test"
+            git commit -m "style: format M5 tax and room regression tests"
             git push origin HEAD:m5/garh-jaisal-mac-pilot-onboarding
           fi
