@@ -36,6 +36,8 @@ The waiter/captain Server App runs in a phone browser and talks to the selected 
 9. Confirm the payment methods Cash, Card, and UPI. UPI is recorded as paid only after the payment is confirmed through the existing payment flow; displaying a QR code is not payment confirmation.
 10. Leave tax calculation disabled until accountant confirmation. The tax settings page displays a pending GST registration warning. Do not select a country tax pack or enter a rate until the owner confirms registration status and the applicable configuration.
 
+**Final business-day closure:** The Garh Jaisal preset grants the Manager role an explicit `allow` override for `cash.day-close`. Owner and Manager can therefore close the final business day in this profile; Cashier, Server, and Chef do not receive this grant. This is separate from individual cash shifts. The preset does not change `cash.shifts.open`, `cash.shifts.view`, or `cash.shifts.close`, nor the existing own-shift and manager/owner-any-shift rules.
+
 ## Backup and restore boundary
 
 The existing database backup operation checkpoints SQLite WAL and creates a self-contained database snapshot. Profile-local automatic backups are kept under that profile's `userData/FloCafe/Backups` directory. Database maintenance recovery artifacts are held in the selected profile's `userData/backups` directory.

@@ -59,10 +59,11 @@ import {
 // Leaf keys of the `nav` message namespace (use-intl resolves leaf keys
 // within the namespace scope, so no dotted keys).
 type NavKey = keyof AppConfig['Messages']['nav'];
+type NavLabelKey = NavKey | 'dayClose';
 
 interface NavItem {
   href: string;
-  labelKey: NavKey;
+  labelKey: NavLabelKey;
   icon: LucideIcon;
   permission: PermissionId;
   businessTypes: string[] | null;
@@ -77,6 +78,13 @@ const ALL_NAV_ITEMS: NavItem[] = [
     icon: LayoutDashboard,
     permission: 'dashboard.view',
     businessTypes: null,
+  },
+  {
+    href: '/day-close',
+    labelKey: 'dayClose',
+    icon: Lock,
+    permission: 'cash.day-close',
+    businessTypes: ['restaurant'],
   },
   {
     href: '/orders',
@@ -157,6 +165,7 @@ export default function AppSidebar() {
     usePosSettingsStore();
   const { isMobile, setOpenMobile } = useSidebar();
   const t = useTranslations('nav');
+  const tDashboard = useTranslations('dashboard');
   const tPos = useTranslations('pos');
   const tCommon = useTranslations('common');
   const { confirm, ConfirmDialog } = useConfirm();
@@ -175,6 +184,8 @@ export default function AppSidebar() {
         : tSettings('themeSystem');
   const ThemeModeIcon = themeModeIcon;
 
+  const getNavLabel = (labelKey: NavLabelKey) =>
+    labelKey === 'dayClose' ? tDashboard('closeShift') : t(labelKey);
   const businessType = currentTenant?.business_type || 'restaurant';
   const navItems = ALL_NAV_ITEMS.filter((item) => {
     if (item.href === '/tables' && !tablesRequired) return false;
@@ -291,7 +302,7 @@ export default function AppSidebar() {
                     !hrefQuery && (pathname === hrefPath || pathname?.startsWith(hrefPath + '/'));
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={isActive} tooltip={t(item.labelKey)}>
+                      <SidebarMenuButton asChild isActive={isActive} tooltip={getNavLabel(item.labelKey)}>
                         <Link href={item.href} onClick={closeMobile}>
                           <span className="relative flex size-4 shrink-0 items-center justify-center">
                             <item.icon className="size-4 shrink-0" />
@@ -302,7 +313,7 @@ export default function AppSidebar() {
                               />
                             )}
                           </span>
-                          <span>{t(item.labelKey)}</span>
+                          <span>{getNavLabel(item.labelKey)}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

@@ -87,6 +87,37 @@ function main(): void {
   }
   assert.equal(isPermissionId('unknown.permission'), false, 'unknown permission IDs are rejected');
 
+  assert.equal(
+    defaultPermissionIdsForRole('owner').includes('cash.day-close'),
+    true,
+    'owner keeps the global day-close default',
+  );
+  for (const role of ['manager', 'cashier', 'server', 'chef'] as const) {
+    assert.equal(
+      defaultPermissionIdsForRole(role).includes('cash.day-close'),
+      false,
+      `${role} does not receive the global day-close default`,
+    );
+  }
+  for (const role of ['owner', 'manager', 'cashier'] as const) {
+    for (const permissionId of ['cash.shifts.open', 'cash.shifts.view', 'cash.shifts.close'] as const) {
+      assert.equal(
+        defaultPermissionIdsForRole(role).includes(permissionId),
+        true,
+        `${role} keeps existing ${permissionId} default access`,
+      );
+    }
+  }
+  for (const role of ['server', 'chef'] as const) {
+    for (const permissionId of ['cash.shifts.open', 'cash.shifts.view', 'cash.shifts.close'] as const) {
+      assert.equal(
+        defaultPermissionIdsForRole(role).includes(permissionId),
+        false,
+        `${role} does not gain ${permissionId} by this policy change`,
+      );
+    }
+  }
+
   seedUser(db, 'owner-permissions', 'owner');
   seedUser(db, 'manager-permissions', 'manager');
   seedUser(db, 'cashier-permissions', 'cashier');

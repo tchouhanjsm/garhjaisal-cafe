@@ -29,5 +29,9 @@ export const GARH_JAISAL_PROFILE = {
       role: 'manager',
       permissionId: 'reports.financial.view',
     },
+    {
+      role: 'manager',
+      permissionId: 'cash.day-close',
+    },
   ],
 } as const;

@@ -9,6 +9,22 @@ assert.match(profileSource, /taxRegistered:\s*null/);
 assert.match(profileSource, /kdsEnabled:\s*false/);
 assert.match(profileSource, /paymentMethods:\s*\['UPI'\]/);
 assert.doesNotMatch(profileSource, /paymentMethods:\s*\[[^\]]*['"]Cash['"][^\]]*['"]Card['"]/);
+assert.match(
+  profileSource,
+  /rolePermissionOverrides:[\s\S]*?role:\s*'manager',[\s\S]*?permissionId:\s*'cash\.day-close'/,
+);
+
+const sidebarSource = fs.readFileSync(
+  path.join(root, 'frontend/src/components/layout/Sidebar.tsx'),
+  'utf8',
+);
+assert.match(sidebarSource, /href:\s*'\/day-close'[\s\S]*?permission:\s*'cash.day-close'/);
+const dayClosePageSource = fs.readFileSync(
+  path.join(root, 'frontend/src/app/(dashboard)/day-close/page.tsx'),
+  'utf8',
+);
+assert.ok(dayClosePageSource.includes("tenantCan(currentTenant, 'cash.day-close')"));
+assert.ok(dayClosePageSource.includes('<CashCloseModal model={cashClose} />'));
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 assert.equal(
