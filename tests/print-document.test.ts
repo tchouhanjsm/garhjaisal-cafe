@@ -293,12 +293,7 @@ console.log('\n▶ Block construction (fixture bill)');
     'native receipt byte output includes the optional room number',
   );
   const noRoomOrder = { ...roomFixture.order, room_number: '   ' };
-  const noRoomData = buildBillPrintData(
-    noRoomOrder,
-    roomFixture.bill,
-    roomFixture.business,
-    false,
-  );
+  const noRoomData = buildBillPrintData(noRoomOrder, roomFixture.bill, roomFixture.business, false);
   assert.equal(
     blockOf(buildBillDocument(noRoomData, roomContext), 'document-meta').roomNumber,
     null,

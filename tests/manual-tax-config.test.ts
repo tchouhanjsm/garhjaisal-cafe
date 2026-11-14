@@ -55,9 +55,10 @@ async function main() {
     'Manual Tax Product',
     100,
     {
-    tax_type: 'none',
-    tax_category_id: null,
-  });
+      tax_type: 'none',
+      tax_category_id: null,
+    },
+  );
   db.prepare(
     `INSERT INTO addon_groups (id, name) VALUES ('manual-tax-addon-group', 'Extras')`,
   ).run();
@@ -156,11 +157,14 @@ async function main() {
       assertEqual(res.status, 201, `override created for ${target.entity_type}`);
     }
     assertEqual(
-      db.prepare(`SELECT COUNT(*) AS c FROM tax_overrides`).get().c, 5,
+      db.prepare(`SELECT COUNT(*) AS c FROM tax_overrides`).get().c,
+      5,
       'five overrides exist before the category rename',
     );
 
-    console.log('\n3. Owner removes "Reduced" from the manual config (resubmits with only "Standard")');
+    console.log(
+      '\n3. Owner removes "Reduced" from the manual config (resubmits with only "Standard")',
+    );
     const updateRes = await api(baseUrl, '/api/tax-packs/manual-config', {
       method: 'POST',
       headers: owner.authHeader,
@@ -197,11 +201,15 @@ async function main() {
 
     console.log('\n4. Every override in the database now points at a category that still exists');
     const survivingCategoryIds = new Set(
-      (db.prepare(`
+      (
+        db
+          .prepare(`
         SELECT category.category_id FROM tax_categories AS category
         JOIN country_packs AS pack ON pack.active_version_id = category.pack_version_id
         WHERE pack.id = ?
-      `).all(packId) as Array<{ category_id: string }>).map((row) => row.category_id),
+      `)
+          .all(packId) as Array<{ category_id: string }>
+      ).map((row) => row.category_id),
     );
     const overrideRows = db
       .prepare(`SELECT entity_type, value_json FROM tax_overrides`)

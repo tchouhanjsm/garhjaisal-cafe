@@ -638,8 +638,7 @@ export function buildBillDocument(printData: PrintData, printContext: PrintConte
             name: directionalText(order.tableName, base),
           })
         : null,
-    roomNumber:
-      order.roomNumber?.trim() ? directionalText(order.roomNumber.trim(), base) : null,
+    roomNumber: order.roomNumber?.trim() ? directionalText(order.roomNumber.trim(), base) : null,
   });
 
   // A delivery address is what makes this a customer-details block, so it drives the heading too.
