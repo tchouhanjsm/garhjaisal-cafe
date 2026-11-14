@@ -9,9 +9,7 @@ import {
 import { resolveRegionalSnapshot } from './countries';
 import { listOpenSessions } from './services/shift-session-gate';
 
-export type UpdateInstallSafetyResult =
-  | { ok: true }
-  | { ok: false; code: string; error: string };
+export type UpdateInstallSafetyResult = { ok: true } | { ok: false; code: string; error: string };
 
 function blocked(code: string, error: string): UpdateInstallSafetyResult {
   return { ok: false, code, error };
