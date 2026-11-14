@@ -29,7 +29,9 @@ const { getUpdateInstallSafety } = require('../main/update-install-safety');
 function insertOrder(status: string, createdAt = now(), updatedAt = createdAt): number {
   const result = getDatabase()
     .prepare(
-      'INSERT INTO orders (order_number, status, subtotal, total, created_at, updated_at) VALUES (?, ?, 0, 0, ?, ?)',
+      `INSERT INTO orders (
+        order_number, status, subtotal, total, created_at, updated_at
+      ) VALUES (?, ?, 0, 0, ?, ?)`,
     )
     .run(`SAFETY-${Math.random().toString(16).slice(2)}`, status, createdAt, updatedAt);
   return Number(result.lastInsertRowid);
@@ -75,7 +77,9 @@ async function main(): Promise<void> {
   const db = getDatabase();
   const timestamp = now();
   db.prepare(
-    'INSERT INTO users (id, name, email, password, role, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)',
+    `INSERT INTO users (
+      id, name, email, password, role, is_active, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
   ).run(
     'update-safety-owner',
     'Update Safety Owner',
@@ -101,7 +105,9 @@ async function main(): Promise<void> {
     );
 
     db.prepare(
-      'INSERT INTO cash_sessions (opened_by, opened_by_name, opened_at, opening_float_cents, status) VALUES (?, ?, ?, 0, ?)',
+      `INSERT INTO cash_sessions (
+        opened_by, opened_by_name, opened_at, opening_float_cents, status
+      ) VALUES (?, ?, ?, 0, ?)`,
     ).run('update-safety-owner', 'Update Safety Owner', timestamp, 'open');
     assert.equal(
       (getUpdateInstallSafety() as any).code,
@@ -120,8 +126,22 @@ async function main(): Promise<void> {
     clearOperationalRows();
     const completedOrder = insertOrder('completed');
     db.prepare(
-      'INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, subtotal, total, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    ).run(completedOrder, 'safety-product', 'Safety Product', 100, 1, 100, 100, 'pending', timestamp, timestamp);
+      `INSERT INTO order_items (
+        order_id, product_id, product_name, unit_price, quantity, subtotal, total,
+        status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      completedOrder,
+      'safety-product',
+      'Safety Product',
+      100,
+      1,
+      100,
+      100,
+      'pending',
+      timestamp,
+      timestamp,
+    );
     assert.equal(
       (getUpdateInstallSafety() as any).code,
       'pending-kitchen-work',
@@ -130,7 +150,9 @@ async function main(): Promise<void> {
 
     clearOperationalRows();
     db.prepare(
-      'INSERT INTO held_orders (id, table_id, items, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      `INSERT INTO held_orders (
+        id, table_id, items, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?)`,
     ).run('held-safety-order', 'T1', '[]', timestamp, timestamp);
     assert.equal(
       (getUpdateInstallSafety() as any).code,
@@ -141,7 +163,10 @@ async function main(): Promise<void> {
     clearOperationalRows();
     const unpaidOrder = insertOrder('completed');
     db.prepare(
-      'INSERT INTO bills (bill_number, order_id, subtotal, total, paid_amount, balance, payment_status, payment_details, created_at, updated_at) VALUES (?, ?, 100, 100, 0, 100, ?, ?, ?, ?)',
+      `INSERT INTO bills (
+        bill_number, order_id, subtotal, total, paid_amount, balance,
+        payment_status, payment_details, created_at, updated_at
+      ) VALUES (?, ?, 100, 100, 0, 100, ?, ?, ?, ?)`,
     ).run('SAFETY-UNPAID', unpaidOrder, 'unpaid', '[]', timestamp, timestamp);
     assert.equal(
       (getUpdateInstallSafety() as any).code,
