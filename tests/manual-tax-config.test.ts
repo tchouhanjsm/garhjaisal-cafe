@@ -31,6 +31,7 @@ const {
   createApp,
   startServer,
   seedOwnerUser,
+  seedManagerUser,
   seedCategory,
   seedProduct,
   api,
@@ -47,12 +48,15 @@ async function main() {
 
   const db = initTestDb();
   const owner = seedOwnerUser(db);
+  const manager = seedManagerUser(db);
   seedCategory(db, 'manual-tax-products', 'Manual Tax Products');
-  const product = seedProduct(db, 'manual-tax-product', 'manual-tax-products', 'Manual Tax Product', 100, {
+  seedProduct(db, 'manual-tax-product', 'manual-tax-products', 'Manual Tax Product', 100, {
     tax_type: 'none',
     tax_category_id: null,
   });
-  db.prepare(`INSERT INTO addon_groups (id, name) VALUES ('manual-tax-addon-group', 'Extras')`).run();
+  db.prepare(
+    `INSERT INTO addon_groups (id, name) VALUES ('manual-tax-addon-group', 'Extras')`,
+  ).run();
   db.prepare(`
     INSERT INTO addons (id, addon_group_id, name, price, tax_category_id)
     VALUES ('manual-tax-addon', 'manual-tax-addon-group', 'Extra Cheese', 20, NULL)
@@ -63,15 +67,131 @@ async function main() {
   const { baseUrl, server } = await startServer(app);
 
   try {
-    console.log('\n1. Owner creates a two-category manual config ("Standard" + "Reduced")');
+    console.log('\n0. GST registration stays pending until the owner confirms it');
+    db.prepare(
+      `INSERT INTO settings (key, value, updated_at) VALUES ('tax_registered', 'pending', CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET value = 'pending', updated_at = CURRENT_TIMESTAMP`,
+    ).run();
+    db.prepare(
+      `INSERT INTO settings (key, value, updated_at) VALUES ('taxes_enabled', 'false', CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET value = 'false', updated_at = CURRENT_TIMESTAMP`,
+    ).run();
+
+    const pendingRead = await api(baseUrl, '/api/settings/business', {
+      headers: owner.authHeader,
+    });
+    assertEqual(
+      pendingRead.status,
+      200,
+      'business Settings read succeeds while registration is pending',
+    );
+    assertEqual(
+      pendingRead.data.tax_registration_status,
+      'pending',
+      'business Settings preserves the pending registration status',
+    );
+    assertEqual(
+      pendingRead.data.tax_registered,
+      false,
+      'legacy boolean remains false-compatible without changing the tri-state status',
+    );
+
+    const unrelatedSave = await api(baseUrl, '/api/settings/business', {
+      method: 'PUT',
+      headers: owner.authHeader,
+      body: { business_name: 'Pending Tax Test Store', tax_registered: false },
+    });
+    assertEqual(unrelatedSave.status, 200, 'unrelated business fields can still be saved');
+    assertEqual(
+      unrelatedSave.data.tax_registration_status,
+      'pending',
+      'legacy false does not overwrite a pending registration status',
+    );
+
+    const manualWhilePending = await api(baseUrl, '/api/tax-packs/manual-config', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { categories: [] },
+    });
+    assertEqual(manualWhilePending.status, 409, 'manual tax setup is blocked while pending');
+    assertEqual(
+      manualWhilePending.data.code,
+      'tax_registration_pending',
+      'manual tax setup returns a clear pending-registration conflict',
+    );
+
+    const officialWhilePending = await api(baseUrl, '/api/tax-packs/ensure-country', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { country: 'IN' },
+    });
+    assertEqual(
+      officialWhilePending.status,
+      409,
+      'official tax-pack activation is blocked while pending',
+    );
+    assertEqual(
+      officialWhilePending.data.code,
+      'tax_registration_pending',
+      'official activation returns a clear pending-registration conflict',
+    );
+
+    const enableWhilePending = await api(baseUrl, '/api/settings/taxes_enabled', {
+      method: 'PUT',
+      headers: owner.authHeader,
+      body: { value: true },
+    });
+    assertEqual(enableWhilePending.status, 409, 'direct tax enabling is blocked while pending');
+    assertEqual(
+      enableWhilePending.data.code,
+      'tax_registration_pending',
+      'direct tax enabling returns a clear pending-registration conflict',
+    );
+
+    const managerConfirmation = await api(baseUrl, '/api/settings/business', {
+      method: 'PUT',
+      headers: manager.authHeader,
+      body: { tax_registration_status: 'registered' },
+    });
+    assertEqual(
+      managerConfirmation.status,
+      403,
+      'manager cannot confirm the restaurant tax registration status',
+    );
+
+    const ownerConfirmation = await api(baseUrl, '/api/settings/business', {
+      method: 'PUT',
+      headers: owner.authHeader,
+      body: { tax_registration_status: 'registered' },
+    });
+    assertEqual(ownerConfirmation.status, 200, 'owner can explicitly confirm registration');
+    assertEqual(
+      ownerConfirmation.data.tax_registration_status,
+      'registered',
+      'owner-confirmed registration status is returned explicitly',
+    );
+    assertEqual(
+      db.prepare(`SELECT value FROM settings WHERE key = 'taxes_enabled'`).get().value,
+      'false',
+      'confirming registration alone does not automatically enable tax calculation',
+    );
+
+    console.log('\n1. Owner creates a two-category manual config (exclusive by default)');
     const createRes = await api(baseUrl, '/api/tax-packs/manual-config', {
       method: 'POST',
       headers: owner.authHeader,
       body: {
-        inclusive: true,
         categories: [
-          { tempId: 'standard', label: 'Standard', components: [{ label: 'Tax 1', type: 'percent', value: '5' }] },
-          { tempId: 'reduced', label: 'Reduced', components: [{ label: 'Tax 1', type: 'percent', value: '2' }] },
+          {
+            tempId: 'standard',
+            label: 'Standard',
+            components: [{ label: 'Tax 1', type: 'percent', value: '5' }],
+          },
+          {
+            tempId: 'reduced',
+            label: 'Reduced',
+            components: [{ label: 'Tax 1', type: 'percent', value: '2' }],
+          },
         ],
         defaultProductCategoryTempId: 'standard',
         packagingCategoryTempId: 'standard',
@@ -81,6 +201,51 @@ async function main() {
     });
     assertEqual(createRes.status, 200, 'owner can save an initial manual config');
     const packId = createRes.data.pack_id;
+    db.prepare("UPDATE products SET tax_category_id = 'standard' WHERE id = ?").run(
+      'manual-tax-product',
+    );
+
+    console.log('   ✓ omitted manual price mode defaults to exclusive GST');
+    const defaultModePreview = await api(baseUrl, '/api/tax/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { items: [{ product_id: 'manual-tax-product', quantity: 1 }] },
+    });
+    assertEqual(defaultModePreview.status, 200, 'manual exclusive tax preview succeeds');
+    assertEqual(
+      defaultModePreview.data.summary.subtotal,
+      100,
+      'exclusive preview preserves menu subtotal',
+    );
+    assertEqual(
+      defaultModePreview.data.summary.tax_amount,
+      5,
+      'exclusive preview calculates 5% GST',
+    );
+    assertEqual(
+      defaultModePreview.data.summary.total,
+      105,
+      'exclusive preview adds GST to the payable total',
+    );
+    const defaultPackCalculation = await api(baseUrl, '/api/tax-packs/test-calculation', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: {
+        category_id: 'standard',
+        amount: 100,
+        tax_behavior: 'country_default',
+      },
+    });
+    assertEqual(
+      defaultPackCalculation.status,
+      200,
+      'country-default test calculation succeeds against the manual pack',
+    );
+    assertEqual(
+      Number(defaultPackCalculation.data.calculation.payableTotal),
+      105,
+      'country-default payable total adds exclusive 5% GST',
+    );
 
     console.log('\n2. Owner points every override type at the "Reduced" category');
     const overrideTargets = [
@@ -99,11 +264,14 @@ async function main() {
       assertEqual(res.status, 201, `override created for ${target.entity_type}`);
     }
     assertEqual(
-      db.prepare(`SELECT COUNT(*) AS c FROM tax_overrides`).get().c, 5,
+      db.prepare(`SELECT COUNT(*) AS c FROM tax_overrides`).get().c,
+      5,
       'five overrides exist before the category rename',
     );
 
-    console.log('\n3. Owner removes "Reduced" from the manual config (resubmits with only "Standard")');
+    console.log(
+      '\n3. Owner removes "Reduced" from the manual config (resubmits with only "Standard")',
+    );
     const updateRes = await api(baseUrl, '/api/tax-packs/manual-config', {
       method: 'POST',
       headers: owner.authHeader,
@@ -111,7 +279,11 @@ async function main() {
         override: true,
         inclusive: true,
         categories: [
-          { tempId: 'standard', label: 'Standard', components: [{ label: 'Tax 1', type: 'percent', value: '5' }] },
+          {
+            tempId: 'standard',
+            label: 'Standard',
+            components: [{ label: 'Tax 1', type: 'percent', value: '5' }],
+          },
         ],
         defaultProductCategoryTempId: 'standard',
         packagingCategoryTempId: 'standard',
@@ -120,23 +292,56 @@ async function main() {
       },
     });
     assertEqual(updateRes.status, 200, 'owner can remove a category by resubmitting without it');
+    const inclusivePreview = await api(baseUrl, '/api/tax/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { items: [{ product_id: 'manual-tax-product', quantity: 1 }] },
+    });
+    assertEqual(inclusivePreview.status, 200, 'manual inclusive tax preview succeeds');
+    assertEqual(
+      inclusivePreview.data.summary.subtotal,
+      100,
+      'inclusive preview preserves menu subtotal',
+    );
+    assertEqual(
+      inclusivePreview.data.summary.total,
+      100,
+      'inclusive preview keeps GST inside the menu price',
+    );
+    assertEqual(
+      Number(inclusivePreview.data.summary.tax_amount.toFixed(2)),
+      4.76,
+      'inclusive preview exposes the 5% GST component inside the ₹100 menu amount',
+    );
     const remappedEntities = updateRes.data.remapped.map((entry: any) => entry.entity).sort();
     assertEqual(
       remappedEntities.join(','),
-      ['addon_override', 'delivery_override', 'packaging_override', 'product_override', 'service_charge_override'].join(','),
+      [
+        'addon_override',
+        'delivery_override',
+        'packaging_override',
+        'product_override',
+        'service_charge_override',
+      ].join(','),
       'the response reports all five override types as remapped (product/addon base columns were never set to "reduced", so they are correctly absent)',
     );
     console.log('   ✓ save response reports every override entity type as remapped');
 
     console.log('\n4. Every override in the database now points at a category that still exists');
     const survivingCategoryIds = new Set(
-      (db.prepare(`
+      (
+        db
+          .prepare(`
         SELECT category.category_id FROM tax_categories AS category
         JOIN country_packs AS pack ON pack.active_version_id = category.pack_version_id
         WHERE pack.id = ?
-      `).all(packId) as Array<{ category_id: string }>).map((row) => row.category_id),
+      `)
+          .all(packId) as Array<{ category_id: string }>
+      ).map((row) => row.category_id),
     );
-    const overrideRows = db.prepare(`SELECT entity_type, value_json FROM tax_overrides`).all() as Array<{ entity_type: string; value_json: string }>;
+    const overrideRows = db
+      .prepare(`SELECT entity_type, value_json FROM tax_overrides`)
+      .all() as Array<{ entity_type: string; value_json: string }>;
     assertEqual(overrideRows.length, 5, 'all five overrides still exist (remapped, not deleted)');
     for (const row of overrideRows) {
       const categoryId = JSON.parse(row.value_json).categoryId;
@@ -144,23 +349,44 @@ async function main() {
         survivingCategoryIds.has(categoryId),
         `${row.entity_type} override now points at a category that exists (got "${categoryId}")`,
       );
-      assertEqual(categoryId, 'standard', `${row.entity_type} override was remapped to the new default category`);
+      assertEqual(
+        categoryId,
+        'standard',
+        `${row.entity_type} override was remapped to the new default category`,
+      );
     }
-    console.log('   ✓ every override entity type (product, addon, packaging, delivery, service_charge) was remapped, none left dangling');
+    console.log(
+      '   ✓ every override entity type (product, addon, packaging, delivery, service_charge) was remapped, none left dangling',
+    );
 
-    console.log('\n5. Checkout-path tax calculation no longer throws for the remapped product override');
+    console.log(
+      '\n5. Checkout-path tax calculation no longer throws for the remapped product override',
+    );
     const { calculateItemTax } = require('../main/services/tax');
     db.prepare("UPDATE settings SET value = 'true' WHERE key = 'taxes_enabled'").run();
     const tenant = {
       taxes_enabled: true,
       country: db.prepare("SELECT value FROM settings WHERE key = 'country'").get().value,
-      business_type: db.prepare("SELECT value FROM settings WHERE key = 'business_type'").get()?.value || 'restaurant',
+      business_type:
+        db.prepare("SELECT value FROM settings WHERE key = 'business_type'").get()?.value ||
+        'restaurant',
       state_code: '',
     };
-    const result = calculateItemTax(tenant, { id: 'manual-tax-product', tax_category_id: null, tax_category: null }, 100, null);
-    assertEqual(result.tax_type, 'inclusive', 'the previously-dangling product override resolves and calculates tax without throwing');
+    const result = calculateItemTax(
+      tenant,
+      { id: 'manual-tax-product', tax_category_id: null, tax_category: null },
+      100,
+      null,
+    );
+    assertEqual(
+      result.tax_type,
+      'inclusive',
+      'the previously-dangling product override resolves and calculates tax without throwing',
+    );
     assert(result.tax_amount > 0, 'a nonzero tax amount is computed against the remapped category');
-    console.log('   ✓ calculateItemTax succeeds against the remapped override instead of throwing "resolved unknown tax category"');
+    console.log(
+      '   ✓ calculateItemTax succeeds against the remapped override instead of throwing "resolved unknown tax category"',
+    );
   } finally {
     server.close();
     closeDatabase();

@@ -36,9 +36,11 @@ const {
   closeDatabase,
   getCurrentSchemaVersion,
   MIGRATIONS,
+  now,
 } = require('../main/db');
 const { cloudSync } = require('../main/services/cloud-sync');
 const { authRoutes } = require('../main/routes/auth');
+const { hasPermission } = require('../main/services/authorization');
 
 function count(table: string): number {
   const db = getDatabase();
@@ -624,9 +626,32 @@ async function main() {
     assert.equal(setting('billing_type'), 'postpaid', 'Garh Jaisal starts postpaid');
     assert.equal(setting('tables_required'), 'true', 'Garh Jaisal requires dine-in tables');
     assert.equal(setting('room_number_enabled'), 'true', 'optional room references are enabled');
-    assert.equal(setting('kds_enabled'), 'true', 'KDS is enabled');
+    assert.equal(setting('kds_enabled'), 'false', 'printed KOT workflow does not enable KDS');
     assert.equal(setting('server_app_enabled'), 'true', 'waiter Server App is enabled');
-    assert.equal(setting('tax_registered'), 'false', 'GST remains disabled at first run');
+    assert.equal(
+      setting('tax_registered'),
+      'pending',
+      'GST remains pending accountant confirmation',
+    );
+    assert.equal(
+      setting('taxes_enabled'),
+      'false',
+      'tax calculation remains disabled until approved',
+    );
+    assert.equal(count('country_packs'), 1, 'fresh setup keeps only the generic tax pack');
+    const indiaTaxPackVersions = getDatabase()
+      .prepare(`
+        SELECT COUNT(*) AS count
+        FROM country_pack_versions AS version
+        INNER JOIN country_packs AS pack ON pack.id = version.pack_id
+        WHERE pack.country = 'IN'
+      `)
+      .get() as { count: number };
+    assert.equal(
+      indiaTaxPackVersions.count,
+      0,
+      'no India tax pack version is installed while GST registration is pending',
+    );
     assert.equal(
       setting('tax_registration_number'),
       '',
@@ -639,6 +664,69 @@ async function main() {
       'cloud services are explicitly disabled for this local installation',
     );
     assert.equal(count('users'), 1, 'setup creates only the owner account');
+
+    const managerDayCloseGrant = getDatabase()
+      .prepare(
+        "SELECT effect FROM role_permission_overrides WHERE role = 'manager' AND permission_id = 'cash.day-close'",
+      )
+      .get() as { effect: string } | undefined;
+    assert.equal(
+      managerDayCloseGrant?.effect,
+      'allow',
+      'Garh Jaisal preset explicitly grants final business-day close to Managers',
+    );
+
+    const shiftPermissionOverrides = getDatabase()
+      .prepare(
+        "SELECT permission_id FROM role_permission_overrides WHERE role = 'manager' AND permission_id IN ('cash.shifts.open', 'cash.shifts.view', 'cash.shifts.close')",
+      )
+      .all();
+    assert.deepEqual(
+      shiftPermissionOverrides,
+      [],
+      'Garh Jaisal does not override individual shift permissions',
+    );
+
+    const permissionTestTimestamp = now();
+    const testPasswordHash = bcrypt.hashSync('TestPass123', 10);
+    for (const [id, role] of [
+      ['garh-test-manager', 'manager'],
+      ['garh-test-cashier', 'cashier'],
+    ] as const) {
+      getDatabase()
+        .prepare(
+          'INSERT INTO users (id, name, email, password, role, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)',
+        )
+        .run(
+          id,
+          id,
+          `${id}@test.local`,
+          testPasswordHash,
+          role,
+          permissionTestTimestamp,
+          permissionTestTimestamp,
+        );
+    }
+    assert.equal(
+      hasPermission('garh-test-manager', 'cash.day-close'),
+      true,
+      'Manager can close the final business day in the Garh Jaisal profile',
+    );
+    assert.equal(
+      hasPermission('garh-test-cashier', 'cash.day-close'),
+      false,
+      'Cashier cannot close the final business day in the Garh Jaisal profile',
+    );
+    for (const roleUserId of ['garh-test-manager', 'garh-test-cashier']) {
+      for (const permissionId of ['cash.shifts.open', 'cash.shifts.view', 'cash.shifts.close']) {
+        assert.equal(
+          hasPermission(roleUserId, permissionId),
+          true,
+          `${roleUserId} keeps existing ${permissionId} access`,
+        );
+      }
+    }
+
     assert.equal(count('tables'), 10, 'setup creates the ten approved restaurant tables');
     assert.equal(count('kitchen_stations'), 1, 'setup creates one default Kitchen station');
     const defaultKitchen = getDatabase()
@@ -663,7 +751,11 @@ async function main() {
     assert.equal(count('station_users'), 0, 'setup does not invent kitchen staff assignments');
     assert.equal(count('products'), 0, 'setup does not invent menu products or prices');
     assert.equal(count('categories'), 0, 'setup does not invent menu categories');
-    assert.equal(count('payment_methods'), 1, 'setup adds only the configured UPI payment method');
+    assert.deepEqual(
+      getDatabase().prepare('SELECT name FROM payment_methods ORDER BY sort_order, id').all(),
+      [{ name: 'UPI' }],
+      'setup seeds UPI as the custom payment method; Cash and Card remain built-in tender options',
+    );
     assert.equal(
       profileRefreshes,
       refreshesBeforeGarhSetup,

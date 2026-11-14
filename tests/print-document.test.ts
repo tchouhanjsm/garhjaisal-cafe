@@ -237,6 +237,69 @@ console.log('\n▶ Block construction (fixture bill)');
     );
   }
 
+  const roomFixture = buildParityFixtures();
+  const roomOrder = { ...roomFixture.order, room_number: '305' };
+  const roomPrintData = buildBillPrintData(
+    roomOrder,
+    roomFixture.bill,
+    roomFixture.business,
+    false,
+  );
+  const roomContext = buildBillPrintContext({
+    columns: 42,
+    language: 'en',
+    business: roomFixture.business,
+  });
+  const roomDocument = buildBillDocument(roomPrintData, roomContext);
+  assert.equal(
+    blockOf(roomDocument, 'document-meta').roomNumber?.text,
+    '305',
+    'optional room number crosses into the semantic receipt document',
+  );
+  const roomRendererOptions = {
+    columns: 42,
+    language: 'en',
+    locale: roomContext.locale,
+    currencySymbol: '₹',
+    trimDecimals: false,
+    useUnicode: true,
+    arabicShaping: false,
+    cutMode: 'full' as const,
+  };
+  for (const [renderer, lines] of [
+    ['classic', renderBillDocumentToClassicLines(roomDocument, roomRendererOptions)],
+    ['compact', renderBillDocumentToCompactLines(roomDocument, roomRendererOptions)],
+  ] as const) {
+    assert(
+      lines.some((line) => line.includes('Room: 305')),
+      `${renderer} receipt prints the optional room number`,
+    );
+  }
+  const nativeRoomLines = receiptDocumentLines(
+    roomOrder,
+    roomFixture.bill,
+    roomFixture.business,
+    'classic',
+    42,
+    true,
+    false,
+    false,
+    'en',
+    undefined,
+    'full',
+    GENERIC_THERMAL_CAPABILITIES,
+  );
+  assert(
+    nativeRoomLines?.lines.some((line) => line.includes('Room: 305')),
+    'native receipt preparation lines include the optional room number',
+  );
+  const noRoomOrder = { ...roomFixture.order, room_number: '   ' };
+  const noRoomData = buildBillPrintData(noRoomOrder, roomFixture.bill, roomFixture.business, false);
+  assert.equal(
+    blockOf(buildBillDocument(noRoomData, roomContext), 'document-meta').roomNumber,
+    null,
+    'blank optional room number is omitted from receipt metadata',
+  );
   assert.equal(
     blockOf(document, 'message').reprintBanner,
     null,

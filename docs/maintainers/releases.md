@@ -40,15 +40,48 @@ Unless the user turns it off, a desktop install checks for updates 5 seconds aft
 **Check for updates automatically** switch in **Settings > Updates** and the checkbox in the update
 prompt both write `updates.auto_check_enabled` through the `updates:get-auto-check` and
 `updates:set-auto-check` IPC pair. With the switch off, only a manual check from Settings or the
-application menu contacts the update feed. Updates never download on their own: when a check finds
-one, a prompt asks the user to download it or defer, and a deferred update stays downloadable from
-the update badge or Settings through the `download-update` IPC call.
+application menu contacts the update feed.
 
-When a downloaded update is ready, restarting from Settings or the update badge requires manager or
-owner Master PIN approval in the main process. The confirmation warns that POS, KDS, printing, and
-reports are unavailable while the update installs, that the service returns after restart, and that
-installation should not be started during business hours. Cancelling the prompt or failing PIN
-approval leaves the app running.
+For a packaged Windows NSIS installation, each successful check that finds a newer stable or
+opted-in beta release starts a background download automatically. The device also rechecks the feed
+every six hours while automatic checks are enabled, the app is online, and no update is already
+staged or downloading. The in-app badge shows download progress and then reports **Ready to install**.
+AppX/MSIX builds remain Store-managed; development and unpacked builds do not self-update. macOS and
+Linux retain the existing prompt-before-download behavior.
+
+Automatic delivery does **not** force a restart or install during restaurant service. The installer
+is staged until a manager or owner chooses **Restart now** and passes the main-process Master PIN
+check. Automatic installation on quit remains disabled.
+
+The main process independently verifies operational safety before it accepts the PIN and checks
+again immediately after PIN approval, before shutdown begins. Installation is refused while a cash
+shift is open, active orders or kitchen items remain, a held order exists, a bill is unsettled,
+database backup/restore maintenance is active, or the current tenant-local business day has activity
+that has not been closed. If the database or operational state cannot be read, installation fails
+closed and the app remains running. The confirmation still warns that POS, KDS, printing, and
+reports are unavailable while the update installs. Cancelling the prompt, failing PIN approval, or
+failing the operational gate leaves the app running.
+
+### Windows signing and deployment readiness
+
+The Windows release workflow now fails closed if signing is unavailable. Configure the
+`WINDOWS_CERTS` and `WINDOWS_CERTS_PASSWORD` GitHub secrets with the signing bundle accepted by
+electron-builder, and configure the `WINDOWS_SIGNING_SUBJECT` repository variable with the exact
+certificate Subject expected for the installer. Before Windows assets are uploaded, the release job
+runs Authenticode verification against the actual NSIS installer and AppX package files and rejects
+an invalid signature or a Subject mismatch. The immutable candidate manifest records Windows as
+signed only after that verification step passes. SmartScreen reputation is not inferred from a valid
+signature and remains outside this mechanical gate.
+
+The credentials and expected Subject are not configured by this code change. Until the repository
+secrets and variable are set to a real trusted certificate identity, Windows release publication is
+intentionally blocked. The automatic updater does not bypass Windows signature or installer checks.
+
+The installed app keeps its SQLite database and settings in Electron's per-user data directory,
+outside the NSIS application directory. Updating replaces application files; it does not replace the
+restaurant profile. On the next launch, the normal migration path performs its pre-migration backup
+and schema checks. Keep the normal local backup and restore process in place, and test one real
+Windows upgrade against a disposable profile before upgrading the hotel's production profile.
 
 ## Snap Store publication
 

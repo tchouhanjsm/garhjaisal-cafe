@@ -3137,7 +3137,12 @@ async function main() {
         'manager-sess',
       );
 
-      await withFixedClock('2026-11-14T10:00:00.000Z', async () => {
+      // Use a dedicated future business date, just like Section 11, so this
+      // combined scenario never collides with real-today or earlier test Z closes.
+      const comboBusinessDate = new RealDate(RealDate.now() + 31 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+      await withFixedClock(`${comboBusinessDate}T10:00:00.000Z`, async () => {
         // Step 1: Enable one_shift_per_staff = 'true'
         const enableComboPerStaff = await request(app)
           .put('/api/settings/one_shift_per_staff')
@@ -3304,7 +3309,7 @@ async function main() {
         );
 
         const xComboShiftB = await request(app)
-          .get(`/api/reports/x-report?date=2026-11-14&session_id=${comboShiftBId}`)
+          .get(`/api/reports/x-report?date=${comboBusinessDate}&session_id=${comboShiftBId}`)
           .set('Authorization', `Bearer ${managerPinToken}`);
         const xComboShiftBRep = xComboShiftB.body?.xReport;
         assert(
@@ -3324,7 +3329,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-14',
+            business_date: comboBusinessDate,
             opening_float_cents: 10000,
             counted_cash_cents: 10000,
           });
@@ -3347,7 +3352,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-14',
+            business_date: comboBusinessDate,
             opening_float_cents: 10000,
             counted_cash_cents: 10000,
           });
@@ -3371,7 +3376,7 @@ async function main() {
           .post('/api/cash-closures')
           .set('Authorization', `Bearer ${s11OwnerToken}`)
           .send({
-            business_date: '2026-11-14',
+            business_date: comboBusinessDate,
             opening_float_cents: 10000,
             counted_cash_cents: 10000,
           });
@@ -3389,10 +3394,10 @@ async function main() {
 
         // Step 8: Verify X report and Z report JSON and CSV exports reconcile with the corrected payment method and totals
         const xComboDay = await request(app)
-          .get('/api/reports/x-report?date=2026-11-14')
+          .get('/api/reports/x-report?date=${comboBusinessDate}')
           .set('Authorization', `Bearer ${managerPinToken}`);
         const zComboDay = await request(app)
-          .get('/api/reports/z-report?date=2026-11-14')
+          .get('/api/reports/z-report?date=${comboBusinessDate}')
           .set('Authorization', `Bearer ${managerPinToken}`);
         assert(
           xComboDay.status === 200 &&
@@ -3410,10 +3415,10 @@ async function main() {
         );
 
         const xCsvExport = await request(app)
-          .get('/api/reports/x-report/export?date=2026-11-14&format=csv')
+          .get('/api/reports/x-report/export?date=${comboBusinessDate}&format=csv')
           .set('Authorization', `Bearer ${managerPinToken}`);
         const zCsvExport = await request(app)
-          .get('/api/reports/z-report/export?date=2026-11-14&format=csv')
+          .get('/api/reports/z-report/export?date=${comboBusinessDate}&format=csv')
           .set('Authorization', `Bearer ${managerPinToken}`);
         assert(
           xCsvExport.status === 200 &&

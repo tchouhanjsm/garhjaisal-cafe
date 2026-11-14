@@ -301,6 +301,19 @@ export function renderBillDocumentToCompactLines(
       );
       metaSourceLines.push(meta.table.label.primary.replace('{name}', meta.table.name.text));
     }
+    if (meta.roomNumber) {
+      const roomLine = `Room: ${meta.roomNumber.text}`;
+      lines.push(
+        truncateShapedLine(
+          roomLine,
+          cols,
+          options.arabicShaping,
+          options.language,
+          options.capabilities,
+        ),
+      );
+      metaSourceLines.push(roomLine);
+    }
   }
   markGroup('document-meta', metaStart, metaSourceLines);
   const customerStart = lines.length;

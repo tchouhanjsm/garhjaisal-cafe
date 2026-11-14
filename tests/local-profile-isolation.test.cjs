@@ -61,6 +61,15 @@ assert.equal(
   'node scripts/dev/garh-jaisal-test.cjs',
   'the dedicated Garh Jaisal test-profile launcher must be available',
 );
+assert.equal(
+  packageJson.scripts['dev:garh-jaisal-pilot'],
+  'FLO_PROFILE=garh-jaisal-pilot npm run dev',
+  'the real restaurant pilot must use its own named profile',
+);
+assert.ok(
+  packageJson.scripts['dev:garh-jaisal-test'] !== packageJson.scripts['dev:garh-jaisal-pilot'],
+  'development and pilot launchers must not share their data profile',
+);
 assert.ok(
   profileLauncherSource.includes("const profileName = 'garh-jaisal-test'") &&
     profileLauncherSource.includes('FLO_PROFILE: profileName'),

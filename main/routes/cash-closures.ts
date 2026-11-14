@@ -2,7 +2,7 @@
  * Day-close (cierre de caja, issue #649).
  *
  * One close per store per tenant business day. POST /api/cash-closures:
- *  - Owner-only (manager/cashier/server are 403).
+ *  - Requires `cash.day-close` (Owner by default; Garh Jaisal explicitly grants Manager).
  *  - Validates: YYYY-MM-DD format, not in the future, integer cents >= 0.
  *  - Recomputes the day's aggregates server-side (never trusts client totals)
  *    using the verbatim financial-summary template (main/routes/reports.ts)

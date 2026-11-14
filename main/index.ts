@@ -106,6 +106,12 @@ import {
 } from './window-options';
 import { registerDirectUpdateIpcHandlers } from './update-ipc';
 import {
+  WINDOWS_UPDATE_CHECK_INTERVAL_MS,
+  shouldRunScheduledWindowsUpdateCheck,
+  supportsAutomaticWindowsUpdates,
+} from './update-policy';
+import { getUpdateInstallSafety } from './update-install-safety';
+import {
   applyTitleBarOverlayTheme,
   resolveTitleBarOverlayColors,
   resolveInitialIsDark,
@@ -316,7 +322,8 @@ function setUpdateStatus(next: StoredUpdateStatus): void {
 function setupAutoUpdater(): void {
   autoUpdater.logger = log;
   configureAutoUpdaterChannel();
-  // The user approves both the download and the restart-to-install.
+  // NSIS on Windows downloads a release in the background. Installation is still
+  // explicit, PIN-protected, and never occurs automatically on quit.
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
 
@@ -348,14 +355,30 @@ function setupAutoUpdater(): void {
     ) {
       return;
     }
-    console.log('[Update] Update available, awaiting user approval to download:', info.version);
-    updaterPhase = 'check';
-    setUpdateStatus({
+    const availableStatus: StoredUpdateStatus = {
       status: 'available',
       version: info.version,
       releaseDate: info.releaseDate,
       releaseNotes: info.releaseNotes,
-    });
+    };
+    updaterPhase = 'check';
+    if (isAutomaticWindowsUpdateTarget()) {
+      // Hold the available state for the shared download precondition without
+      // broadcasting a download prompt. downloadUpdate immediately publishes
+      // progress and keeps its cancellation/error handling path unchanged.
+      storedUpdateStatus = availableStatus;
+      const result = downloadUpdate('automatic');
+      if (!result.success) {
+        log.warn('[Update] Automatic Windows download did not start:', result.error);
+        setUpdateStatus(availableStatus);
+      }
+    } else {
+      log.info(
+        '[Update] Update available; waiting for the user to approve the download:',
+        info.version,
+      );
+      setUpdateStatus(availableStatus);
+    }
   });
 
   autoUpdater.on('update-not-available', () => {
@@ -514,6 +537,45 @@ function checkForUpdates(): void {
 
 let updateCheckToken: CancellationToken | null = null;
 let updateDownloadToken: CancellationToken | null = null;
+let scheduledWindowsUpdateCheck: NodeJS.Timeout | null = null;
+
+function isAutomaticWindowsUpdateTarget(): boolean {
+  return supportsAutomaticWindowsUpdates({
+    platform: process.platform,
+    packaged: app.isPackaged,
+    storeManaged: isStoreBuild,
+    developmentArtifact: isDevelopmentOrUnpackedArtifact({
+      defaultApp: (process as NodeJS.Process & { defaultApp?: boolean }).defaultApp === true,
+      packaged: app.isPackaged,
+      unpackedMarker: fs.existsSync(path.join(process.resourcesPath, UNPACKED_DEV_MARKER)),
+    }),
+  });
+}
+
+/** Poll the Windows NSIS stable/beta feed every six hours while automatic checks are enabled. */
+function startScheduledWindowsUpdateChecks(): void {
+  if (!isAutomaticWindowsUpdateTarget() || scheduledWindowsUpdateCheck) return;
+  scheduledWindowsUpdateCheck = setInterval(() => {
+    const shouldCheck = shouldRunScheduledWindowsUpdateCheck({
+      platform: process.platform,
+      packaged: app.isPackaged,
+      storeManaged: isStoreBuild,
+      developmentArtifact: isDevelopmentOrUnpackedArtifact({
+        defaultApp: (process as NodeJS.Process & { defaultApp?: boolean }).defaultApp === true,
+        packaged: app.isPackaged,
+        unpackedMarker: fs.existsSync(path.join(process.resourcesPath, UNPACKED_DEV_MARKER)),
+      }),
+      automaticChecksEnabled: readAutoUpdateCheckEnabled(),
+      offlineMode: isOfflineMode(),
+      installReady: isInstallReady(storedUpdateStatus, stagedUpdateReady),
+      checkOrDownloadInFlight: isUpdateCheckInFlight(storedUpdateStatus, updaterPhase),
+    });
+    if (!shouldCheck) return;
+    log.info('[Update] Running scheduled Windows update check');
+    checkForUpdates();
+  }, WINDOWS_UPDATE_CHECK_INTERVAL_MS);
+  scheduledWindowsUpdateCheck.unref?.();
+}
 
 const suspendUpdaterForOfflineMode = createSuspendUpdaterForOfflineMode({
   getPhase: () => updaterPhase,
@@ -532,12 +594,17 @@ const suspendUpdaterForOfflineMode = createSuspendUpdaterForOfflineMode({
   },
 });
 
-function downloadUpdate(): { success: boolean; error?: string } {
+function downloadUpdate(source: 'user' | 'automatic' = 'user'): {
+  success: boolean;
+  error?: string;
+} {
   if (isOfflineMode()) return { success: false, error: 'Offline mode is on' };
   if (!canStartUpdateDownload(storedUpdateStatus, updaterPhase, stagedUpdateReady)) {
     return { success: false, error: 'No update is waiting to be downloaded' };
   }
-  log.info(`[Update] User approved download of ${storedUpdateStatus.version ?? 'update'}`);
+  log.info(
+    `[Update] ${source === 'automatic' ? 'Automatically starting background download of' : 'User approved download of'} ${storedUpdateStatus.version ?? 'update'}`,
+  );
   updaterPhase = 'download';
   setUpdateStatus({ status: 'downloading', percent: 0, version: storedUpdateStatus.version });
   updateDownloadToken = new CancellationToken();
@@ -1680,6 +1747,7 @@ async function initialize(): Promise<void> {
         setUpdateStatus,
         restartAndInstallHandler: createRestartAndInstallHandler({
           isInstallReady: () => isInstallReady(storedUpdateStatus, stagedUpdateReady),
+          checkInstallSafety: () => getUpdateInstallSafety(),
           authorize: (pin) => authorizeMasterPin(pin, 'ipc:restart-and-install'),
           runCleanup,
           quitAndInstall: (isSilent, isForceRunAfter) =>
@@ -1719,6 +1787,7 @@ async function initialize(): Promise<void> {
       if (!isStoreBuild) {
         if (process.env.FLO_E2E_SKIP_OPTIONAL_NETWORK !== '1') {
           setupAutoUpdater();
+          startScheduledWindowsUpdateChecks();
           if (readAutoUpdateCheckEnabled()) {
             setTimeout(() => checkForUpdates(), 5000);
           } else {

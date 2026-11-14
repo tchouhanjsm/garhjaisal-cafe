@@ -10389,6 +10389,28 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       }
     },
   },
+  {
+    version: 129,
+    name: 'grant_garh_jaisal_manager_day_close',
+    up: () => {
+      const profile = db.prepare("SELECT value FROM settings WHERE key = 'setup_profile'").get() as
+        | { value?: string }
+        | undefined;
+      if (profile?.value !== 'garh-jaisal') return;
+
+      const owner = db
+        .prepare("SELECT id FROM users WHERE role = 'owner' AND is_active = 1 LIMIT 1")
+        .get() as { id: string } | undefined;
+      if (!owner) return;
+
+      const timestamp = now();
+      db.prepare(`
+        INSERT OR IGNORE INTO role_permission_overrides (
+          role, permission_id, effect, updated_by, created_at, updated_at
+        ) VALUES ('manager', 'cash.day-close', 'allow', ?, ?, ?)
+      `).run(owner.id, timestamp, timestamp);
+    },
+  },
 ];
 
 export function backfillWhatsAppMessageAttempts(

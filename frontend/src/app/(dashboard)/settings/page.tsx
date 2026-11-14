@@ -228,6 +228,19 @@ function waitBeforeRetryRead(signal: AbortSignal, baseMs: number): Promise<void>
 }
 
 // Sanitize prefix on load to alphanumeric characters so legacy values pass save validation.
+type TaxRegistrationStatus = 'pending' | 'registered' | 'unregistered';
+
+function normalizeTaxRegistrationStatus(
+  value: unknown,
+  legacyValue: unknown,
+): TaxRegistrationStatus {
+  if (value === 'pending' || value === 'registered' || value === 'unregistered') return value;
+  if (legacyValue === true || legacyValue === 'true' || legacyValue === 1 || legacyValue === '1') {
+    return 'registered';
+  }
+  return 'unregistered';
+}
+
 function sanitizeStoredNumberPrefix(value: string | null | undefined): string {
   return (value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
@@ -1833,6 +1846,7 @@ export default function SettingsPage() {
     billingType: 'postpaid',
     tablesRequired: true,
     taxRegistered: false,
+    taxRegistrationStatus: 'pending',
     taxRegistrationNumber: '',
     businessAddress: '',
     businessPhone: '',
@@ -2080,8 +2094,13 @@ export default function SettingsPage() {
         currency: d.currency || '',
         billingType: d.billing_type === 'prepaid' ? 'prepaid' : 'postpaid',
         tablesRequired: typeof d.tables_required === 'boolean' ? d.tables_required : true,
+        taxRegistrationStatus: normalizeTaxRegistrationStatus(
+          d.tax_registration_status,
+          d.tax_registered,
+        ),
         taxRegistered:
-          d.tax_registered === 'true' || d.tax_registered === true || d.tax_registered === 1,
+          normalizeTaxRegistrationStatus(d.tax_registration_status, d.tax_registered) ===
+          'registered',
         taxRegistrationNumber: d.tax_registration_number || '',
         businessAddress: d.business_address || '',
         businessPhone: d.business_phone || '',
@@ -2425,8 +2444,13 @@ export default function SettingsPage() {
           currency: d.currency || '',
           billingType: d.billing_type === 'prepaid' ? 'prepaid' : 'postpaid',
           tablesRequired: typeof d.tables_required === 'boolean' ? d.tables_required : true,
+          taxRegistrationStatus: normalizeTaxRegistrationStatus(
+            d.tax_registration_status,
+            d.tax_registered,
+          ),
           taxRegistered:
-            d.tax_registered === 'true' || d.tax_registered === true || d.tax_registered === 1,
+            normalizeTaxRegistrationStatus(d.tax_registration_status, d.tax_registered) ===
+            'registered',
           taxRegistrationNumber: d.tax_registration_number || '',
           businessAddress: d.business_address || '',
           businessPhone: d.business_phone || '',
@@ -3942,7 +3966,7 @@ export default function SettingsPage() {
         country: form.countryCode,
         billing_type: form.billingType,
         tables_required: form.tablesRequired,
-        tax_registered: form.taxRegistered,
+        tax_registration_status: form.taxRegistrationStatus,
         tax_registration_number: form.taxRegistrationNumber,
         business_address: form.businessAddress,
         business_phone: normalizedBusinessPhone,

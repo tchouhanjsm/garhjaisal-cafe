@@ -2441,10 +2441,13 @@ export function seedSetupProfile(
       )
       VALUES (?, 'Kitchen', 'Default kitchen station', NULL, NULL, NULL, NULL, 1, 0, ?, ?)
     `).run('stn-garh-jaisal-kitchen', timestamp, timestamp);
-    db.prepare(`
+    const insertPaymentMethod = db.prepare(`
       INSERT OR IGNORE INTO payment_methods (name, is_active, sort_order, created_at, updated_at)
-      VALUES ('UPI', 1, 10, ?, ?)
-    `).run(timestamp, timestamp);
+      VALUES (?, 1, ?, ?, ?)
+    `);
+    GARH_JAISAL_PROFILE.paymentMethods.forEach((name, index) => {
+      insertPaymentMethod.run(name, (index + 1) * 10, timestamp, timestamp);
+    });
   } else if (profile === 'express') {
     seedExpressRestaurant(db, serviceModel, language);
   } else if (profile === 'demo') {

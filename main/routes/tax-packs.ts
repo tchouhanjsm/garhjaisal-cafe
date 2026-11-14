@@ -24,6 +24,10 @@ import { TRUSTED_TAX_PACK_SIGNING_PUBLIC_KEY } from '../tax-packs/trusted-signin
 import { asyncHandler } from '../middleware/async-handler';
 import { getHttpRequestSignal } from '../shutdown';
 import { getCurrencyFractionDigits } from '../countries';
+import {
+  isTaxRegistrationPending,
+  taxRegistrationPendingResponse,
+} from '../services/tax-registration';
 
 const router = Router();
 const BUNDLED_PACKS_BY_ID = new Map(BUNDLED_COUNTRY_PACKS.map((pack) => [pack.id, pack]));
@@ -107,6 +111,12 @@ function activateInstalledPack(
   options: ActivateOptions = {},
 ): void {
   const db = getDatabase();
+  if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+    throw Object.assign(new Error(taxRegistrationPendingResponse().error), {
+      statusCode: 409,
+      code: 'tax_registration_pending',
+    });
+  }
   const validation = validationChecklist(version);
   if (!validation.valid) {
     throw Object.assign(new Error('Tax pack failed activation validation'), { statusCode: 400 });
@@ -1140,6 +1150,9 @@ router.post(
   requirePermission('tax-configuration.manage'),
   asyncHandler(async (req: Request, res: Response) => {
     try {
+      if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+        return res.status(409).json(taxRegistrationPendingResponse());
+      }
       const country = String(req.body?.country || getSettingValue('country') || '').toUpperCase();
       if (!/^[A-Z]{2}$/.test(country)) return res.status(400).json({ error: 'Invalid country' });
       const db = getDatabase();
@@ -1229,9 +1242,10 @@ router.post(
     } catch (error: any) {
       res.locals.postHogError = error;
       const statusCode = error.statusCode || 502;
-      return res
-        .status(statusCode)
-        .json({ error: error.message || 'Could not install the country tax plugin' });
+      return res.status(statusCode).json({
+        error: error.message || 'Could not install the country tax plugin',
+        ...(error.code ? { code: error.code } : {}),
+      });
     }
   }),
 );
@@ -1386,7 +1400,9 @@ function buildManualPack(body: any, country: string, currency: string): CountryP
     publishedAt: effectiveFrom,
     minFloVersion: '2.4.0',
     taxPoint: 'finalized_at',
-    inclusivePricingDefault: body?.inclusive !== false,
+    // Manual tax defaults to exclusive pricing so an omitted mode cannot silently
+    // leave the payable total equal to the subtotal. Owners can explicitly choose inclusive.
+    inclusivePricingDefault: body?.inclusive === true,
     registrationNumberLabel: 'Tax registration',
     categories,
     defaultCategories,
@@ -1407,6 +1423,9 @@ router.post(
   requirePermission('tax-packs.manage'),
   (req: Request, res: Response) => {
     try {
+      if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+        return res.status(409).json(taxRegistrationPendingResponse());
+      }
       const db = getDatabase();
       const country = String(getSettingValue('country') || '').toUpperCase();
       if (!/^[A-Z]{2}$/.test(country)) {
@@ -1415,6 +1434,9 @@ router.post(
           .json({ error: 'A valid store country must be set in Settings first' });
       }
       const currency = String(getSettingValue('currency') || 'USD').toUpperCase();
+      if (req.body?.inclusive !== undefined && typeof req.body.inclusive !== 'boolean') {
+        return res.status(400).json({ error: 'inclusive must be a boolean when provided' });
+      }
 
       const activeForCountry = db
         .prepare(`SELECT id, publisher FROM country_packs WHERE country = ? AND status = 'active'`)
@@ -1574,9 +1596,10 @@ router.post(
     } catch (error: any) {
       res.locals.postHogError = error;
       const statusCode = error.statusCode || 500;
-      return res
-        .status(statusCode)
-        .json({ error: error.message || 'Could not save manual tax configuration' });
+      return res.status(statusCode).json({
+        error: error.message || 'Could not save manual tax configuration',
+        ...(error.code ? { code: error.code } : {}),
+      });
     }
   },
 );
@@ -1855,6 +1878,9 @@ router.post(
   requirePermission('tax-packs.manage'),
   (req: Request, res: Response) => {
     try {
+      if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+        return res.status(409).json(taxRegistrationPendingResponse());
+      }
       const db = getDatabase();
       const pack = db.prepare('SELECT * FROM country_packs WHERE id = ?').get(req.params.packId) as
         | PackRow
@@ -1893,7 +1919,11 @@ router.post(
     } catch (error: any) {
       res.locals.postHogError = error;
       console.error('[Tax Packs] Activation failed:', error);
-      res.status(500).json({ error: 'Could not activate pack version' });
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        error: statusCode >= 500 ? 'Could not activate pack version' : error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
     }
   },
 );
@@ -1930,6 +1960,9 @@ router.post(
   requirePermission('tax-packs.manage'),
   (req: Request, res: Response) => {
     try {
+      if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+        return res.status(409).json(taxRegistrationPendingResponse());
+      }
       const db = getDatabase();
       const pack = db.prepare('SELECT * FROM country_packs WHERE id = ?').get(req.params.packId) as
         | PackRow
@@ -1984,7 +2017,11 @@ router.post(
     } catch (error: any) {
       res.locals.postHogError = error;
       console.error('[Tax Packs] Rollback failed:', error);
-      res.status(500).json({ error: 'Could not roll back tax pack' });
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        error: statusCode >= 500 ? 'Could not roll back tax pack' : error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
     }
   },
 );

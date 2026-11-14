@@ -104,6 +104,7 @@ An owner can flip any configurable cell for a role, or for one user, from the in
 | Payments     | Print bills and kitchen tickets                            |   ✓   |    ✓    |    ✓    |   —    |  —   |
 | Payments     | Open a cash shift                                          |   ✓   |    ✓    |    ✓    |   —    |  —   |
 | Payments     | Close own cash shift (owner/manager can close any)         |   ✓   |    ✓    |    ✓    |   —    |  —   |
+| Cash         | Close final business day (generic shipped default)        |   ✓   |    —    |    —    |   —    |  —   |
 | Customers    | View, search, and create customers                         |   ✓   |    ✓    |    ✓    |   ✓    |  —   |
 | Customers    | Edit customers                                             |   ✓   |    ✓    |    ✓    |   —    |  —   |
 | Customers    | Repair customer phone records                              |   ✓   |    ✓    |    —    |   —    |  —   |
@@ -153,6 +154,8 @@ every configurable permission, per role or for one staff member's exceptions. A 
 retains that user's exceptions; the editor shows their source (shipped default, role override, or
 user override) so they can be reviewed or cleared. **Staff > Permission change history** lists
 every save.
+
+**Business-day close.** The generic shipped default for `cash.day-close` remains Owner-only. The Garh Jaisal first-run preset adds an explicit Manager-role `allow` override, so Owner and Manager can perform final business-day reconciliation in that profile; Cashier, Server, and Chef remain denied by default. This is a separate permission and does not change any individual shift grant.
 
 **Cash shifts.** Opening, viewing, and closing shifts are gated by `cash.shifts.open`,
 `cash.shifts.view`, and `cash.shifts.close`. Non-`owner`/`manager` roles (such as `cashier`) may

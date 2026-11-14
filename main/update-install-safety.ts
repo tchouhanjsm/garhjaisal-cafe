@@ -1,0 +1,183 @@
+import {
+  getDatabase,
+  getSettingValue,
+  isDatabaseMaintenanceActive,
+  localDateInTimezone,
+  parseDbTimestamp,
+  tenantBusinessDayStartTime,
+} from './db';
+import { resolveRegionalSnapshot } from './countries';
+import { listOpenSessions } from './services/shift-session-gate';
+
+export type UpdateInstallSafetyResult = { ok: true } | { ok: false; code: string; error: string };
+
+function blocked(code: string, error: string): UpdateInstallSafetyResult {
+  return { ok: false, code, error };
+}
+
+function countRows(db: ReturnType<typeof getDatabase>, sql: string): number {
+  const row = db.prepare(sql).get() as { count?: number } | undefined;
+  return Number(row?.count ?? 0);
+}
+
+/**
+ * The updater is a main-process operation. It must independently prove that
+ * the restaurant is idle before it is allowed to close the POS runtime.
+ * Missing tables, unreadable state, and an active maintenance lock all fail
+ * closed so an update cannot interrupt an unknown operational state.
+ */
+export function getUpdateInstallSafety(at = new Date()): UpdateInstallSafetyResult {
+  try {
+    if (isDatabaseMaintenanceActive()) {
+      return blocked(
+        'database-maintenance',
+        'Database maintenance is in progress. Close the maintenance task before updating.',
+      );
+    }
+
+    const db = getDatabase();
+
+    if (listOpenSessions(db).length > 0) {
+      return blocked(
+        'open-cash-shift',
+        'An open cash shift remains. Close the shift before installing the update.',
+      );
+    }
+
+    if (
+      countRows(
+        db,
+        "SELECT COUNT(*) AS count FROM orders WHERE status IN ('pending', 'preparing', 'ready', 'served')",
+      ) > 0
+    ) {
+      return blocked(
+        'active-orders',
+        'Active restaurant orders remain. Complete or cancel them before installing the update.',
+      );
+    }
+
+    if (
+      countRows(
+        db,
+        "SELECT COUNT(*) AS count FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.status != 'cancelled' AND oi.status IN ('pending', 'preparing', 'ready')",
+      ) > 0
+    ) {
+      return blocked(
+        'pending-kitchen-work',
+        'Pending kitchen or KOT work remains. Complete it before updating.',
+      );
+    }
+
+    if (countRows(db, 'SELECT COUNT(*) AS count FROM held_orders') > 0) {
+      return blocked(
+        'held-orders',
+        'A held order is waiting. Resume or clear it before installing the update.',
+      );
+    }
+
+    if (
+      countRows(
+        db,
+        `
+          SELECT COUNT(*) AS count
+          FROM bills b
+          JOIN orders o ON o.id = b.order_id
+          WHERE b.payment_status NOT IN ('paid', 'refunded', 'partially_refunded')
+            AND COALESCE(b.balance, b.total, 0) > 0
+            AND o.status != 'cancelled'
+        `,
+      ) > 0
+    ) {
+      return blocked(
+        'unsettled-bills',
+        'Unsettled bills remain. Settle or resolve them before installing the update.',
+      );
+    }
+
+    const regional = resolveRegionalSnapshot({
+      country: getSettingValue('country') ?? undefined,
+      currency: getSettingValue('currency') ?? undefined,
+      timezone: getSettingValue('timezone') ?? undefined,
+    });
+    const businessDayStart = tenantBusinessDayStartTime(db);
+    // A business day can span midnight and an operator may forget to close it
+    // before the next local date begins. Check every tenant-local business
+    // date with recent activity, not only the date containing the install click.
+    const activityCutoff = new Date(at.getTime() - 48 * 60 * 60 * 1000)
+      .toISOString()
+      .replace('T', ' ')
+      .slice(0, 19);
+    const activityRows = db
+      .prepare(
+        `
+          SELECT activity_at
+          FROM (
+            SELECT created_at AS activity_at FROM orders WHERE created_at >= ?
+            UNION ALL
+            SELECT updated_at AS activity_at FROM orders WHERE updated_at >= ?
+            UNION ALL
+            SELECT created_at AS activity_at FROM order_items WHERE created_at >= ?
+            UNION ALL
+            SELECT updated_at AS activity_at FROM order_items WHERE updated_at >= ?
+            UNION ALL
+            SELECT created_at AS activity_at FROM order_audit_log WHERE created_at >= ?
+            UNION ALL
+            SELECT created_at AS activity_at FROM bills WHERE created_at >= ?
+            UNION ALL
+            SELECT updated_at AS activity_at FROM bills WHERE updated_at >= ?
+            UNION ALL
+            SELECT paid_at AS activity_at FROM bills WHERE paid_at >= ? AND paid_at IS NOT NULL
+            UNION ALL
+            SELECT created_at AS activity_at FROM refunds WHERE created_at >= ?
+            UNION ALL
+            SELECT created_at AS activity_at FROM cash_drawer_movements WHERE created_at >= ?
+            UNION ALL
+            SELECT voided_at AS activity_at FROM cash_drawer_movements WHERE voided_at >= ? AND voided_at IS NOT NULL
+            UNION ALL
+            SELECT opened_at AS activity_at FROM cash_sessions WHERE opened_at >= ?
+            UNION ALL
+            SELECT closed_at AS activity_at FROM cash_sessions WHERE closed_at >= ? AND closed_at IS NOT NULL
+          )
+          WHERE activity_at IS NOT NULL
+        `,
+      )
+      .all(...Array.from({ length: 13 }, () => activityCutoff)) as { activity_at: string }[];
+
+    const latestActivityByBusinessDate = new Map<string, Date>();
+    for (const row of activityRows) {
+      const activityAt = parseDbTimestamp(row.activity_at);
+      const activityBusinessDate = localDateInTimezone(
+        activityAt,
+        regional.timezone,
+        businessDayStart,
+      );
+      const previousLatest = latestActivityByBusinessDate.get(activityBusinessDate);
+      if (!previousLatest || activityAt.getTime() > previousLatest.getTime()) {
+        latestActivityByBusinessDate.set(activityBusinessDate, activityAt);
+      }
+    }
+
+    for (const [activityBusinessDate, latestActivityAt] of latestActivityByBusinessDate) {
+      const dayClose = db
+        .prepare("SELECT created_at FROM cash_closures WHERE scope = 'day' AND business_date = ?")
+        .get(activityBusinessDate) as { created_at: string } | undefined;
+      const activityIsAfterDayClose =
+        !dayClose || latestActivityAt.getTime() > parseDbTimestamp(dayClose.created_at).getTime();
+
+      if (activityIsAfterDayClose) {
+        return blocked(
+          'business-day-open',
+          `Business day ${activityBusinessDate} is still open. Complete day-close before installing the update.`,
+        );
+      }
+    }
+
+    return { ok: true };
+  } catch (error) {
+    console.error('[Update] Could not verify restaurant install safety:', error);
+    return blocked(
+      'status-unavailable',
+      'Could not verify restaurant status. Keep the app running and retry.',
+    );
+  }
+}

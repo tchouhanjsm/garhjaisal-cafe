@@ -1328,6 +1328,7 @@ async function testQuitAndInstallCleanupOrdering(): Promise<void> {
       isInstallingUpdate: () => isInstallingUpdate,
     });
     const handler = createRestartAndInstallHandler({
+      checkInstallSafety: () => ({ ok: true }),
       isInstallReady: () => true,
       authorize: () => ({ ok: true }),
       runCleanup: entrypoints.runCleanup,
@@ -1390,6 +1391,7 @@ async function testQuitAndInstallCleanupOrdering(): Promise<void> {
       isInstallingUpdate: () => isInstallingUpdate,
     });
     const handler = createRestartAndInstallHandler({
+      checkInstallSafety: () => ({ ok: true }),
       isInstallReady: () => true,
       authorize: () => ({ ok: true }),
       runCleanup: entrypoints.runCleanup,
@@ -1620,6 +1622,7 @@ async function testQuitAndInstallCleanupOrdering(): Promise<void> {
     let cleanupFinished = false;
     let installFailureHandled = false;
     const handler = createRestartAndInstallHandler({
+      checkInstallSafety: () => ({ ok: true }),
       isInstallReady: () => true,
       authorize: () => ({ ok: true }),
       runCleanup: async () => {
@@ -1706,6 +1709,121 @@ async function testQuitAndInstallCleanupOrdering(): Promise<void> {
     );
     assert.equal(installFailure, undefined, 'background updater error does not request a relaunch');
   }
+}
+
+async function testRestartAndInstallOperationalSafety(): Promise<void> {
+  let authorizeCalls = 0;
+  let cleanupCalls = 0;
+  let installCalls = 0;
+  let safetyCalls = 0;
+  const updateState: UpdateShutdownState = {
+    setInstallingUpdate: () => {},
+    setQuitting: () => {},
+  };
+
+  const blockedBeforePin = createRestartAndInstallHandler({
+    isInstallReady: () => true,
+    checkInstallSafety: () => {
+      safetyCalls++;
+      return {
+        ok: false,
+        code: 'open-cash-shift',
+        error: 'Close the active cash shift before installing.',
+      };
+    },
+    authorize: () => {
+      authorizeCalls++;
+      return { ok: true };
+    },
+    runCleanup: async () => {
+      cleanupCalls++;
+    },
+    quitAndInstall: () => {
+      installCalls++;
+    },
+    updateState,
+    onInstallFailure: () => {},
+    warn: () => {},
+    error: () => {},
+  });
+
+  const blockedResult = await blockedBeforePin({}, '123456');
+  assert.deepEqual(
+    blockedResult,
+    { success: false, error: 'Close the active cash shift before installing.' },
+    'the main-process safety gate refuses installation during an open shift',
+  );
+  assert.equal(safetyCalls, 1, 'unsafe operating state is checked before PIN authorization');
+  assert.equal(authorizeCalls, 0, 'unsafe state does not request or authorize a PIN');
+  assert.equal(cleanupCalls, 0, 'unsafe state does not start shutdown cleanup');
+  assert.equal(installCalls, 0, 'unsafe state never calls quitAndInstall');
+
+  safetyCalls = 0;
+  authorizeCalls = 0;
+  const becomesBusyDuringPin = createRestartAndInstallHandler({
+    isInstallReady: () => true,
+    checkInstallSafety: () => {
+      safetyCalls++;
+      return safetyCalls === 1
+        ? { ok: true }
+        : {
+            ok: false,
+            code: 'active-orders',
+            error: 'Complete active orders before installing.',
+          };
+    },
+    authorize: () => {
+      authorizeCalls++;
+      return { ok: true };
+    },
+    runCleanup: async () => {
+      cleanupCalls++;
+    },
+    quitAndInstall: () => {
+      installCalls++;
+    },
+    updateState,
+    onInstallFailure: () => {},
+    warn: () => {},
+    error: () => {},
+  });
+
+  const staleApprovalResult = await becomesBusyDuringPin({}, '123456');
+  assert.deepEqual(
+    staleApprovalResult,
+    { success: false, error: 'Complete active orders before installing.' },
+    'a second operational check catches work that starts after the initial check',
+  );
+  assert.equal(safetyCalls, 2, 'operational state is rechecked immediately after PIN approval');
+  assert.equal(authorizeCalls, 1, 'the second check occurs after PIN authorization');
+  assert.equal(cleanupCalls, 0, 'new active work prevents shutdown cleanup');
+  assert.equal(installCalls, 0, 'new active work prevents updater installation');
+
+  let verificationErrors = 0;
+  const unverifiable = createRestartAndInstallHandler({
+    isInstallReady: () => true,
+    checkInstallSafety: () => {
+      throw new Error('database unavailable');
+    },
+    authorize: () => ({ ok: true }),
+    runCleanup: async () => {
+      cleanupCalls++;
+    },
+    quitAndInstall: () => {
+      installCalls++;
+    },
+    updateState,
+    onInstallFailure: () => {},
+    warn: () => {},
+    error: () => {
+      verificationErrors++;
+    },
+  });
+  const unverifiableResult = await unverifiable({}, '123456');
+  assert.equal(unverifiableResult.success, false, 'an unverifiable database state fails closed');
+  assert.equal(verificationErrors, 1, 'the failed safety inspection is logged');
+  assert.equal(cleanupCalls, 0, 'failed safety inspection leaves the app running');
+  assert.equal(installCalls, 0, 'failed safety inspection never installs');
 }
 
 /**
@@ -1947,6 +2065,7 @@ async function testFailedWindowRecovery(): Promise<void> {
   await testOwnedServerStopEntrypoints();
   console.log('phase update install ordering');
   await testQuitAndInstallCleanupOrdering();
+  await testRestartAndInstallOperationalSafety();
   console.log('phase window recovery');
   await testFailedWindowRecovery();
   console.log('Shutdown lifecycle tests passed.');
