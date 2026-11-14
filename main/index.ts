@@ -110,6 +110,7 @@ import {
   shouldRunScheduledWindowsUpdateCheck,
   supportsAutomaticWindowsUpdates,
 } from './update-policy';
+import { getUpdateInstallSafety } from './update-install-safety';
 import {
   applyTitleBarOverlayTheme,
   resolveTitleBarOverlayColors,
@@ -1746,6 +1747,7 @@ async function initialize(): Promise<void> {
         setUpdateStatus,
         restartAndInstallHandler: createRestartAndInstallHandler({
           isInstallReady: () => isInstallReady(storedUpdateStatus, stagedUpdateReady),
+          checkInstallSafety: () => getUpdateInstallSafety(),
           authorize: (pin) => authorizeMasterPin(pin, 'ipc:restart-and-install'),
           runCleanup,
           quitAndInstall: (isSilent, isForceRunAfter) =>
