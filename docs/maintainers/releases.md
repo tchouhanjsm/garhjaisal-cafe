@@ -64,24 +64,64 @@ failing the operational gate leaves the app running.
 
 ### Windows signing and deployment readiness
 
-The Windows release workflow now fails closed if signing is unavailable. Configure the
-`WINDOWS_CERTS` and `WINDOWS_CERTS_PASSWORD` GitHub secrets with the signing bundle accepted by
-electron-builder, and configure the `WINDOWS_SIGNING_SUBJECT` repository variable with the exact
-certificate Subject expected for the installer. Before Windows assets are uploaded, the release job
-runs Authenticode verification against the actual NSIS installer and AppX package files and rejects
-an invalid signature or a Subject mismatch. The immutable candidate manifest records Windows as
-signed only after that verification step passes. SmartScreen reputation is not inferred from a valid
-signature and remains outside this mechanical gate.
+The Windows release workflow fails closed unless signing is configured. Set the
+`WINDOWS_CERTS` and `WINDOWS_CERTS_PASSWORD` GitHub secrets to the signing bundle accepted by
+electron-builder, and set the `WINDOWS_SIGNING_SUBJECT` repository variable to the exact
+Authenticode certificate Subject. Before Windows assets are uploaded, the release job verifies the
+actual NSIS installer and AppX package signatures and rejects an invalid signature or Subject
+mismatch. The immutable candidate manifest records Windows as signed only after that verification
+passes. A valid Authenticode signature does not itself prove SmartScreen reputation.
 
-The credentials and expected Subject are not configured by this code change. Until the repository
-secrets and variable are set to a real trusted certificate identity, Windows release publication is
-intentionally blocked. The automatic updater does not bypass Windows signature or installer checks.
+Until these values point to a real trusted certificate identity, the Windows release job is
+intentionally blocked. Do not remove the signature checks or distribute an unsigned installer to
+staff as a workaround. The automatic updater does not bypass Windows signature or installer checks.
 
 The installed app keeps its SQLite database and settings in Electron's per-user data directory,
 outside the NSIS application directory. Updating replaces application files; it does not replace the
 restaurant profile. On the next launch, the normal migration path performs its pre-migration backup
 and schema checks. Keep the normal local backup and restore process in place, and test one real
 Windows upgrade against a disposable profile before upgrading the hotel's production profile.
+
+### Windows pilot installation
+
+Use **Actions > Windows Pilot Installer > Run workflow** from the `main` branch after the Windows
+signing secret and variable above have been configured. The workflow builds only the x64 NSIS
+installer, verifies its Authenticode status and exact signer Subject, checks that both desktop and
+Start Menu shortcuts are enabled, and uploads the signed installer as a private Actions artifact
+for 14 days. It does not create a GitHub Release, publish an update feed, build an AppX package, or
+validate automatic updates. The artifact is for controlled pilot acceptance, not general staff
+distribution.
+
+The NSIS configuration creates a **Flo Cafe** desktop shortcut and a Start Menu shortcut. Verify
+both on the real Windows machine; a hosted build can check the packaging configuration and
+signature, but cannot prove that Windows Explorer, the desktop, firewall, or attached hardware
+behaves correctly on the hotel computer.
+
+#### Garh Jaisal Windows acceptance
+
+1. On a clean Windows install, download the signed pilot artifact from the Actions run and verify
+   the signer shown in the file's **Properties > Digital Signatures** tab.
+2. Run the installer, keep the desktop shortcut option enabled, finish installation, and confirm
+   that **Flo Cafe** appears on both the desktop and Start Menu. Open it using the desktop icon.
+3. Before creating a new owner, use the first-run **Restore from file** action to restore the
+   database backup exported from the Mac. Sign in with the restored owner account, then configure
+   a fresh Windows-local Master PIN; its encrypted value belongs to Windows secure storage and is
+   not carried inside the SQLite database backup.
+4. Confirm the restored Garh Jaisal menu, staff, 10 tables, room-number setting, and tax settings.
+   Keep the Mac staging profile separate; Windows becomes the only writable production database.
+5. Connect the Epson TM-T82X to the same trusted private LAN. Reserve its address in the router,
+   configure it once under **Settings > Printers**, and verify **Test Print**, a sample KOT, and a
+   customer receipt. Include a receipt check for the optional room number.
+6. Enable **Server App**, pair one captain phone using **Settings > Mobile Access**, and submit one
+   controlled test order. Verify that the Windows hub records it and the Epson prints the KOT.
+7. Complete a controlled order-to-payment-to-closing cycle, verify the cash and sales reconciliation,
+   and create a fresh Windows backup. Repeat the basic launch and printer test after restarting
+   Windows and the Epson.
+
+Do not hand the machine to staff for live service until this physical acceptance passes. Hosted CI
+cannot test printer paper, cutter behaviour, the hotel router, Windows firewall prompts, or the
+captain's actual phone browser. Keep the POS and printer endpoints on the trusted private business
+network; do not expose them directly to the public internet.
 
 ## Snap Store publication
 
