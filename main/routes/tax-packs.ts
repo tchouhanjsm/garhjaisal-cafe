@@ -1244,7 +1244,10 @@ router.post(
       const statusCode = error.statusCode || 502;
       return res
         .status(statusCode)
-        .json({ error: error.message || 'Could not install the country tax plugin' });
+        .json({
+          error: error.message || 'Could not install the country tax plugin',
+          ...(error.code ? { code: error.code } : {}),
+        });
     }
   }),
 );
@@ -1597,7 +1600,10 @@ router.post(
       const statusCode = error.statusCode || 500;
       return res
         .status(statusCode)
-        .json({ error: error.message || 'Could not save manual tax configuration' });
+        .json({
+          error: error.message || 'Could not save manual tax configuration',
+          ...(error.code ? { code: error.code } : {}),
+        });
     }
   },
 );
