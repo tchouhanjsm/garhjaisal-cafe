@@ -216,14 +216,17 @@ export function createRestartAndInstallHandler({
     try {
       const safety = checkInstallSafety();
       if (safety.ok) return null;
-      warn(`[Update] Restart-to-install denied by operational safety gate (${safety.code}): ${safety.error}`);
+      warn(
+        `[Update] Restart-to-install denied by operational safety gate (${safety.code}): ${safety.error}`,
+      );
       return { success: false, error: safety.error };
     } catch (safetyError) {
       error('[Update] Could not verify operational safety before installation:', safetyError);
       return {
         success: false,
         error:
-          'Restaurant operating status could not be verified. Keep the app running and retry after checking the database.',
+          'Restaurant operating status could not be verified. ' +
+            'Keep the app running and retry after checking the database.',
       };
     }
   };
