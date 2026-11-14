@@ -35,7 +35,7 @@ import {
   renderBillDocumentToClassicLines,
 } from '../main/printers/document-classic';
 import { renderBillDocumentToCompactLines } from '../main/printers/document-compact';
-import { escPosToText, formatReceipt, receiptDocumentLines } from '../main/printers/thermal';
+import { receiptDocumentLines } from '../main/printers/thermal';
 import { GENERIC_THERMAL_CAPABILITIES } from '../shared/print/thermal-capabilities';
 import { buildParityFixtures } from './print-parity.test';
 
@@ -275,7 +275,7 @@ console.log('\n▶ Block construction (fixture bill)');
       `${renderer} receipt prints the optional room number`,
     );
   }
-  const nativeRoomReceipt = formatReceipt(
+  const nativeRoomLines = receiptDocumentLines(
     roomOrder,
     roomFixture.bill,
     roomFixture.business,
@@ -283,14 +283,15 @@ console.log('\n▶ Block construction (fixture bill)');
     42,
     true,
     false,
-    'full',
-    [],
     false,
     'en',
+    undefined,
+    'full',
+    GENERIC_THERMAL_CAPABILITIES,
   );
   assert(
-    escPosToText(nativeRoomReceipt).includes('Room: 305'),
-    'native receipt byte output includes the optional room number',
+    nativeRoomLines?.lines.some((line) => line.includes('Room: 305')),
+    'native receipt preparation lines include the optional room number',
   );
   const noRoomOrder = { ...roomFixture.order, room_number: '   ' };
   const noRoomData = buildBillPrintData(noRoomOrder, roomFixture.bill, roomFixture.business, false);
