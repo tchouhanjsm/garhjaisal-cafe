@@ -8,7 +8,7 @@ From the repository root, use one profile at a time:
 
 | Purpose | Command | Profile data |
 | --- | --- | --- |
-| Development and testing | `npm run dev:garh-jaisal-test` | `garh-jaisal-dev` |
+| Development and testing | `npm run dev:garh-jaisal-test` | `garh-jaisal-test` |
 | Garh Jaisal restaurant pilot | `npm run dev:garh-jaisal-pilot` | `garh-jaisal-pilot` |
 
 On macOS, both paths are below Electron's FloCafe application support directory in `profiles/<profile>`. Each profile has its own `flo.db`, settings, first-run marker, logs, replacement recovery files, and local backups. Do not copy a development database or backup into the pilot profile.

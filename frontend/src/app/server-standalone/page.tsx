@@ -45,7 +45,7 @@ import type { PosCategorySort, PosItemSort } from '@/lib/pos-sort';
 import MoveTableModal from '@/components/tables/MoveTableModal';
 import { KotDispatchRecoveryModal } from '@/components/pos/KotDispatchRecoveryModal';
 import type { KotStationPrintOutcome } from '@/hooks/usePrinter';
-import { ROLE_LABEL_KEYS } from '@/lib/i18n-enums';
+import { ROLE_LABEL_KEYS, TABLE_STATUS_LABEL_KEYS } from '@/lib/i18n-enums';
 import { tenantCan } from '@/lib/permissions';
 import type {
   Table as FullTable,
@@ -76,7 +76,7 @@ type Table = {
   id: string;
   name?: string;
   number?: string;
-  status?: string;
+  status?: FullTable['status'];
   activeOrder?: Order | null;
   current_order?: Order | null;
 };
@@ -459,10 +459,6 @@ export default function ServerStandalonePage() {
             })),
           });
         }
-        if (!selectedTableIdRef.current && loadedTables[0]) {
-          selectedTableIdRef.current = loadedTables[0].id;
-          setSelectedTableId(loadedTables[0].id);
-        }
       } catch (error) {
         setHubReachable(false);
         const cached = ownerId ? loadServerAppCatalog(window.localStorage, ownerId) : null;
@@ -474,11 +470,6 @@ export default function ServerStandalonePage() {
         setTables(cached.tables as Table[]);
         setTablesLoaded(true);
         setUsingCachedCatalog(true);
-        if (!selectedTableIdRef.current && cached.tables[0]) {
-          const firstTable = cached.tables[0] as Table;
-          selectedTableIdRef.current = firstTable.id;
-          setSelectedTableId(firstTable.id);
-        }
       }
     },
     [api],
@@ -2322,7 +2313,7 @@ export default function ServerStandalonePage() {
                 return (
                   <button
                     key={table.id}
-                    disabled={sending}
+                    disabled={sending || table.status === 'cleaning' || table.status === 'held'}
                     onClick={() => selectTable(table.id)}
                     className={`min-h-14 rounded-lg border px-2 py-2 text-start disabled:opacity-50 ${selected ? 'border-brand bg-brand/10' : 'border-border bg-card'}`}
                   >
@@ -2330,7 +2321,9 @@ export default function ServerStandalonePage() {
                       {table.name || table.number}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {order ? t('openOrder') : tTables('statusAvailable')}
+                      {order
+                        ? t('openOrder')
+                        : tTables(TABLE_STATUS_LABEL_KEYS[table.status ?? 'available'])}
                     </span>
                   </button>
                 );
@@ -2339,6 +2332,14 @@ export default function ServerStandalonePage() {
           </section>
 
           <section className="flex h-[calc(100dvh-5rem)] min-h-96 min-w-0 flex-col rounded-lg border border-border bg-card p-3">
+            {!selectedTableId && (
+              <p
+                role="status"
+                className="mb-3 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-sm text-muted-foreground"
+              >
+                {t('selectTable')}
+              </p>
+            )}
             <ProductGrid
               categories={categories}
               products={products}
@@ -2349,7 +2350,7 @@ export default function ServerStandalonePage() {
               currency={regional?.currency || ''}
               categorySort={regional?.category_sort}
               itemSort={regional?.item_sort}
-              disabled={sending}
+              disabled={sending || !selectedTableId}
               onProductClick={(product, quantity) => {
                 if (sendInFlightRef.current) return;
                 if (productNeedsCustomizer(product)) {
