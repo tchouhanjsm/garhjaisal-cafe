@@ -63,12 +63,11 @@ async function main() {
   const { baseUrl, server } = await startServer(app);
 
   try {
-    console.log('\n1. Owner creates a two-category manual config ("Standard" + "Reduced")');
+    console.log('\n1. Owner creates a two-category manual config (exclusive by default)');
     const createRes = await api(baseUrl, '/api/tax-packs/manual-config', {
       method: 'POST',
       headers: owner.authHeader,
       body: {
-        inclusive: true,
         categories: [
           { tempId: 'standard', label: 'Standard', components: [{ label: 'Tax 1', type: 'percent', value: '5' }] },
           { tempId: 'reduced', label: 'Reduced', components: [{ label: 'Tax 1', type: 'percent', value: '2' }] },
@@ -81,6 +80,17 @@ async function main() {
     });
     assertEqual(createRes.status, 200, 'owner can save an initial manual config');
     const packId = createRes.data.pack_id;
+
+    console.log('   ✓ omitted manual price mode defaults to exclusive GST');
+    const defaultModePreview = await api(baseUrl, '/api/tax/preview', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { items: [{ product_id: product.id, quantity: 1 }] },
+    });
+    assertEqual(defaultModePreview.status, 200, 'manual exclusive tax preview succeeds');
+    assertEqual(defaultModePreview.data.summary.subtotal, 100, 'exclusive preview preserves menu subtotal');
+    assertEqual(defaultModePreview.data.summary.tax_amount, 5, 'exclusive preview calculates 5% GST');
+    assertEqual(defaultModePreview.data.summary.total, 105, 'exclusive preview adds GST to the payable total');
 
     console.log('\n2. Owner points every override type at the "Reduced" category');
     const overrideTargets = [
