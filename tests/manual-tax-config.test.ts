@@ -48,7 +48,7 @@ async function main() {
   const db = initTestDb();
   const owner = seedOwnerUser(db);
   seedCategory(db, 'manual-tax-products', 'Manual Tax Products');
-  const product = seedProduct(
+  seedProduct(
     db,
     'manual-tax-product',
     'manual-tax-products',
@@ -97,13 +97,13 @@ async function main() {
     });
     assertEqual(createRes.status, 200, 'owner can save an initial manual config');
     const packId = createRes.data.pack_id;
-    db.prepare("UPDATE products SET tax_category_id = 'standard' WHERE id = ?").run(product.id);
+    db.prepare("UPDATE products SET tax_category_id = 'standard' WHERE id = ?").run('manual-tax-product');
 
     console.log('   ✓ omitted manual price mode defaults to exclusive GST');
     const defaultModePreview = await api(baseUrl, '/api/tax/preview', {
       method: 'POST',
       headers: owner.authHeader,
-      body: { items: [{ product_id: product.id, quantity: 1 }] },
+      body: { items: [{ product_id: 'manual-tax-product', quantity: 1 }] },
     });
     assertEqual(defaultModePreview.status, 200, 'manual exclusive tax preview succeeds');
     assertEqual(
@@ -189,7 +189,7 @@ async function main() {
     const inclusivePreview = await api(baseUrl, '/api/tax/preview', {
       method: 'POST',
       headers: owner.authHeader,
-      body: { items: [{ product_id: product.id, quantity: 1 }] },
+      body: { items: [{ product_id: 'manual-tax-product', quantity: 1 }] },
     });
     assertEqual(inclusivePreview.status, 200, 'manual inclusive tax preview succeeds');
     assertEqual(
