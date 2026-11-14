@@ -535,9 +535,32 @@ function run() {
   assert.match(freshlyDownloadedMacSigningScript, /xcrun stapler validate/);
 
   const winJob = jobs['release-windows'];
+  assertShellStep(winJob, 'Require Windows signing credentials');
   assertShellStep(winJob, 'Build Windows');
-  assertShellStep(winJob, 'Verify Windows release assets');
+  assertShellStep(winJob, 'Verify Windows release assets and Authenticode signatures');
   assertShellStep(winJob, 'Upload Windows assets to GitHub release');
+
+  const requireWindowsSigning = findStep(winJob, 'Require Windows signing credentials');
+  assert.equal(requireWindowsSigning.env.CSC_LINK, '${{ secrets.WINDOWS_CERTS }}');
+  assert.equal(requireWindowsSigning.env.CSC_KEY_PASSWORD, '${{ secrets.WINDOWS_CERTS_PASSWORD }}');
+  assert.equal(
+    requireWindowsSigning.env.WINDOWS_SIGNING_SUBJECT,
+    '${{ vars.WINDOWS_SIGNING_SUBJECT }}',
+  );
+  assert.match(requireWindowsSigning.run, /Windows release is blocked/);
+  assert.match(requireWindowsSigning.run, /WINDOWS_SIGNING_SUBJECT/);
+
+  const verifyWindowsSigning = findStep(
+    winJob,
+    'Verify Windows release assets and Authenticode signatures',
+  );
+  assert.match(verifyWindowsSigning.run, /Get-AuthenticodeSignature/);
+  assert.match(verifyWindowsSigning.run, /Status -ne 'Valid'/);
+  assert.match(verifyWindowsSigning.run, /SignerCertificate\.Subject -ne \$expectedSubject/);
+  assert.equal(
+    verifyWindowsSigning.env.WINDOWS_SIGNING_SUBJECT,
+    '${{ vars.WINDOWS_SIGNING_SUBJECT }}',
+  );
   const windowsStepNames = new Set((winJob.steps || []).map((step: any) => step.name));
   assert.equal(
     windowsStepNames.has('Setup Microsoft Store Developer CLI'),
@@ -551,6 +574,15 @@ function run() {
   );
 
   const verifyJob = jobs['verify-release'];
+  const createCandidateManifest = findStep(
+    verifyJob,
+    'Create immutable candidate manifest from uploaded draft bytes',
+  );
+  assert.match(
+    createCandidateManifest.run,
+    /--windows-signing-status signed/,
+    'candidate evidence must record Windows as signed only after the signature gate',
+  );
   const verifierDependencies = findStep(verifyJob, 'Install verifier dependencies');
   assert.equal(verifierDependencies.run, 'npm ci --ignore-scripts --no-audit --no-fund');
   assert.equal(
