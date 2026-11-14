@@ -61,7 +61,7 @@ A database backup preserves the database-backed catalog, settings, users, orders
 
 Build the same tagged release from the approved commit with `npm run build:win`. The Windows installer/update workflow must keep Electron's installed `userData` directory stable across versions. The release checklist is:
 
-- Use a versioned, signed Windows installer and retain its checksum and release notes.
+- Configure `WINDOWS_CERTS`, `WINDOWS_CERTS_PASSWORD`, and the exact `WINDOWS_SIGNING_SUBJECT` repository variable. The release workflow fails closed unless the NSIS installer and AppX packages pass Authenticode verification against that Subject. Retain the signed installer checksum and release notes.
 - Show the installed app version in the About/settings surface.
 - Before any schema migration, complete and validate a local backup in the same data profile.
 - Preserve the existing SQLite database and profile settings during update/uninstall-reinstall.
