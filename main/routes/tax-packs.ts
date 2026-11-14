@@ -24,6 +24,10 @@ import { TRUSTED_TAX_PACK_SIGNING_PUBLIC_KEY } from '../tax-packs/trusted-signin
 import { asyncHandler } from '../middleware/async-handler';
 import { getHttpRequestSignal } from '../shutdown';
 import { getCurrencyFractionDigits } from '../countries';
+import {
+  isTaxRegistrationPending,
+  taxRegistrationPendingResponse,
+} from '../services/tax-registration';
 
 const router = Router();
 const BUNDLED_PACKS_BY_ID = new Map(BUNDLED_COUNTRY_PACKS.map((pack) => [pack.id, pack]));
@@ -107,6 +111,12 @@ function activateInstalledPack(
   options: ActivateOptions = {},
 ): void {
   const db = getDatabase();
+  if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+    throw Object.assign(new Error(taxRegistrationPendingResponse().error), {
+      statusCode: 409,
+      code: 'tax_registration_pending',
+    });
+  }
   const validation = validationChecklist(version);
   if (!validation.valid) {
     throw Object.assign(new Error('Tax pack failed activation validation'), { statusCode: 400 });
@@ -1140,6 +1150,9 @@ router.post(
   requirePermission('tax-configuration.manage'),
   asyncHandler(async (req: Request, res: Response) => {
     try {
+      if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+        return res.status(409).json(taxRegistrationPendingResponse());
+      }
       const country = String(req.body?.country || getSettingValue('country') || '').toUpperCase();
       if (!/^[A-Z]{2}$/.test(country)) return res.status(400).json({ error: 'Invalid country' });
       const db = getDatabase();
@@ -1409,6 +1422,9 @@ router.post(
   requirePermission('tax-packs.manage'),
   (req: Request, res: Response) => {
     try {
+      if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+        return res.status(409).json(taxRegistrationPendingResponse());
+      }
       const db = getDatabase();
       const country = String(getSettingValue('country') || '').toUpperCase();
       if (!/^[A-Z]{2}$/.test(country)) {
@@ -1898,7 +1914,11 @@ router.post(
     } catch (error: any) {
       res.locals.postHogError = error;
       console.error('[Tax Packs] Activation failed:', error);
-      res.status(500).json({ error: 'Could not activate pack version' });
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        error: statusCode >= 500 ? 'Could not activate pack version' : error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
     }
   },
 );
