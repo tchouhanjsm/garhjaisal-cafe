@@ -5,6 +5,7 @@ import {
   type StoredUpdateStatus,
   type UpdateErrorPhase,
 } from './update-state';
+import type { UpdateInstallSafetyResult } from './update-install-safety';
 
 export type UpdateShutdownState = {
   setInstallingUpdate: (value: boolean) => void;
@@ -17,6 +18,7 @@ type RestartAndInstallResult = { success: true } | { success: false; error: stri
 
 type RestartAndInstallOptions = {
   isInstallReady: () => boolean;
+  checkInstallSafety: () => UpdateInstallSafetyResult;
   authorize: (pin: string | undefined) => UpdateAuthorizationResult;
   runCleanup: () => Promise<void>;
   quitAndInstall: (isSilent: boolean, isForceRunAfter: boolean) => void;
@@ -201,6 +203,7 @@ export function createAutoUpdaterErrorHandler({
 
 export function createRestartAndInstallHandler({
   isInstallReady,
+  checkInstallSafety,
   authorize,
   runCleanup,
   quitAndInstall,
@@ -209,16 +212,41 @@ export function createRestartAndInstallHandler({
   warn,
   error,
 }: RestartAndInstallOptions): (event: unknown, pin?: unknown) => Promise<RestartAndInstallResult> {
+  const inspectInstallSafety = (): RestartAndInstallResult | null => {
+    try {
+      const safety = checkInstallSafety();
+      if (safety.ok) return null;
+      warn(`[Update] Restart-to-install denied by operational safety gate (${safety.code}): ${safety.error}`);
+      return { success: false, error: safety.error };
+    } catch (safetyError) {
+      error('[Update] Could not verify operational safety before installation:', safetyError);
+      return {
+        success: false,
+        error:
+          'Restaurant operating status could not be verified. Keep the app running and retry after checking the database.',
+      };
+    }
+  };
+
   return async (_event, pin) => {
     if (!isInstallReady()) {
       warn('[Update] Ignoring install request before an update is downloaded');
       return { success: false, error: 'No downloaded update is ready to install.' };
     }
+    const initialSafety = inspectInstallSafety();
+    if (initialSafety) return initialSafety;
+
     const auth = authorize(typeof pin === 'string' ? pin : undefined);
     if (!auth.ok) {
       warn(`[Update] Restart-to-install denied by Master PIN gate: ${auth.error}`);
       return { success: false, error: auth.error };
     }
+
+    // PIN verification is a separate step; re-read operational state immediately
+    // before shutdown so new restaurant work cannot slip through a stale check.
+    const finalSafety = inspectInstallSafety();
+    if (finalSafety) return finalSafety;
+
     updateState.setInstallingUpdate(true);
     updateState.setQuitting(true);
     try {
