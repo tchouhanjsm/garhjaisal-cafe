@@ -1,0 +1,48 @@
+name: M5 one-time formatter
+
+on:
+  push:
+    branches:
+      - m5/garh-jaisal-mac-pilot-onboarding
+    paths:
+      - .github/workflows/m5-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5/garh-jaisal-mac-pilot-onboarding
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format M5 changes with the repository-pinned Oxfmt
+        run: |
+          npx oxfmt --write -- \
+            main/printers/thermal.ts \
+            shared/print/document.ts \
+            tests/garh-jaisal-pilot-contract.test.cjs \
+            tests/manual-tax-config.test.ts \
+            tests/print-document.test.ts
+      - name: Commit formatter output to this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            main/printers/thermal.ts \
+            shared/print/document.ts \
+            tests/garh-jaisal-pilot-contract.test.cjs \
+            tests/manual-tax-config.test.ts \
+            tests/print-document.test.ts
+          if git diff --cached --quiet; then
+            echo "Oxfmt found no additional changes."
+          else
+            git commit -m "style: apply repository Oxfmt to M5 changes"
+            git push origin HEAD:m5/garh-jaisal-mac-pilot-onboarding
+          fi
