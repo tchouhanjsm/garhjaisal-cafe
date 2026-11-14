@@ -230,7 +230,10 @@ function waitBeforeRetryRead(signal: AbortSignal, baseMs: number): Promise<void>
 // Sanitize prefix on load to alphanumeric characters so legacy values pass save validation.
 type TaxRegistrationStatus = 'pending' | 'registered' | 'unregistered';
 
-function normalizeTaxRegistrationStatus(value: unknown, legacyValue: unknown): TaxRegistrationStatus {
+function normalizeTaxRegistrationStatus(
+  value: unknown,
+  legacyValue: unknown,
+): TaxRegistrationStatus {
   if (value === 'pending' || value === 'registered' || value === 'unregistered') return value;
   if (legacyValue === true || legacyValue === 'true' || legacyValue === 1 || legacyValue === '1') {
     return 'registered';

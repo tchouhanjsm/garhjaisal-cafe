@@ -1060,7 +1060,12 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
           </button>
           <button
             type="button"
-            disabled={!isOwner || gstRegistrationPending || enablingTaxes || officialPackAvailableResolved === false}
+            disabled={
+              !isOwner ||
+              gstRegistrationPending ||
+              enablingTaxes ||
+              officialPackAvailableResolved === false
+            }
             title={
               officialPackAvailableResolved === false
                 ? t('noOfficialPack', { country: storeCountry })

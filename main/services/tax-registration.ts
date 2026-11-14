@@ -1,10 +1,6 @@
 /** Tri-state tax-registration lifecycle shared by Settings and tax-pack activation. */
 
-export const TAX_REGISTRATION_STATUSES = [
-  'pending',
-  'registered',
-  'unregistered',
-] as const;
+export const TAX_REGISTRATION_STATUSES = ['pending', 'registered', 'unregistered'] as const;
 
 export type TaxRegistrationStatus = (typeof TAX_REGISTRATION_STATUSES)[number];
 

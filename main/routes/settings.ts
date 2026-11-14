@@ -270,7 +270,8 @@ function requestedTaxRegistrationStatus(
   legacyBoolean: unknown,
 ): { status?: TaxRegistrationStatus; error?: string; forbidden?: boolean } {
   const currentStatus = parseTaxRegistrationStatus(currentStoredValue);
-  const explicitStatus = (req.body as { tax_registration_status?: unknown })?.tax_registration_status;
+  const explicitStatus = (req.body as { tax_registration_status?: unknown })
+    ?.tax_registration_status;
   let nextStatus: TaxRegistrationStatus | undefined;
   if (explicitStatus !== undefined) {
     if (!isTaxRegistrationStatus(explicitStatus)) {
@@ -2432,7 +2433,9 @@ router.put(
         }
         const currentStatus = parseTaxRegistrationStatus(getSettingValue('tax_registered'));
         if (requestedStatus !== currentStatus) {
-          const userId = String((req as Request & { user?: { userId?: string } }).user?.userId || '');
+          const userId = String(
+            (req as Request & { user?: { userId?: string } }).user?.userId || '',
+          );
           if (resolveEffectivePermissions(userId)?.role !== 'owner') {
             return res.status(403).json({
               error: 'Only the owner can confirm or change the tax registration status',
