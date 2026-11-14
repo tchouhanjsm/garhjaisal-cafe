@@ -10393,9 +10393,9 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
     version: 129,
     name: 'grant_garh_jaisal_manager_day_close',
     up: () => {
-      const profile = db
-        .prepare("SELECT value FROM settings WHERE key = 'setup_profile'")
-        .get() as { value?: string } | undefined;
+      const profile = db.prepare("SELECT value FROM settings WHERE key = 'setup_profile'").get() as
+        | { value?: string }
+        | undefined;
       if (profile?.value !== 'garh-jaisal') return;
 
       const owner = db
