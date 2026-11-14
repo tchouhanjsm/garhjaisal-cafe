@@ -51,10 +51,16 @@ Linux retain the existing prompt-before-download behavior.
 
 Automatic delivery does **not** force a restart or install during restaurant service. The installer
 is staged until a manager or owner chooses **Restart now** and passes the main-process Master PIN
-check. Automatic installation on quit remains disabled. The confirmation warns that POS, KDS,
-printing, and reports are unavailable while the update installs, that the service returns after
-restart, and that installation should be performed after closing service. Cancelling the prompt or
-failing PIN approval leaves the app running.
+check. Automatic installation on quit remains disabled.
+
+The main process independently verifies operational safety before it accepts the PIN and checks
+again immediately after PIN approval, before shutdown begins. Installation is refused while a cash
+shift is open, active orders or kitchen items remain, a held order exists, a bill is unsettled,
+database backup/restore maintenance is active, or the current tenant-local business day has activity
+that has not been closed. If the database or operational state cannot be read, installation fails
+closed and the app remains running. The confirmation still warns that POS, KDS, printing, and
+reports are unavailable while the update installs. Cancelling the prompt, failing PIN approval, or
+failing the operational gate leaves the app running.
 
 ### Windows signing and deployment readiness
 
