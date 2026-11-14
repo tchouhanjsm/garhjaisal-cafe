@@ -100,7 +100,11 @@ function main(): void {
     );
   }
   for (const role of ['owner', 'manager', 'cashier'] as const) {
-    for (const permissionId of ['cash.shifts.open', 'cash.shifts.view', 'cash.shifts.close'] as const) {
+    for (const permissionId of [
+      'cash.shifts.open',
+      'cash.shifts.view',
+      'cash.shifts.close',
+    ] as const) {
       assert.equal(
         defaultPermissionIdsForRole(role).includes(permissionId),
         true,
@@ -109,7 +113,11 @@ function main(): void {
     }
   }
   for (const role of ['server', 'chef'] as const) {
-    for (const permissionId of ['cash.shifts.open', 'cash.shifts.view', 'cash.shifts.close'] as const) {
+    for (const permissionId of [
+      'cash.shifts.open',
+      'cash.shifts.view',
+      'cash.shifts.close',
+    ] as const) {
       assert.equal(
         defaultPermissionIdsForRole(role).includes(permissionId),
         false,
