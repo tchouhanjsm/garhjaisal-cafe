@@ -625,6 +625,7 @@ async function runTests() {
 
   const restartHandler = createRestartAndInstallHandler({
     isInstallReady: () => isReady,
+    checkInstallSafety: () => ({ ok: true }),
     authorize: (pin) => {
       if (pin === 'master-1234') {
         pinAuthorized = true;
