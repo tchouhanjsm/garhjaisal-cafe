@@ -714,22 +714,20 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Check Windows signing credentials
-        # Shipping unsigned for now: a new WINDOWS_CERTS cert isn't a simple
-        # portable .pfx anymore (post-2023 CA/Browser Forum rules put new
-        # code-signing keys on a hardware token or cloud HSM), so this needs a
-        # real signing-service integration (e.g. SignPath Foundation's free
-        # OSS program), not just two secrets. Log which case we're in but
-        # never fail the build — remove this whole step once that's wired up.
+      - name: Require Windows signing credentials
         shell: pwsh
         env:
           CSC_LINK: ${{ secrets.WINDOWS_CERTS }}
           CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTS_PASSWORD }}
+          WINDOWS_SIGNING_SUBJECT: ${{ vars.WINDOWS_SIGNING_SUBJECT }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:CSC_LINK) -or [string]::IsNullOrWhiteSpace($env:CSC_KEY_PASSWORD)) {
-            Write-Warning "WINDOWS_CERTS/WINDOWS_CERTS_PASSWORD not set — building an UNSIGNED Windows installer. Users will see a SmartScreen 'Windows protected your PC' prompt until this is wired up."
-          } else {
-            Write-Host "Windows signing credentials present — signing remains NOT-VERIFIED until release-boundary verification."
+            Write-Error "Windows release is blocked: configure WINDOWS_CERTS and WINDOWS_CERTS_PASSWORD with the certificate bundle accepted by electron-builder."
+            exit 1
+          }
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_SUBJECT)) {
+            Write-Error "Windows release is blocked: configure the WINDOWS_SIGNING_SUBJECT repository variable with the exact Authenticode certificate Subject."
+            exit 1
           }
 
       - name: Build Windows
@@ -765,12 +763,34 @@ jobs:
           GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
           GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
 
-      - name: Verify Windows release assets
-        # Same class of bug as macOS's missing latest-mac.yml: electron-updater's
-        # NSIS updater needs latest.yml + the installer's .blockmap to check for
-        # and apply updates. Fail loudly here instead of silently shipping a
-        # release nothing can auto-update from.
+      - name: Verify Windows release assets and Authenticode signatures
+        # Verify signatures on the actual installer/store package bytes before
+        # either is uploaded to the draft release or recorded as signed evidence.
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_SUBJECT: ${{ vars.WINDOWS_SIGNING_SUBJECT }}
         run: |
+          $expectedSubject = $env:WINDOWS_SIGNING_SUBJECT.Trim()
+          $signableFiles = @(
+            Get-ChildItem -Path 'release\flocafe-*-win-x64.exe' -ErrorAction SilentlyContinue
+            Get-ChildItem -Path 'release\*.appx' -ErrorAction SilentlyContinue
+          )
+          if ($signableFiles.Count -eq 0) { Write-Error "No Windows installer or AppX package was produced"; exit 1 }
+
+          foreach ($file in $signableFiles) {
+            $signature = Get-AuthenticodeSignature -FilePath $file.FullName
+            if ($signature.Status -ne 'Valid') {
+              Write-Error "Authenticode verification failed for $($file.Name): $($signature.Status) — $($signature.StatusMessage)"
+              exit 1
+            }
+            if ($null -eq $signature.SignerCertificate -or $signature.SignerCertificate.Subject -ne $expectedSubject) {
+              $actualSubject = if ($signature.SignerCertificate) { $signature.SignerCertificate.Subject } else { '<missing>' }
+              Write-Error "Signer subject mismatch for $($file.Name): expected '$expectedSubject', got '$actualSubject'"
+              exit 1
+            }
+            Write-Host "Authenticode verified: $($file.Name) — $($signature.SignerCertificate.Subject)"
+          }
+
           $manifestPrefix = "${{ needs.create-release.outputs.manifest_prefix }}"
           $manifestPath = "release\$manifestPrefix.yml"
           if (-not (Test-Path $manifestPath)) { Write-Error "$manifestPath is missing — Windows auto-update would be broken for this release"; exit 1 }
@@ -889,7 +909,7 @@ jobs:
             --tag "${{ needs.create-release.outputs.version }}" \
             --commit "${{ github.sha }}" \
             --channel "${{ needs.create-release.outputs.channel }}" \
-            --windows-signing-status not-verified \
+            --windows-signing-status signed \
             --output "$RUNNER_TEMP/candidate-manifest.json"
         env:
           GH_TOKEN: ${{ github.token }}
