@@ -40,8 +40,10 @@ import {
 import { requireMasterPin } from '../middleware/master-pin';
 import { resolveTaxIdFormat, validateTaxRegistrationNumber } from '../services/tax';
 import {
+  isTaxRegistrationPending,
   isTaxRegistrationStatus,
   parseTaxRegistrationStatus,
+  taxRegistrationPendingResponse,
   taxRegistrationStatusToStoredValue,
   type TaxRegistrationStatus,
 } from '../services/tax-registration';
@@ -2408,6 +2410,38 @@ router.put(
         });
       }
       let valueToPersist: unknown = value;
+      if (req.params.key === 'taxes_enabled' && boolFlag(value) === 'true') {
+        if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+          return res.status(409).json(taxRegistrationPendingResponse());
+        }
+      }
+      if (req.params.key === 'tax_registered') {
+        const requestedStatus = parseTaxRegistrationStatus(value);
+        if (
+          value !== 'pending' &&
+          value !== true &&
+          value !== false &&
+          value !== 'true' &&
+          value !== 'false' &&
+          value !== '1' &&
+          value !== '0'
+        ) {
+          return res.status(400).json({
+            error: 'tax_registered must be pending, true, or false',
+          });
+        }
+        const currentStatus = parseTaxRegistrationStatus(getSettingValue('tax_registered'));
+        if (requestedStatus !== currentStatus) {
+          const userId = String((req as Request & { user?: { userId?: string } }).user?.userId || '');
+          if (resolveEffectivePermissions(userId)?.role !== 'owner') {
+            return res.status(403).json({
+              error: 'Only the owner can confirm or change the tax registration status',
+              code: 'owner_confirmation_required',
+            });
+          }
+        }
+        valueToPersist = taxRegistrationStatusToStoredValue(requestedStatus);
+      }
       if (req.params.key === 'auto_lock_minutes') {
         const normalizedAutoLock = normalizeAutoLockMinutes(value);
         if (!normalizedAutoLock) {
