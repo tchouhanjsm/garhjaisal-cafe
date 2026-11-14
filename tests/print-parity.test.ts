@@ -485,8 +485,8 @@ function run(): void {
   // bridge and render on every guest receipt surface when supplied.
   section('Optional room number across all receipt renderers');
   {
-    const roomOrder = { ...fullOrder, room_number: '305' };
-    const roomBill = { ...fullBill, order: roomOrder };
+    const roomOrder = { ...order, room_number: '305' };
+    const roomBill = { ...bill, order: roomOrder };
     const outputs = [
       [
         'backend/classic',
