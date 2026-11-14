@@ -39,6 +39,12 @@ import {
 } from '../services/customer-display-tokens';
 import { requireMasterPin } from '../middleware/master-pin';
 import { resolveTaxIdFormat, validateTaxRegistrationNumber } from '../services/tax';
+import {
+  isTaxRegistrationStatus,
+  parseTaxRegistrationStatus,
+  taxRegistrationStatusToStoredValue,
+  type TaxRegistrationStatus,
+} from '../services/tax-registration';
 import { sendEvent, telemetry } from '../services/telemetry';
 import { readProductAnalyticsChoice, syncPostHogIdentity } from '../services/posthog';
 import {
@@ -256,6 +262,32 @@ function isMaskedSecret(value: unknown): boolean {
   return typeof value === 'string' && value.startsWith('****');
 }
 
+function requestedTaxRegistrationStatus(
+  req: Request,
+  currentStoredValue: string | undefined,
+  legacyBoolean: unknown,
+): { status?: TaxRegistrationStatus; error?: string; forbidden?: boolean } {
+  const currentStatus = parseTaxRegistrationStatus(currentStoredValue);
+  const explicitStatus = (req.body as { tax_registration_status?: unknown })?.tax_registration_status;
+  let nextStatus: TaxRegistrationStatus | undefined;
+  if (explicitStatus !== undefined) {
+    if (!isTaxRegistrationStatus(explicitStatus)) {
+      return { error: 'tax_registration_status must be pending, registered, or unregistered' };
+    }
+    nextStatus = explicitStatus;
+  } else if (legacyBoolean !== undefined && currentStatus !== 'pending') {
+    nextStatus = parseTaxRegistrationStatus(legacyBoolean);
+  }
+
+  if (nextStatus !== undefined && nextStatus !== currentStatus) {
+    const userId = String((req as Request & { user?: { userId?: string } }).user?.userId || '');
+    if (resolveEffectivePermissions(userId)?.role !== 'owner') {
+      return { forbidden: true };
+    }
+  }
+  return { status: nextStatus };
+}
+
 function businessShape(s: Record<string, string>) {
   return {
     business_name: s.business_name || '',
@@ -274,7 +306,8 @@ function businessShape(s: Record<string, string>) {
     instagram_handle: s.instagram_handle || '',
     billing_type: s.billing_type || 'postpaid',
     tables_required: s.tables_required !== 'false',
-    tax_registered: s.tax_registered === 'true' || s.tax_registered === '1',
+    tax_registration_status: parseTaxRegistrationStatus(s.tax_registered),
+    tax_registered: parseTaxRegistrationStatus(s.tax_registered) === 'registered',
     bill_show_name: s.bill_show_name !== 'false',
     bill_show_address: s.bill_show_address !== 'false',
     bill_show_phone: s.bill_show_phone !== 'false',
@@ -305,7 +338,8 @@ function businessShape(s: Record<string, string>) {
 
 function taxShape(s: Record<string, string>) {
   return {
-    tax_registered: s.tax_registered === 'true',
+    tax_registration_status: parseTaxRegistrationStatus(s.tax_registered),
+    tax_registered: parseTaxRegistrationStatus(s.tax_registered) === 'registered',
     tax_registration_number: s.tax_registration_number || '',
     state_code: s.state_code || '',
     tax_scheme: s.tax_scheme || 'regular',
@@ -366,7 +400,7 @@ router.put('/business', requirePermission('settings.manage'), (req: Request, res
       instagram_handle,
       billing_type,
       tables_required,
-      tax_registered,
+      tax_registered: storedTaxRegistrationStatus,
       bill_show_name,
       bill_show_address,
       bill_show_phone,
@@ -439,6 +473,24 @@ router.put('/business', requirePermission('settings.manage'), (req: Request, res
 
     const db = getDatabase();
     const currentSettings = getAllSettings(db);
+    const taxRegistrationUpdate = requestedTaxRegistrationStatus(
+      req,
+      currentSettings.tax_registered,
+      tax_registered,
+    );
+    if (taxRegistrationUpdate.error) {
+      return res.status(400).json({ error: taxRegistrationUpdate.error });
+    }
+    if (taxRegistrationUpdate.forbidden) {
+      return res.status(403).json({
+        error: 'Only the owner can confirm or change the tax registration status',
+        code: 'owner_confirmation_required',
+      });
+    }
+    const storedTaxRegistrationStatus =
+      taxRegistrationUpdate.status !== undefined
+        ? taxRegistrationStatusToStoredValue(taxRegistrationUpdate.status)
+        : undefined;
     if (normalizedCurrency !== undefined && normalizedCurrency !== currentSettings.currency) {
       return res.status(409).json({
         error: 'currency_change_requires_reset',
@@ -563,6 +615,24 @@ router.put('/tax', requirePermission('tax-configuration.manage'), (req: Request,
 
     const db = getDatabase();
     const currentSettings = getAllSettings(db);
+    const taxRegistrationUpdate = requestedTaxRegistrationStatus(
+      req,
+      currentSettings.tax_registered,
+      tax_registered,
+    );
+    if (taxRegistrationUpdate.error) {
+      return res.status(400).json({ error: taxRegistrationUpdate.error });
+    }
+    if (taxRegistrationUpdate.forbidden) {
+      return res.status(403).json({
+        error: 'Only the owner can confirm or change the tax registration status',
+        code: 'owner_confirmation_required',
+      });
+    }
+    const storedTaxRegistrationStatus =
+      taxRegistrationUpdate.status !== undefined
+        ? taxRegistrationStatusToStoredValue(taxRegistrationUpdate.status)
+        : undefined;
     const effectiveCountry = country || currentSettings.country || '';
     if (tax_registration_number) {
       const { valid, format } = validateTaxRegistrationNumber(
@@ -577,7 +647,7 @@ router.put('/tax', requirePermission('tax-configuration.manage'), (req: Request,
       }
     }
     upsertSettings(db, {
-      tax_registered,
+      tax_registered: storedTaxRegistrationStatus,
       tax_registration_number,
       state_code,
       tax_scheme,
