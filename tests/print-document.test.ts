@@ -35,7 +35,7 @@ import {
   renderBillDocumentToClassicLines,
 } from '../main/printers/document-classic';
 import { renderBillDocumentToCompactLines } from '../main/printers/document-compact';
-import { receiptDocumentLines } from '../main/printers/thermal';
+import { formatReceipt, receiptDocumentLines } from '../main/printers/thermal';
 import { GENERIC_THERMAL_CAPABILITIES } from '../shared/print/thermal-capabilities';
 import { buildParityFixtures } from './print-parity.test';
 
@@ -237,6 +237,60 @@ console.log('\n▶ Block construction (fixture bill)');
     );
   }
 
+  const roomFixture = buildParityFixtures();
+  const roomOrder = { ...roomFixture.order, room_number: '305' };
+  const roomPrintData = buildBillPrintData(roomOrder, roomFixture.bill, roomFixture.business, false);
+  const roomContext = buildBillPrintContext({
+    columns: 42,
+    language: 'en',
+    business: roomFixture.business,
+  });
+  const roomDocument = buildBillDocument(roomPrintData, roomContext);
+  assert.equal(
+    blockOf(roomDocument, 'document-meta').roomNumber?.text,
+    '305',
+    'optional room number crosses into the semantic receipt document',
+  );
+  const roomRendererOptions = {
+    columns: 42,
+    language: 'en',
+    locale: roomContext.locale,
+    currencySymbol: '₹',
+    trimDecimals: false,
+    useUnicode: true,
+    arabicShaping: false,
+    cutMode: 'full' as const,
+  };
+  for (const [renderer, lines] of [
+    ['classic', renderBillDocumentToClassicLines(roomDocument, roomRendererOptions)],
+    ['compact', renderBillDocumentToCompactLines(roomDocument, roomRendererOptions)],
+  ] as const) {
+    assert(lines.some((line) => line.includes('Room: 305')), `${renderer} receipt prints the optional room number`);
+  }
+  const nativeRoomReceipt = formatReceipt(
+    roomOrder,
+    roomFixture.bill,
+    roomFixture.business,
+    'classic',
+    42,
+    true,
+    false,
+    'full',
+    [],
+    false,
+    'en',
+  );
+  assert(
+    nativeRoomReceipt.toString('utf8').includes('Room: 305'),
+    'native receipt byte output includes the optional room number',
+  );
+  const noRoomOrder = { ...roomFixture.order, room_number: '   ' };
+  const noRoomData = buildBillPrintData(noRoomOrder, roomFixture.bill, roomFixture.business, false);
+  assert.equal(
+    blockOf(buildBillDocument(noRoomData, roomContext), 'document-meta').roomNumber,
+    null,
+    'blank optional room number is omitted from receipt metadata',
+  );
   assert.equal(
     blockOf(document, 'message').reprintBanner,
     null,
