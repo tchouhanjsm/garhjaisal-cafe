@@ -115,6 +115,8 @@ export interface OrderSnapshot {
   /** Canonical stored timestamp; renderers localize for presentation. */
   readonly createdAt: string;
   readonly tableName: string;
+  /** Optional hotel room reference; this is informational and never a payment account. */
+  readonly roomNumber?: string;
   /** Aggregator/web-order platform name (#284), e.g. "Swiggy". Empty when not an online order. */
   readonly onlinePlatform: string;
   /** The platform's own order id (#284), printed alongside the online-order banner. */
@@ -276,6 +278,8 @@ export interface DocumentMetaBlock {
   readonly invoiceNumber: DirectionalText;
   /** Canonical stored timestamp; presentation formatting is a renderer duty. */
   readonly timestamp: DirectionalText;
+  /** Optional hotel room reference printed beside the table metadata. */
+  readonly roomNumber: DirectionalText | null;
   /** Table reference with its (uninterpolated) label concept. */
   readonly table: { readonly label: SemanticLabel; readonly name: DirectionalText } | null;
 }
@@ -634,6 +638,9 @@ export function buildBillDocument(printData: PrintData, printContext: PrintConte
             name: directionalText(order.tableName, base),
           })
         : null,
+    roomNumber: order.roomNumber?.trim()
+      ? directionalText(order.roomNumber.trim(), base)
+      : null,
   });
 
   // A delivery address is what makes this a customer-details block, so it drives the heading too.
