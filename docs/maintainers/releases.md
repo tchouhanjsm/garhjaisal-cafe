@@ -144,7 +144,6 @@ the version, restaurant data, printer test, and captain-phone ordering before re
 Keep one known-good installer and the latest verified backup available for rollback planning. This
 workflow does not enable unattended or automatic updates.
 
-
 ## Snap Store publication
 
 Each Linux architecture publishes its own snap, tagged separately, and the Snap Store keeps
