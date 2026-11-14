@@ -7,10 +7,31 @@ on:
     paths:
       - .github/workflows/m5-format-once.yml
       - main/index.ts
+      - main/printers/document-classic.ts
+      - main/printers/document-compact.ts
+      - main/printers/thermal.ts
+      - main/routes/auth.ts
+      - main/routes/settings.ts
+      - main/routes/tax-packs.ts
+      - main/services/tax-registration.ts
+      - main/setup/seed-data.ts
       - main/update-policy.ts
+      - shared/deployment-profiles.ts
+      - shared/print/document.ts
+      - tests/first-run-setup.test.ts
+      - tests/garh-jaisal-pilot-contract.test.cjs
+      - tests/local-profile-isolation.test.cjs
+      - tests/manual-tax-config.test.ts
+      - tests/print-document.test.ts
       - tests/print-parity.test.ts
       - tests/update-state.test.ts
-      - tests/manual-tax-config.test.ts
+      - frontend/src/app/(dashboard)/settings/page.tsx
+      - frontend/src/components/settings/GeneralSettingsTab.tsx
+      - frontend/src/components/settings/TaxConfigurationPanel.tsx
+      - frontend/src/lib/printer/print-document.ts
+      - frontend/src/lib/printer/receipt-encoder.ts
+      - frontend/src/lib/printer/tax-bill-encoder.ts
+      - frontend/src/lib/printer/web-print.ts
 
 permissions:
   contents: write
@@ -27,16 +48,74 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Format M5 updater and regression tests with pinned Oxfmt
-        run: npx oxfmt --write -- main/index.ts main/update-policy.ts tests/print-parity.test.ts tests/update-state.test.ts tests/manual-tax-config.test.ts
+      - name: Format all changed root TypeScript and JavaScript with pinned Oxfmt
+        run: |
+          npx oxfmt --write -- \
+            main/index.ts \
+            main/printers/document-classic.ts \
+            main/printers/document-compact.ts \
+            main/printers/thermal.ts \
+            main/routes/auth.ts \
+            main/routes/settings.ts \
+            main/routes/tax-packs.ts \
+            main/services/tax-registration.ts \
+            main/setup/seed-data.ts \
+            main/update-policy.ts \
+            shared/deployment-profiles.ts \
+            shared/print/document.ts \
+            tests/first-run-setup.test.ts \
+            tests/garh-jaisal-pilot-contract.test.cjs \
+            tests/local-profile-isolation.test.cjs \
+            tests/manual-tax-config.test.ts \
+            tests/print-document.test.ts \
+            tests/print-parity.test.ts \
+            tests/update-state.test.ts
+      - name: Format changed frontend files with the frontend-pinned Oxfmt
+        run: |
+          cd frontend
+          npm ci
+          npx oxfmt --write -- \
+            src/app/\(dashboard\)/settings/page.tsx \
+            src/components/settings/GeneralSettingsTab.tsx \
+            src/components/settings/TaxConfigurationPanel.tsx \
+            src/lib/printer/print-document.ts \
+            src/lib/printer/receipt-encoder.ts \
+            src/lib/printer/tax-bill-encoder.ts \
+            src/lib/printer/web-print.ts
       - name: Commit formatter output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- main/index.ts main/update-policy.ts tests/print-parity.test.ts tests/update-state.test.ts tests/manual-tax-config.test.ts
+          git add -- \
+            main/index.ts \
+            main/printers/document-classic.ts \
+            main/printers/document-compact.ts \
+            main/printers/thermal.ts \
+            main/routes/auth.ts \
+            main/routes/settings.ts \
+            main/routes/tax-packs.ts \
+            main/services/tax-registration.ts \
+            main/setup/seed-data.ts \
+            main/update-policy.ts \
+            shared/deployment-profiles.ts \
+            shared/print/document.ts \
+            tests/first-run-setup.test.ts \
+            tests/garh-jaisal-pilot-contract.test.cjs \
+            tests/local-profile-isolation.test.cjs \
+            tests/manual-tax-config.test.ts \
+            tests/print-document.test.ts \
+            tests/print-parity.test.ts \
+            tests/update-state.test.ts \
+            frontend/src/app/\(dashboard\)/settings/page.tsx \
+            frontend/src/components/settings/GeneralSettingsTab.tsx \
+            frontend/src/components/settings/TaxConfigurationPanel.tsx \
+            frontend/src/lib/printer/print-document.ts \
+            frontend/src/lib/printer/receipt-encoder.ts \
+            frontend/src/lib/printer/tax-bill-encoder.ts \
+            frontend/src/lib/printer/web-print.ts
           if git diff --cached --quiet; then
-            echo "Oxfmt found no changes."
+            echo "Oxfmt found no additional changes."
           else
-            git commit -m "style: format M5 updater and regression tests"
+            git commit -m "style: format M5 implementation and regression tests"
             git push origin HEAD:m5/garh-jaisal-mac-pilot-onboarding
           fi
