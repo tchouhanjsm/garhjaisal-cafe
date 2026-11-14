@@ -224,9 +224,7 @@ export function createRestartAndInstallHandler({
       error('[Update] Could not verify operational safety before installation:', safetyError);
       return {
         success: false,
-        error:
-          'Restaurant operating status could not be verified. ' +
-            'Keep the app running and retry after checking the database.',
+        error: 'Could not verify restaurant status. Keep the app running and retry.',
       };
     }
   };
