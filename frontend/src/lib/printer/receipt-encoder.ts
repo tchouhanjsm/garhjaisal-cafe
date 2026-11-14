@@ -676,6 +676,16 @@ export function buildClassicReceiptBytes(
     );
     enc.bold(false).newline();
   }
+  if (meta?.roomNumber) {
+    safePrinterText(
+      enc,
+      `Room: ${meta.roomNumber.text}`,
+      warnings,
+      false,
+      arabicShaping,
+      cols,
+    ).newline();
+  }
   if (customer?.heading) {
     enc.bold(true);
     safePrinterText(enc, labelOf(customer.heading), warnings, false, arabicShaping, cols);
@@ -1205,6 +1215,17 @@ export function buildCompactReceiptBytes(
       safePrinterText(
         enc,
         meta.table.label.primary.replace('{name}', meta.table.name.text),
+        warnings,
+        false,
+        arabicShaping,
+        undefined,
+        cols,
+      ).newline();
+    }
+    if (meta.roomNumber) {
+      safePrinterText(
+        enc,
+        `Room: ${meta.roomNumber.text}`,
         warnings,
         false,
         arabicShaping,
