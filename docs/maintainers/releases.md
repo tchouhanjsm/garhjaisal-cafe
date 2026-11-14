@@ -40,15 +40,21 @@ Unless the user turns it off, a desktop install checks for updates 5 seconds aft
 **Check for updates automatically** switch in **Settings > Updates** and the checkbox in the update
 prompt both write `updates.auto_check_enabled` through the `updates:get-auto-check` and
 `updates:set-auto-check` IPC pair. With the switch off, only a manual check from Settings or the
-application menu contacts the update feed. Updates never download on their own: when a check finds
-one, a prompt asks the user to download it or defer, and a deferred update stays downloadable from
-the update badge or Settings through the `download-update` IPC call.
+application menu contacts the update feed.
 
-When a downloaded update is ready, restarting from Settings or the update badge requires manager or
-owner Master PIN approval in the main process. The confirmation warns that POS, KDS, printing, and
-reports are unavailable while the update installs, that the service returns after restart, and that
-installation should not be started during business hours. Cancelling the prompt or failing PIN
-approval leaves the app running.
+For a packaged Windows NSIS installation, each successful check that finds a newer stable or
+opted-in beta release starts a background download automatically. The device also rechecks the feed
+every six hours while automatic checks are enabled, the app is online, and no update is already
+staged or downloading. The in-app badge shows download progress and then reports **Ready to install**.
+AppX/MSIX builds remain Store-managed; development and unpacked builds do not self-update. macOS and
+Linux retain the existing prompt-before-download behavior.
+
+Automatic delivery does **not** force a restart or install during restaurant service. The installer
+is staged until a manager or owner chooses **Restart now** and passes the main-process Master PIN
+check. Automatic installation on quit remains disabled. The confirmation warns that POS, KDS,
+printing, and reports are unavailable while the update installs, that the service returns after
+restart, and that installation should be performed after closing service. Cancelling the prompt or
+failing PIN approval leaves the app running.
 
 ## Snap Store publication
 
