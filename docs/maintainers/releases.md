@@ -64,11 +64,18 @@ failing the operational gate leaves the app running.
 
 ### Windows signing and deployment readiness
 
-The Windows release workflow currently permits an unsigned NSIS installer when its signing
-credentials are unavailable. That is a known release limitation: Windows can show a SmartScreen
-warning, and unattended deployment should not be enabled for a wider device fleet until a trusted
-Authenticode signing service is configured and the release job fails closed when signing is absent.
-The automatic updater does not bypass Windows signature or installer checks.
+The Windows release workflow now fails closed if signing is unavailable. Configure the
+`WINDOWS_CERTS` and `WINDOWS_CERTS_PASSWORD` GitHub secrets with the signing bundle accepted by
+electron-builder, and configure the `WINDOWS_SIGNING_SUBJECT` repository variable with the exact
+certificate Subject expected for the installer. Before Windows assets are uploaded, the release job
+runs Authenticode verification against the actual NSIS installer and AppX package files and rejects
+an invalid signature or a Subject mismatch. The immutable candidate manifest records Windows as
+signed only after that verification step passes. SmartScreen reputation is not inferred from a valid
+signature and remains outside this mechanical gate.
+
+The credentials and expected Subject are not configured by this code change. Until the repository
+secrets and variable are set to a real trusted certificate identity, Windows release publication is
+intentionally blocked. The automatic updater does not bypass Windows signature or installer checks.
 
 The installed app keeps its SQLite database and settings in Electron's per-user data directory,
 outside the NSIS application directory. Updating replaces application files; it does not replace the
