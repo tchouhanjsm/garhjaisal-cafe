@@ -48,17 +48,10 @@ async function main() {
   const db = initTestDb();
   const owner = seedOwnerUser(db);
   seedCategory(db, 'manual-tax-products', 'Manual Tax Products');
-  seedProduct(
-    db,
-    'manual-tax-product',
-    'manual-tax-products',
-    'Manual Tax Product',
-    100,
-    {
-      tax_type: 'none',
-      tax_category_id: null,
-    },
-  );
+  seedProduct(db, 'manual-tax-product', 'manual-tax-products', 'Manual Tax Product', 100, {
+    tax_type: 'none',
+    tax_category_id: null,
+  });
   db.prepare(
     `INSERT INTO addon_groups (id, name) VALUES ('manual-tax-addon-group', 'Extras')`,
   ).run();
@@ -97,7 +90,9 @@ async function main() {
     });
     assertEqual(createRes.status, 200, 'owner can save an initial manual config');
     const packId = createRes.data.pack_id;
-    db.prepare("UPDATE products SET tax_category_id = 'standard' WHERE id = ?").run('manual-tax-product');
+    db.prepare("UPDATE products SET tax_category_id = 'standard' WHERE id = ?").run(
+      'manual-tax-product',
+    );
 
     console.log('   ✓ omitted manual price mode defaults to exclusive GST');
     const defaultModePreview = await api(baseUrl, '/api/tax/preview', {
