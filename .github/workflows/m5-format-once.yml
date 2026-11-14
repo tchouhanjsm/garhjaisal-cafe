@@ -30,6 +30,11 @@ jobs:
             tests/garh-jaisal-pilot-contract.test.cjs \
             tests/manual-tax-config.test.ts \
             tests/print-document.test.ts
+          cd frontend
+          npm ci
+          npx oxfmt --write -- \
+            src/components/settings/TaxConfigurationPanel.tsx \
+            src/lib/printer/tax-bill-encoder.ts
       - name: Commit formatter output to this branch
         run: |
           git config user.name "github-actions[bot]"
@@ -40,6 +45,9 @@ jobs:
             tests/garh-jaisal-pilot-contract.test.cjs \
             tests/manual-tax-config.test.ts \
             tests/print-document.test.ts
+          git add -- \
+            frontend/src/components/settings/TaxConfigurationPanel.tsx \
+            frontend/src/lib/printer/tax-bill-encoder.ts
           if git diff --cached --quiet; then
             echo "Oxfmt found no additional changes."
           else
