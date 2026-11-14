@@ -3176,6 +3176,12 @@ function escposLineTemplateV1Lines(
         capabilities,
       ),
     );
+  const roomNumber = String(order?.room_number ?? '').trim();
+  if (roomNumber.length > 0) {
+    lines.push(
+      truncateShapedLine(`Room: ${roomNumber}`, cols, arabicShaping, lang, capabilities),
+    );
+  }
   // The heading marks these as the customer's details, so a receipt that also
   // prints the store address cannot read as carrying a second business address.
   const deliveryAddress = String(order?.delivery_address ?? '').trim();
