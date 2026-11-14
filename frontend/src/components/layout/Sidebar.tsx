@@ -302,7 +302,11 @@ export default function AppSidebar() {
                     !hrefQuery && (pathname === hrefPath || pathname?.startsWith(hrefPath + '/'));
                   return (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={isActive} tooltip={getNavLabel(item.labelKey)}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={getNavLabel(item.labelKey)}
+                      >
                         <Link href={item.href} onClick={closeMobile}>
                           <span className="relative flex size-4 shrink-0 items-center justify-center">
                             <item.icon className="size-4 shrink-0" />
