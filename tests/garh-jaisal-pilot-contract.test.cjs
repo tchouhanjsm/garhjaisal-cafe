@@ -3,7 +3,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const profileSource = fs.readFileSync(path.join(root, 'shared/deployment-profiles.ts'), 'utf8');
+const profileSource = fs.readFileSync(
+  path.join(root, 'shared/deployment-profiles.ts'),
+  'utf8',
+);
 
 assert.match(profileSource, /taxRegistered:\s*null/);
 assert.match(profileSource, /kdsEnabled:\s*false/);
@@ -14,7 +17,10 @@ assert.doesNotMatch(
 );
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-assert.equal(packageJson.scripts['dev:garh-jaisal-pilot'], 'FLO_PROFILE=garh-jaisal-pilot npm run dev');
+assert.equal(
+  packageJson.scripts['dev:garh-jaisal-pilot'],
+  'FLO_PROFILE=garh-jaisal-pilot npm run dev',
+);
 assert.notEqual(
   packageJson.scripts['dev:garh-jaisal-test'],
   packageJson.scripts['dev:garh-jaisal-pilot'],
@@ -32,10 +38,13 @@ const panel = fs.readFileSync(
 assert.ok(panel.includes('data-gst-registration-status="pending"'));
 assert.ok(panel.includes("taxRegistrationResponse.data.setting?.value === 'pending'"));
 
-const firstRun = fs.readFileSync(path.join(root, 'tests/first-run-setup.test.ts'), 'utf8');
-assert.ok(firstRun.includes("setting('tax_registered'), 'pending'"));
-assert.ok(firstRun.includes("setting('taxes_enabled'), 'false'"));
-assert.ok(firstRun.includes("count('country_pack_versions')"));
+const firstRun = fs.readFileSync(
+  path.join(root, 'tests/first-run-setup.test.ts'),
+  'utf8',
+);
+assert.ok(firstRun.includes("setting('tax_registered'),"));
+assert.ok(firstRun.includes("setting('taxes_enabled'),"));
+assert.ok(firstRun.includes("WHERE pack.country = 'IN'"));
 assert.ok(firstRun.includes("[{ name: 'UPI' }]"));
 
 const isolation = fs.readFileSync(

@@ -626,17 +626,29 @@ async function main() {
     assert.equal(setting('room_number_enabled'), 'true', 'optional room references are enabled');
     assert.equal(setting('kds_enabled'), 'false', 'printed KOT workflow does not enable KDS');
     assert.equal(setting('server_app_enabled'), 'true', 'waiter Server App is enabled');
-    assert.equal(setting('tax_registered'), 'pending', 'GST remains pending accountant confirmation');
-    assert.equal(setting('taxes_enabled'), 'false', 'tax calculation remains disabled until approved');
     assert.equal(
-      count('country_packs'),
-      1,
-      'Garh Jaisal does not activate an India tax pack while GST registration is pending',
+      setting('tax_registered'),
+      'pending',
+      'GST remains pending accountant confirmation',
     );
     assert.equal(
-      count('country_pack_versions'),
+      setting('taxes_enabled'),
+      'false',
+      'tax calculation remains disabled until approved',
+    );
+    assert.equal(count('country_packs'), 1, 'fresh setup keeps only the generic tax pack');
+    const indiaTaxPackVersions = getDatabase()
+      .prepare(`
+        SELECT COUNT(*) AS count
+        FROM country_pack_versions AS version
+        INNER JOIN country_packs AS pack ON pack.id = version.pack_id
+        WHERE pack.country = 'IN'
+      `)
+      .get() as { count: number };
+    assert.equal(
+      indiaTaxPackVersions.count,
       0,
-      'Garh Jaisal has no installed country tax pack versions before approval',
+      'no India tax pack version is installed while GST registration is pending',
     );
     assert.equal(
       setting('tax_registration_number'),

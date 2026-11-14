@@ -1034,7 +1034,7 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
           <div>
             <p className="font-semibold">GST registration status pending confirmation</p>
             <p className="mt-1">
-              Confirm the restaurant's GST registration with the accountant before enabling a tax
+              Confirm the restaurant&apos;s GST registration with the accountant before enabling a tax
               pack or entering a tax rate. No GST rate is preconfigured.
             </p>
           </div>
