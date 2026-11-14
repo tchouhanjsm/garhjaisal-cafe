@@ -100,59 +100,76 @@ export function getUpdateInstallSafety(at = new Date()): UpdateInstallSafetyResu
       timezone: getSettingValue('timezone') ?? undefined,
     });
     const businessDayStart = tenantBusinessDayStartTime(db);
-    const businessDate = localDateInTimezone(at, regional.timezone, businessDayStart);
-    const dayClose = db
-      .prepare("SELECT created_at FROM cash_closures WHERE scope = 'day' AND business_date = ?")
-      .get(businessDate) as { created_at: string } | undefined;
-
-    // A business day may span midnight in UTC. Looking back 48 hours covers
-    // every valid tenant-local business day without scanning the full history.
+    // A business day can span midnight and an operator may forget to close it
+    // before the next local date begins. Check every tenant-local business
+    // date with recent activity, not only the date containing the install click.
     const activityCutoff = new Date(at.getTime() - 48 * 60 * 60 * 1000)
       .toISOString()
       .replace('T', ' ')
       .slice(0, 19);
-    const latestActivity = db
+    const activityRows = db
       .prepare(
         `
-          SELECT MAX(activity_at) AS activity_at
+          SELECT activity_at
           FROM (
             SELECT created_at AS activity_at FROM orders WHERE created_at >= ?
             UNION ALL
             SELECT updated_at AS activity_at FROM orders WHERE updated_at >= ?
             UNION ALL
+            SELECT created_at AS activity_at FROM order_items WHERE created_at >= ?
+            UNION ALL
+            SELECT updated_at AS activity_at FROM order_items WHERE updated_at >= ?
+            UNION ALL
+            SELECT created_at AS activity_at FROM order_audit_log WHERE created_at >= ?
+            UNION ALL
             SELECT created_at AS activity_at FROM bills WHERE created_at >= ?
+            UNION ALL
+            SELECT updated_at AS activity_at FROM bills WHERE updated_at >= ?
             UNION ALL
             SELECT paid_at AS activity_at FROM bills WHERE paid_at >= ? AND paid_at IS NOT NULL
             UNION ALL
             SELECT created_at AS activity_at FROM refunds WHERE created_at >= ?
             UNION ALL
             SELECT created_at AS activity_at FROM cash_drawer_movements WHERE created_at >= ?
+            UNION ALL
+            SELECT voided_at AS activity_at FROM cash_drawer_movements WHERE voided_at >= ? AND voided_at IS NOT NULL
+            UNION ALL
+            SELECT opened_at AS activity_at FROM cash_sessions WHERE opened_at >= ?
+            UNION ALL
+            SELECT closed_at AS activity_at FROM cash_sessions WHERE closed_at >= ? AND closed_at IS NOT NULL
           )
+          WHERE activity_at IS NOT NULL
         `,
       )
-      .get(
-        activityCutoff,
-        activityCutoff,
-        activityCutoff,
-        activityCutoff,
-        activityCutoff,
-        activityCutoff,
-      ) as { activity_at: string | null } | undefined;
+      .all(...Array.from({ length: 13 }, () => activityCutoff)) as { activity_at: string }[];
 
-    if (latestActivity?.activity_at) {
-      const activityAt = parseDbTimestamp(latestActivity.activity_at);
+    const latestActivityByBusinessDate = new Map<string, Date>();
+    for (const row of activityRows) {
+      const activityAt = parseDbTimestamp(row.activity_at);
       const activityBusinessDate = localDateInTimezone(
         activityAt,
         regional.timezone,
         businessDayStart,
       );
-      const activityIsAfterDayClose =
-        !dayClose || activityAt.getTime() > parseDbTimestamp(dayClose.created_at).getTime();
+      const previousLatest = latestActivityByBusinessDate.get(activityBusinessDate);
+      if (!previousLatest || activityAt.getTime() > previousLatest.getTime()) {
+        latestActivityByBusinessDate.set(activityBusinessDate, activityAt);
+      }
+    }
 
-      if (activityBusinessDate === businessDate && activityIsAfterDayClose) {
+    for (const [activityBusinessDate, latestActivityAt] of latestActivityByBusinessDate) {
+      const dayClose = db
+        .prepare(
+          "SELECT created_at FROM cash_closures WHERE scope = 'day' AND business_date = ?",
+        )
+        .get(activityBusinessDate) as { created_at: string } | undefined;
+      const activityIsAfterDayClose =
+        !dayClose || latestActivityAt.getTime() > parseDbTimestamp(dayClose.created_at).getTime();
+
+      if (activityIsAfterDayClose) {
         return blocked(
           'business-day-open',
-          'The current business day is still open. Complete day-close before updating.',
+          `Business day ${activityBusinessDate} is still open. Complete day-close before installing the update.`,
         );
       }
     }
