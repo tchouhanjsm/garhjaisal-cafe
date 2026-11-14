@@ -1,0 +1,139 @@
+name: Windows Pilot Installer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-pilot-installer-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-signed-nsis:
+    name: Build and verify signed Windows installer
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Require the protected main branch
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -ne 'refs/heads/main') {
+            Write-Error "Run the Windows pilot installer workflow from main. Selected ref: $env:GITHUB_REF"
+            exit 1
+          }
+
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Require Windows signing credentials
+        shell: pwsh
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CERTS }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTS_PASSWORD }}
+          WINDOWS_SIGNING_SUBJECT: ${{ vars.WINDOWS_SIGNING_SUBJECT }}
+        run: |
+          $missing = @()
+          if ([string]::IsNullOrWhiteSpace($env:CSC_LINK)) { $missing += 'WINDOWS_CERTS' }
+          if ([string]::IsNullOrWhiteSpace($env:CSC_KEY_PASSWORD)) { $missing += 'WINDOWS_CERTS_PASSWORD' }
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_SUBJECT)) { $missing += 'WINDOWS_SIGNING_SUBJECT' }
+          if ($missing.Count -gt 0) {
+            Write-Error "Signed Windows pilot build blocked. Configure these repository values: $($missing -join ', ')"
+            exit 1
+          }
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Build frontend
+        run: npm run build:frontend
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Compile Electron main process
+        run: npm run build
+
+      - name: Verify desktop and Start Menu shortcuts are enabled
+        shell: pwsh
+        run: |
+          node -e "const p=require('./package.json'); if (p.build?.nsis?.createDesktopShortcut !== true || p.build?.nsis?.createStartMenuShortcut !== true) { console.error('NSIS desktop and Start Menu shortcuts must both be enabled'); process.exit(1); } console.log('NSIS desktop and Start Menu shortcuts: enabled');"
+
+      - name: Build signed x64 NSIS installer
+        shell: bash
+        run: npx electron-builder --win nsis --x64 --publish never --config.npmRebuild=false
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CERTS }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTS_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Verify installer signature and prepare pilot artifact
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_SUBJECT: ${{ vars.WINDOWS_SIGNING_SUBJECT }}
+        run: |
+          $version = node -p "require('./package.json').version"
+          $installers = @(Get-ChildItem -Path "release\flocafe-$version-win-x64.exe" -File -ErrorAction SilentlyContinue)
+          if ($installers.Count -ne 1) {
+            Write-Error "Expected exactly one x64 NSIS installer for version $version; found $($installers.Count)"
+            exit 1
+          }
+
+          $installer = $installers[0]
+          $signature = Get-AuthenticodeSignature -FilePath $installer.FullName
+          if ($signature.Status -ne 'Valid') {
+            Write-Error "Authenticode verification failed: $($signature.Status) — $($signature.StatusMessage)"
+            exit 1
+          }
+
+          $expectedSubject = $env:WINDOWS_SIGNING_SUBJECT.Trim()
+          $actualSubject = $signature.SignerCertificate.Subject
+          if ([string]::IsNullOrWhiteSpace($actualSubject) -or $actualSubject -cne $expectedSubject) {
+            Write-Error "Signer subject mismatch. Expected '$expectedSubject'; got '$actualSubject'"
+            exit 1
+          }
+
+          New-Item -ItemType Directory -Force -Path pilot-installer | Out-Null
+          Copy-Item -LiteralPath $installer.FullName -Destination 'pilot-installer\FloCafe-Windows-x64-Setup.exe'
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath 'pilot-installer\FloCafe-Windows-x64-Setup.exe').Hash
+          @(
+            "Product: Flo Cafe"
+            "Package version: $version"
+            "Source commit: $env:GITHUB_SHA"
+            "Build purpose: Windows pilot installation and hardware acceptance"
+            "Distribution: private GitHub Actions artifact; not a public release"
+            "Architecture: x64"
+            "Authenticode status: $($signature.Status)"
+            "Authenticode subject: $actualSubject"
+            "Installer SHA-256: $hash"
+            "Desktop shortcut: enabled"
+            "Start Menu shortcut: enabled"
+            "Auto-update feed: not validated by this pilot artifact"
+          ) | Set-Content -Encoding UTF8 'pilot-installer\BUILD-INFO.txt'
+
+          "### Signed Windows pilot installer" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- Version: $version" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- Commit: $env:GITHUB_SHA" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- Authenticode: $($signature.Status) — $actualSubject" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- SHA-256: $hash" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload signed pilot installer
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-pilot-installer-${{ github.run_number }}
+          path: pilot-installer/
+          if-no-files-found: error
+          retention-days: 14
