@@ -397,6 +397,25 @@ function run(): void {
   }
 
   // ------------------------------------------------------------------
+  // Room references are optional, but must survive the shared print-data
+  // bridge and render on every guest receipt surface when supplied.
+  section('Optional room number across all receipt renderers');
+  {
+    const roomOrder = { ...fullOrder, room_number: '305' };
+    const roomBill = { ...fullBill, order: roomOrder };
+    const outputs = [
+      ['backend/classic', escPosToText(formatReceipt(roomOrder, roomBill, business, 'classic', 42, true, false, 'full', []))],
+      ['backend/compact', escPosToText(formatReceipt(roomOrder, roomBill, business, 'compact', 42, true, false, 'full', []))],
+      ['webusb/classic', new TextDecoder().decode(fe.receiptEncoder.buildClassicReceiptBytes(roomBill as any, tenant as any, { paperWidth: 80, useUnicode: true, languages: ['en'] }, []))],
+      ['webusb/compact', new TextDecoder().decode(fe.receiptEncoder.buildCompactReceiptBytes(roomBill as any, tenant as any, { paperWidth: 80, useUnicode: true, languages: ['en'] }, []))],
+      ['browser/html', fe.webPrint.generateBillHtml(roomBill as any, tenant as any, { paperSize: 'thermal80', businessName: business.name, languages: ['en'] })],
+    ] as const;
+    for (const [renderer, output] of outputs) {
+      warn(/\\broom\\s*:?\\s*305\\b/i.test(normalizeSemanticContent(output)), `${renderer}: optional room number is printed`);
+    }
+  }
+
+  // ------------------------------------------------------------------
   // 2a. Column parity at the same width — the comparison this harness
   // previously could not make. Sections 1 and 2 ran each path at its own
   // widths, so the two were never rendered at the same column budget and
