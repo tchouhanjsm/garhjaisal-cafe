@@ -6,8 +6,17 @@ on:
       - m5/garh-jaisal-mac-pilot-onboarding
     paths:
       - .github/workflows/m5-format-once.yml
+      - main/printers/thermal.ts
+      - shared/print/document.ts
+      - tests/garh-jaisal-pilot-contract.test.cjs
       - tests/manual-tax-config.test.ts
       - tests/print-document.test.ts
+      - tests/print-parity.test.ts
+      - frontend/src/components/settings/TaxConfigurationPanel.tsx
+      - frontend/src/lib/printer/tax-bill-encoder.ts
+      - frontend/src/lib/printer/print-document.ts
+      - frontend/src/lib/printer/web-print.ts
+      - frontend/src/lib/printer/receipt-encoder.ts
 
 permissions:
   contents: write
@@ -31,12 +40,16 @@ jobs:
             shared/print/document.ts \
             tests/garh-jaisal-pilot-contract.test.cjs \
             tests/manual-tax-config.test.ts \
-            tests/print-document.test.ts
+            tests/print-document.test.ts \
+            tests/print-parity.test.ts
           cd frontend
           npm ci
           npx oxfmt --write -- \
             src/components/settings/TaxConfigurationPanel.tsx \
-            src/lib/printer/tax-bill-encoder.ts
+            src/lib/printer/tax-bill-encoder.ts \
+            src/lib/printer/print-document.ts \
+            src/lib/printer/web-print.ts \
+            src/lib/printer/receipt-encoder.ts
       - name: Commit formatter output to this branch
         run: |
           git config user.name "github-actions[bot]"
@@ -46,10 +59,14 @@ jobs:
             shared/print/document.ts \
             tests/garh-jaisal-pilot-contract.test.cjs \
             tests/manual-tax-config.test.ts \
-            tests/print-document.test.ts
+            tests/print-document.test.ts \
+            tests/print-parity.test.ts
           git add -- \
             frontend/src/components/settings/TaxConfigurationPanel.tsx \
-            frontend/src/lib/printer/tax-bill-encoder.ts
+            frontend/src/lib/printer/tax-bill-encoder.ts \
+            frontend/src/lib/printer/print-document.ts \
+            frontend/src/lib/printer/web-print.ts \
+            frontend/src/lib/printer/receipt-encoder.ts
           if git diff --cached --quiet; then
             echo "Oxfmt found no additional changes."
           else
