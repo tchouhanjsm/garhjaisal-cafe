@@ -56,6 +56,21 @@ printing, and reports are unavailable while the update installs, that the servic
 restart, and that installation should be performed after closing service. Cancelling the prompt or
 failing PIN approval leaves the app running.
 
+### Windows signing and deployment readiness
+
+The Windows release workflow currently permits an unsigned NSIS installer when its signing
+credentials are unavailable. That is a known release limitation: Windows can show a SmartScreen
+warning, and unattended deployment should not be enabled for a wider device fleet until a trusted
+Authenticode signing service is configured and the release job fails closed when signing is absent.
+The automatic updater does not bypass Windows signature or installer checks.
+
+The installed app keeps its SQLite database and settings in Electron's per-user data directory,
+outside the NSIS application directory. Updating replaces application files; it does not replace the
+restaurant profile. On the next launch, the normal migration path performs its pre-migration backup
+and schema checks. Keep the normal local backup and restore process in place, and test one real
+Windows upgrade against a disposable profile before upgrading the hotel's production profile.
+
+
 ## Snap Store publication
 
 Each Linux architecture publishes its own snap, tagged separately, and the Snap Store keeps
