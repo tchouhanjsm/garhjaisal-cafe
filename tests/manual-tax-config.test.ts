@@ -192,8 +192,16 @@ async function main() {
       body: { items: [{ product_id: product.id, quantity: 1 }] },
     });
     assertEqual(inclusivePreview.status, 200, 'manual inclusive tax preview succeeds');
-    assertEqual(inclusivePreview.data.summary.subtotal, 100, 'inclusive preview preserves menu subtotal');
-    assertEqual(inclusivePreview.data.summary.total, 100, 'inclusive preview keeps GST inside the menu price');
+    assertEqual(
+      inclusivePreview.data.summary.subtotal,
+      100,
+      'inclusive preview preserves menu subtotal',
+    );
+    assertEqual(
+      inclusivePreview.data.summary.total,
+      100,
+      'inclusive preview keeps GST inside the menu price',
+    );
     assertEqual(
       Number(inclusivePreview.data.summary.tax_amount.toFixed(2)),
       4.76,
