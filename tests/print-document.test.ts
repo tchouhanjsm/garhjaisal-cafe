@@ -35,7 +35,7 @@ import {
   renderBillDocumentToClassicLines,
 } from '../main/printers/document-classic';
 import { renderBillDocumentToCompactLines } from '../main/printers/document-compact';
-import { formatReceipt, receiptDocumentLines } from '../main/printers/thermal';
+import { escPosToText, formatReceipt, receiptDocumentLines } from '../main/printers/thermal';
 import { GENERIC_THERMAL_CAPABILITIES } from '../shared/print/thermal-capabilities';
 import { buildParityFixtures } from './print-parity.test';
 
@@ -289,7 +289,7 @@ console.log('\n▶ Block construction (fixture bill)');
     'en',
   );
   assert(
-    nativeRoomReceipt.toString('utf8').includes('Room: 305'),
+    escPosToText(nativeRoomReceipt).includes('Room: 305'),
     'native receipt byte output includes the optional room number',
   );
   const noRoomOrder = { ...roomFixture.order, room_number: '   ' };
