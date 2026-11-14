@@ -1882,6 +1882,9 @@ router.post(
   requirePermission('tax-packs.manage'),
   (req: Request, res: Response) => {
     try {
+      if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+        return res.status(409).json(taxRegistrationPendingResponse());
+      }
       const db = getDatabase();
       const pack = db.prepare('SELECT * FROM country_packs WHERE id = ?').get(req.params.packId) as
         | PackRow
@@ -1961,6 +1964,9 @@ router.post(
   requirePermission('tax-packs.manage'),
   (req: Request, res: Response) => {
     try {
+      if (isTaxRegistrationPending(getSettingValue('tax_registered'))) {
+        return res.status(409).json(taxRegistrationPendingResponse());
+      }
       const db = getDatabase();
       const pack = db.prepare('SELECT * FROM country_packs WHERE id = ?').get(req.params.packId) as
         | PackRow
@@ -2015,7 +2021,11 @@ router.post(
     } catch (error: any) {
       res.locals.postHogError = error;
       console.error('[Tax Packs] Rollback failed:', error);
-      res.status(500).json({ error: 'Could not roll back tax pack' });
+      const statusCode = error.statusCode || 500;
+      res.status(statusCode).json({
+        error: statusCode >= 500 ? 'Could not roll back tax pack' : error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
     }
   },
 );
