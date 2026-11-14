@@ -239,7 +239,12 @@ console.log('\n▶ Block construction (fixture bill)');
 
   const roomFixture = buildParityFixtures();
   const roomOrder = { ...roomFixture.order, room_number: '305' };
-  const roomPrintData = buildBillPrintData(roomOrder, roomFixture.bill, roomFixture.business, false);
+  const roomPrintData = buildBillPrintData(
+    roomOrder,
+    roomFixture.bill,
+    roomFixture.business,
+    false,
+  );
   const roomContext = buildBillPrintContext({
     columns: 42,
     language: 'en',
@@ -265,7 +270,10 @@ console.log('\n▶ Block construction (fixture bill)');
     ['classic', renderBillDocumentToClassicLines(roomDocument, roomRendererOptions)],
     ['compact', renderBillDocumentToCompactLines(roomDocument, roomRendererOptions)],
   ] as const) {
-    assert(lines.some((line) => line.includes('Room: 305')), `${renderer} receipt prints the optional room number`);
+    assert(
+      lines.some((line) => line.includes('Room: 305')),
+      `${renderer} receipt prints the optional room number`,
+    );
   }
   const nativeRoomReceipt = formatReceipt(
     roomOrder,
@@ -285,7 +293,12 @@ console.log('\n▶ Block construction (fixture bill)');
     'native receipt byte output includes the optional room number',
   );
   const noRoomOrder = { ...roomFixture.order, room_number: '   ' };
-  const noRoomData = buildBillPrintData(noRoomOrder, roomFixture.bill, roomFixture.business, false);
+  const noRoomData = buildBillPrintData(
+    noRoomOrder,
+    roomFixture.bill,
+    roomFixture.business,
+    false,
+  );
   assert.equal(
     blockOf(buildBillDocument(noRoomData, roomContext), 'document-meta').roomNumber,
     null,
