@@ -1060,7 +1060,7 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
           </button>
           <button
             type="button"
-            disabled={!isOwner || enablingTaxes || officialPackAvailableResolved === false}
+            disabled={!isOwner || gstRegistrationPending || enablingTaxes || officialPackAvailableResolved === false}
             title={
               officialPackAvailableResolved === false
                 ? t('noOfficialPack', { country: storeCountry })
@@ -1076,7 +1076,7 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
           </button>
           <button
             type="button"
-            disabled={!isOwner}
+            disabled={!isOwner || gstRegistrationPending}
             onClick={() => setManualBuilderOpen(true)}
             className={taxModeSegmentClass(activeSegment === 'manual')}
           >
@@ -1154,7 +1154,7 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
             {isOwner ? (
               <Button
                 size="sm"
-                disabled={installingUpdate}
+                disabled={installingUpdate || gstRegistrationPending}
                 onClick={() => void installPluginUpdate()}
               >
                 {installingUpdate ? t('installing') : t('installAndActivate')}
@@ -1166,7 +1166,7 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
         )}
       </section>
 
-      {manualBuilderVisible && (
+      {manualBuilderVisible && !gstRegistrationPending && (
         <section className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
