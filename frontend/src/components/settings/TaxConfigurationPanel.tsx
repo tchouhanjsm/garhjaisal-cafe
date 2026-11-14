@@ -302,6 +302,7 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
   const [enablingTaxes, setEnablingTaxes] = useState(false);
   const [countryPackUnavailable, setCountryPackUnavailable] = useState(false);
   const [taxesEnabled, setTaxesEnabled] = useState(false);
+  const [gstRegistrationPending, setGstRegistrationPending] = useState(false);
   const [pluginRequested, setPluginRequested] = useState(false);
   const [showAdvancedTools, setShowAdvancedTools] = useState(false);
   const [packUpdate, setPackUpdate] = useState<TaxPackUpdate | null>(null);
@@ -382,6 +383,7 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
     const [response, settingResponse] = await Promise.all([
       api.get('/tax-packs'),
       api.get('/settings/taxes_enabled'),
+      api.get('/settings/tax_registered'),
     ]);
     const nextPacks = response.data.packs as PackSummary[];
     setPacks(nextPacks);
@@ -390,6 +392,8 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
     setPluginRequested(Boolean(requestId));
     setCountryPackUnavailable(Boolean(requestId));
     setTaxesEnabled(settingResponse.data.setting?.value === 'true');
+    const registrationResponse = await api.get('/settings/tax_registered');
+    setGstRegistrationPending(registrationResponse.data.setting?.value === 'pending');
     setSelectedPackId((current) => {
       if (current && nextPacks.some((pack) => pack.id === current)) return current;
       return nextPacks.find((pack) => pack.active_for_store)?.id || nextPacks[0]?.id || '';
@@ -1018,6 +1022,23 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
         <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <Lock size={16} className="mt-0.5 shrink-0" />
           {t('managerNotice')}
+        </div>
+      )}
+
+      {gstRegistrationPending && (
+        <div
+          role="status"
+          data-gst-registration-status="pending"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          <Clock3 size={16} className="mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">GST registration status pending confirmation</p>
+            <p className="mt-1">
+              Confirm the restaurant's GST registration with the accountant before enabling a tax
+              pack or entering a tax rate. No GST rate is preconfigured.
+            </p>
+          </div>
         </div>
       )}
 

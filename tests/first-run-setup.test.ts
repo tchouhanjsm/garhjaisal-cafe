@@ -626,7 +626,8 @@ async function main() {
     assert.equal(setting('room_number_enabled'), 'true', 'optional room references are enabled');
     assert.equal(setting('kds_enabled'), 'false', 'printed KOT workflow does not enable KDS');
     assert.equal(setting('server_app_enabled'), 'true', 'waiter Server App is enabled');
-    assert.equal(setting('tax_registered'), 'pending', 'GST remains visibly pending accountant confirmation');
+    assert.equal(setting('tax_registered'), 'pending', 'GST remains pending accountant confirmation');
+    assert.equal(setting('taxes_enabled'), 'false', 'tax calculation remains disabled until approved');
     assert.equal(
       setting('tax_registration_number'),
       '',
@@ -666,7 +667,7 @@ async function main() {
     assert.deepEqual(
       getDatabase().prepare('SELECT name FROM payment_methods ORDER BY sort_order, id').all(),
       [{ name: 'Cash' }, { name: 'Card' }, { name: 'UPI' }],
-      'setup provides the confirmed cash, card and UPI tender methods without invented credentials',
+      'setup provides the approved cash, card and UPI payment methods',
     );
     assert.equal(
       profileRefreshes,
