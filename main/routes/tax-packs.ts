@@ -1386,7 +1386,9 @@ function buildManualPack(body: any, country: string, currency: string): CountryP
     publishedAt: effectiveFrom,
     minFloVersion: '2.4.0',
     taxPoint: 'finalized_at',
-    inclusivePricingDefault: body?.inclusive !== false,
+    // Manual tax defaults to exclusive pricing so an omitted mode cannot silently
+    // leave the payable total equal to the subtotal. Owners can explicitly choose inclusive.
+    inclusivePricingDefault: body?.inclusive === true,
     registrationNumberLabel: 'Tax registration',
     categories,
     defaultCategories,
@@ -1415,6 +1417,9 @@ router.post(
           .json({ error: 'A valid store country must be set in Settings first' });
       }
       const currency = String(getSettingValue('currency') || 'USD').toUpperCase();
+      if (req.body?.inclusive !== undefined && typeof req.body.inclusive !== 'boolean') {
+        return res.status(400).json({ error: 'inclusive must be a boolean when provided' });
+      }
 
       const activeForCountry = db
         .prepare(`SELECT id, publisher FROM country_packs WHERE country = ? AND status = 'active'`)
