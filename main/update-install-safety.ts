@@ -159,9 +159,7 @@ export function getUpdateInstallSafety(at = new Date()): UpdateInstallSafetyResu
 
     for (const [activityBusinessDate, latestActivityAt] of latestActivityByBusinessDate) {
       const dayClose = db
-        .prepare(
-          "SELECT created_at FROM cash_closures WHERE scope = 'day' AND business_date = ?",
-        )
+        .prepare("SELECT created_at FROM cash_closures WHERE scope = 'day' AND business_date = ?")
         .get(activityBusinessDate) as { created_at: string } | undefined;
       const activityIsAfterDayClose =
         !dayClose || latestActivityAt.getTime() > parseDbTimestamp(dayClose.created_at).getTime();
