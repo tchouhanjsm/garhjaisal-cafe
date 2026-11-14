@@ -1,0 +1,119 @@
+name: Windows Internal Pilot Installer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-internal-pilot-installer-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-unsigned-nsis:
+    name: Build and verify unsigned Windows pilot installer
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Require the protected main branch
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -ne 'refs/heads/main') {
+            Write-Error "Run the Windows internal pilot installer workflow from main. Selected ref: $env:GITHUB_REF"
+            exit 1
+          }
+
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Build frontend
+        run: npm run build:frontend
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Compile Electron main process
+        run: npm run build
+
+      - name: Verify desktop and Start Menu shortcuts are enabled
+        shell: pwsh
+        run: |
+          node -e "const p=require('./package.json'); if (p.build?.nsis?.createDesktopShortcut !== true || p.build?.nsis?.createStartMenuShortcut !== true) { console.error('NSIS desktop and Start Menu shortcuts must both be enabled'); process.exit(1); } console.log('NSIS desktop and Start Menu shortcuts: enabled');"
+
+      - name: Build unsigned x64 NSIS installer
+        shell: bash
+        run: npx electron-builder --win nsis --x64 --publish never --config.npmRebuild=false
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Verify unsigned installer and prepare pilot artifact
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $installers = @(Get-ChildItem -Path "release\flocafe-$version-win-x64.exe" -File -ErrorAction SilentlyContinue)
+          if ($installers.Count -ne 1) {
+            Write-Error "Expected exactly one x64 NSIS installer for version $version; found $($installers.Count)"
+            exit 1
+          }
+
+          $installer = $installers[0]
+          $signature = Get-AuthenticodeSignature -FilePath $installer.FullName
+          if ($signature.Status -ne 'NotSigned') {
+            Write-Error "Expected an unsigned internal pilot installer; got Authenticode status '$($signature.Status)'"
+            exit 1
+          }
+
+          New-Item -ItemType Directory -Force -Path pilot-installer | Out-Null
+          $pilotName = 'FloCafe-Windows-x64-Setup-UNSIGNED-INTERNAL-PILOT.exe'
+          Copy-Item -LiteralPath $installer.FullName -Destination "pilot-installer\$pilotName"
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath "pilot-installer\$pilotName").Hash
+          "$hash  $pilotName" | Set-Content -Encoding ascii 'pilot-installer\SHA256SUMS.txt'
+
+          @(
+            "Product: Flo Cafe"
+            "Package version: $version"
+            "Source commit: $env:GITHUB_SHA"
+            "Build purpose: controlled Windows installation and hardware acceptance pilot"
+            "Distribution warning: this artifact is unsigned and must not be treated as an official public release"
+            "Repository visibility: public; anyone with repository read access can download this Actions artifact"
+            "Architecture: x64"
+            "Authenticode status: $($signature.Status) (expected for this internal pilot)"
+            "Installer SHA-256: $hash"
+            "Desktop shortcut: enabled"
+            "Start Menu shortcut: enabled"
+            "Automatic updates: not enabled or validated by this pilot workflow"
+            "Update policy: manually review, back up, and install updates outside restaurant service hours"
+          ) | Set-Content -Encoding UTF8 'pilot-installer\BUILD-INFO.txt'
+
+          "### Unsigned Windows internal pilot installer" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- Version: $version" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- Source commit: $env:GITHUB_SHA" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- Authenticode: $($signature.Status) (expected; no publisher identity is asserted)" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- Installer SHA-256: $hash" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- Desktop and Start Menu shortcuts: enabled" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- This repository is public, so this Actions artifact is downloadable by anyone with repository read access." | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "- This artifact does not publish a release or update feed." | Out-File -Append $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload unsigned internal pilot artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-internal-pilot-installer-${{ github.run_number }}
+          path: pilot-installer/
+          if-no-files-found: error
+          retention-days: 3

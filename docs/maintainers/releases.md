@@ -64,24 +64,85 @@ failing the operational gate leaves the app running.
 
 ### Windows signing and deployment readiness
 
-The Windows release workflow now fails closed if signing is unavailable. Configure the
-`WINDOWS_CERTS` and `WINDOWS_CERTS_PASSWORD` GitHub secrets with the signing bundle accepted by
-electron-builder, and configure the `WINDOWS_SIGNING_SUBJECT` repository variable with the exact
-certificate Subject expected for the installer. Before Windows assets are uploaded, the release job
-runs Authenticode verification against the actual NSIS installer and AppX package files and rejects
-an invalid signature or a Subject mismatch. The immutable candidate manifest records Windows as
-signed only after that verification step passes. SmartScreen reputation is not inferred from a valid
-signature and remains outside this mechanical gate.
+The official Windows release workflow continues to fail closed unless signing is configured. Set the
+`WINDOWS_CERTS` and `WINDOWS_CERTS_PASSWORD` GitHub secrets to the signing bundle accepted by
+electron-builder, and set the `WINDOWS_SIGNING_SUBJECT` repository variable to the exact
+Authenticode certificate Subject. Before official Windows release assets are uploaded, the release
+job verifies the actual NSIS installer and AppX package signatures and rejects an invalid signature
+or Subject mismatch. The immutable candidate manifest records Windows as signed only after that
+verification passes. A valid Authenticode signature does not itself prove SmartScreen reputation.
 
-The credentials and expected Subject are not configured by this code change. Until the repository
-secrets and variable are set to a real trusted certificate identity, Windows release publication is
-intentionally blocked. The automatic updater does not bypass Windows signature or installer checks.
+These signing values are not required for the separate **unsigned internal pilot installer** below.
+They remain required for official signed Windows releases and the trusted update path. Do not weaken
+or bypass the official release workflow's signing checks.
 
 The installed app keeps its SQLite database and settings in Electron's per-user data directory,
 outside the NSIS application directory. Updating replaces application files; it does not replace the
 restaurant profile. On the next launch, the normal migration path performs its pre-migration backup
-and schema checks. Keep the normal local backup and restore process in place, and test one real
-Windows upgrade against a disposable profile before upgrading the hotel's production profile.
+and schema checks. For a manual pilot update, back up the Windows database first, close the app, and
+install only outside restaurant service hours after all orders, bills, and the business-day shift
+have been settled. Do not rely on the pilot workflow to validate automatic updates.
+
+### Windows internal pilot installation
+
+Use **Actions > Windows Internal Pilot Installer > Run workflow** from the `main` branch after this
+PR is merged. No signing certificate or signing secret is needed. The workflow builds only the x64
+NSIS installer, disables automatic certificate discovery, verifies that the resulting installer is
+`NotSigned`, checks that desktop and Start Menu shortcuts are enabled, records the source commit and
+SHA-256 checksum, and uploads the artifact for three days. It does not create a GitHub Release,
+publish an update feed, build an AppX package, or validate automatic updates.
+
+**Distribution visibility:** this repository is public. GitHub Actions artifacts are downloadable
+by anyone with read access to the repository, so this is a temporary build artifact, not a private
+distribution channel. The installer is explicitly labelled unsigned and internal-pilot-only. Do not
+use this workflow for public customer distribution. If a future build must be access-controlled,
+use a private repository or approved private artifact storage rather than assuming a public Actions
+artifact is confidential.
+
+The NSIS configuration creates a **Flo Cafe** desktop shortcut and a Start Menu shortcut. Verify
+both on the real Windows machine; a hosted build can check the packaging configuration, but cannot
+prove that Windows Explorer, the desktop, firewall, or attached hardware behaves correctly on the
+hotel computer.
+
+#### Garh Jaisal Windows acceptance
+
+1. From the Actions run, download the three-day artifact. Compare the installer's SHA-256 value with
+   both `SHA256SUMS.txt` and the workflow run summary before transferring or running it.
+2. The installer is unsigned. Windows may show an unknown-publisher or SmartScreen warning, and
+   some Windows security configurations may block it. Do not disable SmartScreen, Smart App Control,
+   Defender, or other Windows protections to force installation. If Windows blocks the installer,
+   stop the pilot and use a trusted signed build instead.
+3. Where Windows permits the controlled pilot installation, run the installer and confirm that
+   **Flo Cafe** appears on both the desktop and Start Menu. Open it using the desktop icon.
+4. Before creating a new owner, use the first-run **Restore from file** action to restore the
+   database backup exported from the Mac. Sign in with the restored owner account, then configure
+   a fresh Windows-local Master PIN; its encrypted value belongs to Windows secure storage and is
+   not carried inside the SQLite database backup.
+5. Confirm the restored Garh Jaisal menu, staff, 10 tables, room-number setting, and tax settings.
+   Keep the Mac staging profile separate; Windows becomes the only writable production database.
+6. Connect the Epson TM-T82X to the same trusted private LAN. Reserve its address in the router,
+   configure it once under **Settings > Printers**, and verify **Test Print**, a sample KOT, and a
+   customer receipt. Include a receipt check for the optional room number.
+7. Enable **Server App**, pair one captain phone using **Settings > Mobile Access**, and submit one
+   controlled test order. Verify that the Windows hub records it and the Epson prints the KOT.
+8. Complete a controlled order-to-payment-to-closing cycle, verify the cash and sales reconciliation,
+   and create a fresh Windows backup. Repeat the basic launch and printer test after restarting
+   Windows and the Epson.
+
+Do not hand the machine to staff for live service until this physical acceptance passes. Hosted CI
+cannot test printer paper, cutter behaviour, the hotel router, Windows firewall prompts, or the
+captain's actual phone browser. Keep the POS and printer endpoints on the trusted private business
+network; do not expose them directly to the public internet.
+
+#### Manual pilot update procedure
+
+For each pilot update, wait until the restaurant is closed and the business day is reconciled. Confirm
+there are no active or held orders, unsettled bills, or open shifts; create and verify a fresh Windows
+database backup; review the exact source commit, package version, workflow result, and installer
+checksum; then close Flo Cafe and run the manually downloaded installer. Reopen the app and verify
+the version, restaurant data, printer test, and captain-phone ordering before returning to service.
+Keep one known-good installer and the latest verified backup available for rollback planning. This
+workflow does not enable unattended or automatic updates.
 
 ## Snap Store publication
 
@@ -205,9 +266,7 @@ marked unsigned is summarized as `UNSIGNED (accepted residual risk)`, and a buil
 status was never verified is summarized as `NOT-VERIFIED`. Neither is signing or SmartScreen
 evidence.
 
-The Windows installer ships unsigned, so users see the SmartScreen "Windows protected your PC"
-prompt, and SmartScreen reputation is an interactive Windows behaviour that hosted runners cannot
-observe.
+A legacy Windows artifact may have an explicit unsigned status, but that is not approval to publish a new unsigned official release. The current Windows release workflow requires a verified Authenticode signature before it publishes Windows assets. SmartScreen reputation remains a separate Windows behaviour that hosted runners cannot prove.
 
 ## Manual pre-release QA
 
