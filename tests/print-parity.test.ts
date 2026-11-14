@@ -533,7 +533,7 @@ function run(): void {
     ] as const;
     for (const [renderer, output] of outputs) {
       warn(
-        /\\broom\\s*:?\\s*305\\b/i.test(normalizeSemanticContent(output)),
+        /\broom\s*:?\s*305\b/i.test(normalizeSemanticContent(output)),
         `${renderer}: optional room number is printed`,
       );
     }
