@@ -201,6 +201,21 @@ async function main(): Promise<void> {
     );
 
     clearOperationalRows();
+    insertOrder('completed', timestamp, timestamp);
+    const nextBusinessDayAt = new Date(plusSeconds(timestamp, 26 * 60 * 60));
+    assert.equal(
+      (getUpdateInstallSafety(nextBusinessDayAt) as any).code,
+      'business-day-open',
+      'recent activity from the previous business date still blocks installation until that date is closed',
+    );
+    addDayClose(currentBusinessDate, idleAfterCloseAt);
+    assert.deepEqual(
+      getUpdateInstallSafety(nextBusinessDayAt),
+      { ok: true },
+      'a previous business date is safe after its matching day-close',
+    );
+
+    clearOperationalRows();
     let releaseMaintenance: (() => void) | null = null;
     let markMaintenanceStarted: (() => void) | null = null;
     const maintenanceStarted = new Promise<void>((resolve) => {
