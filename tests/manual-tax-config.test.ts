@@ -31,6 +31,7 @@ const {
   createApp,
   startServer,
   seedOwnerUser,
+  seedManagerUser,
   seedCategory,
   seedProduct,
   api,
@@ -47,6 +48,7 @@ async function main() {
 
   const db = initTestDb();
   const owner = seedOwnerUser(db);
+  const manager = seedManagerUser(db);
   seedCategory(db, 'manual-tax-products', 'Manual Tax Products');
   seedProduct(db, 'manual-tax-product', 'manual-tax-products', 'Manual Tax Product', 100, {
     tax_type: 'none',
@@ -65,6 +67,107 @@ async function main() {
   const { baseUrl, server } = await startServer(app);
 
   try {
+    console.log('\n0. GST registration stays pending until the owner confirms it');
+    db.prepare(
+      `INSERT INTO settings (key, value, updated_at) VALUES ('tax_registered', 'pending', CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET value = 'pending', updated_at = CURRENT_TIMESTAMP`,
+    ).run();
+    db.prepare(
+      `INSERT INTO settings (key, value, updated_at) VALUES ('taxes_enabled', 'false', CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET value = 'false', updated_at = CURRENT_TIMESTAMP`,
+    ).run();
+
+    const pendingRead = await api(baseUrl, '/api/settings/business', {
+      headers: owner.authHeader,
+    });
+    assertEqual(pendingRead.status, 200, 'business Settings read succeeds while registration is pending');
+    assertEqual(
+      pendingRead.data.tax_registration_status,
+      'pending',
+      'business Settings preserves the pending registration status',
+    );
+    assertEqual(
+      pendingRead.data.tax_registered,
+      false,
+      'legacy boolean remains false-compatible without changing the tri-state status',
+    );
+
+    const unrelatedSave = await api(baseUrl, '/api/settings/business', {
+      method: 'PUT',
+      headers: owner.authHeader,
+      body: { business_name: 'Pending Tax Test Store', tax_registered: false },
+    });
+    assertEqual(unrelatedSave.status, 200, 'unrelated business fields can still be saved');
+    assertEqual(
+      unrelatedSave.data.tax_registration_status,
+      'pending',
+      'legacy false does not overwrite a pending registration status',
+    );
+
+    const manualWhilePending = await api(baseUrl, '/api/tax-packs/manual-config', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { categories: [] },
+    });
+    assertEqual(manualWhilePending.status, 409, 'manual tax setup is blocked while pending');
+    assertEqual(
+      manualWhilePending.data.code,
+      'tax_registration_pending',
+      'manual tax setup returns a clear pending-registration conflict',
+    );
+
+    const officialWhilePending = await api(baseUrl, '/api/tax-packs/ensure-country', {
+      method: 'POST',
+      headers: owner.authHeader,
+      body: { country: 'IN' },
+    });
+    assertEqual(officialWhilePending.status, 409, 'official tax-pack activation is blocked while pending');
+    assertEqual(
+      officialWhilePending.data.code,
+      'tax_registration_pending',
+      'official activation returns a clear pending-registration conflict',
+    );
+
+    const enableWhilePending = await api(baseUrl, '/api/settings/taxes_enabled', {
+      method: 'PUT',
+      headers: owner.authHeader,
+      body: { value: true },
+    });
+    assertEqual(enableWhilePending.status, 409, 'direct tax enabling is blocked while pending');
+    assertEqual(
+      enableWhilePending.data.code,
+      'tax_registration_pending',
+      'direct tax enabling returns a clear pending-registration conflict',
+    );
+
+    const managerConfirmation = await api(baseUrl, '/api/settings/business', {
+      method: 'PUT',
+      headers: manager.authHeader,
+      body: { tax_registration_status: 'registered' },
+    });
+    assertEqual(
+      managerConfirmation.status,
+      403,
+      'manager cannot confirm the restaurant tax registration status',
+    );
+
+    const ownerConfirmation = await api(baseUrl, '/api/settings/business', {
+      method: 'PUT',
+      headers: owner.authHeader,
+      body: { tax_registration_status: 'registered' },
+    });
+    assertEqual(ownerConfirmation.status, 200, 'owner can explicitly confirm registration');
+    assertEqual(
+      ownerConfirmation.data.tax_registration_status,
+      'registered',
+      'owner-confirmed registration status is returned explicitly',
+    );
+    assertEqual(
+      db.prepare(`SELECT value FROM settings WHERE key = 'taxes_enabled'`).get().value,
+      'false',
+      'confirming registration alone does not automatically enable tax calculation',
+    );
+
     console.log('\n1. Owner creates a two-category manual config (exclusive by default)');
     const createRes = await api(baseUrl, '/api/tax-packs/manual-config', {
       method: 'POST',
