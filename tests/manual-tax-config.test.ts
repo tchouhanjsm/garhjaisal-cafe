@@ -80,7 +80,11 @@ async function main() {
     const pendingRead = await api(baseUrl, '/api/settings/business', {
       headers: owner.authHeader,
     });
-    assertEqual(pendingRead.status, 200, 'business Settings read succeeds while registration is pending');
+    assertEqual(
+      pendingRead.status,
+      200,
+      'business Settings read succeeds while registration is pending',
+    );
     assertEqual(
       pendingRead.data.tax_registration_status,
       'pending',
@@ -121,7 +125,11 @@ async function main() {
       headers: owner.authHeader,
       body: { country: 'IN' },
     });
-    assertEqual(officialWhilePending.status, 409, 'official tax-pack activation is blocked while pending');
+    assertEqual(
+      officialWhilePending.status,
+      409,
+      'official tax-pack activation is blocked while pending',
+    );
     assertEqual(
       officialWhilePending.data.code,
       'tax_registration_pending',

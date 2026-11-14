@@ -372,7 +372,10 @@ function setupAutoUpdater(): void {
         setUpdateStatus(availableStatus);
       }
     } else {
-      log.info('[Update] Update available; waiting for the user to approve the download:', info.version);
+      log.info(
+        '[Update] Update available; waiting for the user to approve the download:',
+        info.version,
+      );
       setUpdateStatus(availableStatus);
     }
   });
@@ -590,7 +593,10 @@ const suspendUpdaterForOfflineMode = createSuspendUpdaterForOfflineMode({
   },
 });
 
-function downloadUpdate(source: 'user' | 'automatic' = 'user'): { success: boolean; error?: string } {
+function downloadUpdate(source: 'user' | 'automatic' = 'user'): {
+  success: boolean;
+  error?: string;
+} {
   if (isOfflineMode()) return { success: false, error: 'Offline mode is on' };
   if (!canStartUpdateDownload(storedUpdateStatus, updaterPhase, stagedUpdateReady)) {
     return { success: false, error: 'No update is waiting to be downloaded' };

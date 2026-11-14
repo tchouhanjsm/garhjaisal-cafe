@@ -85,10 +85,7 @@ test('scheduled Windows update checks run every six hours only when safe and ena
     { storeManaged: true },
     { developmentArtifact: true },
   ]) {
-    assert.equal(
-      shouldRunScheduledWindowsUpdateCheck({ ...safe, ...override }),
-      false,
-    );
+    assert.equal(shouldRunScheduledWindowsUpdateCheck({ ...safe, ...override }), false);
   }
 });
 
