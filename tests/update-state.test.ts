@@ -15,6 +15,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { shouldApplyInitialUpdateStatus } from '../frontend/src/hooks/update-status-sync';
 import {
+  WINDOWS_UPDATE_CHECK_INTERVAL_MS,
+  shouldRunScheduledWindowsUpdateCheck,
+  supportsAutomaticWindowsUpdates,
+} from '../main/update-policy';
+import {
   UPDATE_STATES,
   canStartUpdateDownload,
   classifyUpdateError,
@@ -37,6 +42,55 @@ function updaterError(codeOrMessage: string, message?: string): Error & { code?:
   if (message !== undefined) err.code = codeOrMessage;
   return err;
 }
+
+test('automatic Windows updates target only packaged non-store production installs', () => {
+  assert.equal(
+    supportsAutomaticWindowsUpdates({
+      platform: 'win32',
+      packaged: true,
+      storeManaged: false,
+      developmentArtifact: false,
+    }),
+    true,
+  );
+  for (const input of [
+    { platform: 'win32', packaged: true, storeManaged: true, developmentArtifact: false },
+    { platform: 'win32', packaged: false, storeManaged: false, developmentArtifact: false },
+    { platform: 'win32', packaged: true, storeManaged: false, developmentArtifact: true },
+    { platform: 'darwin', packaged: true, storeManaged: false, developmentArtifact: false },
+    { platform: 'linux', packaged: true, storeManaged: false, developmentArtifact: false },
+  ]) {
+    assert.equal(supportsAutomaticWindowsUpdates(input), false);
+  }
+});
+
+test('scheduled Windows update checks run every six hours only when safe and enabled', () => {
+  assert.equal(WINDOWS_UPDATE_CHECK_INTERVAL_MS, 6 * 60 * 60 * 1000);
+  const safe = {
+    platform: 'win32',
+    packaged: true,
+    storeManaged: false,
+    developmentArtifact: false,
+    automaticChecksEnabled: true,
+    offlineMode: false,
+    installReady: false,
+    checkOrDownloadInFlight: false,
+  };
+  assert.equal(shouldRunScheduledWindowsUpdateCheck(safe), true);
+  for (const override of [
+    { automaticChecksEnabled: false },
+    { offlineMode: true },
+    { installReady: true },
+    { checkOrDownloadInFlight: true },
+    { storeManaged: true },
+    { developmentArtifact: true },
+  ]) {
+    assert.equal(
+      shouldRunScheduledWindowsUpdateCheck({ ...safe, ...override }),
+      false,
+    );
+  }
+});
 
 test('UPDATE_STATES contains exactly the approved enum members', () => {
   assert.deepEqual(
