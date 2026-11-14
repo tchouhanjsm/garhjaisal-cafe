@@ -1,0 +1,38 @@
+name: M5 one-time formatter
+
+on:
+  push:
+    branches:
+      - m5/garh-jaisal-mac-pilot-onboarding
+    paths:
+      - .github/workflows/m5-format-once.yml
+      - tests/print-parity.test.ts
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m5/garh-jaisal-mac-pilot-onboarding
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format the parity test with pinned Oxfmt
+        run: npx oxfmt --write -- tests/print-parity.test.ts
+      - name: Commit formatter output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- tests/print-parity.test.ts
+          if git diff --cached --quiet; then
+            echo "Oxfmt found no changes."
+          else
+            git commit -m "style: format backend room diagnostic test"
+            git push origin HEAD:m5/garh-jaisal-mac-pilot-onboarding
+          fi
