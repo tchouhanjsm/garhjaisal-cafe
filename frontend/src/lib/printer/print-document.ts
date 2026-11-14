@@ -167,6 +167,7 @@ export function buildBillPrintData(bill: Bill, opts: BillBusinessOptions = {}): 
       orderNumber: String(order?.order_number ?? ''),
       createdAt: String(order?.created_at ?? ''),
       tableName: String(order?.table?.name ?? ''),
+      roomNumber: String(order?.room_number ?? '').trim(),
       onlinePlatform: String(order?.online_platform ?? ''),
       externalOrderId: String(order?.external_order_id ?? ''),
       deliveryAddress: String(order?.delivery_address ?? ''),
