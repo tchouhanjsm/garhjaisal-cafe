@@ -624,9 +624,9 @@ async function main() {
     assert.equal(setting('billing_type'), 'postpaid', 'Garh Jaisal starts postpaid');
     assert.equal(setting('tables_required'), 'true', 'Garh Jaisal requires dine-in tables');
     assert.equal(setting('room_number_enabled'), 'true', 'optional room references are enabled');
-    assert.equal(setting('kds_enabled'), 'true', 'KDS is enabled');
+    assert.equal(setting('kds_enabled'), 'false', 'printed KOT workflow does not enable KDS');
     assert.equal(setting('server_app_enabled'), 'true', 'waiter Server App is enabled');
-    assert.equal(setting('tax_registered'), 'false', 'GST remains disabled at first run');
+    assert.equal(setting('tax_registered'), 'pending', 'GST remains visibly pending accountant confirmation');
     assert.equal(
       setting('tax_registration_number'),
       '',
@@ -663,7 +663,11 @@ async function main() {
     assert.equal(count('station_users'), 0, 'setup does not invent kitchen staff assignments');
     assert.equal(count('products'), 0, 'setup does not invent menu products or prices');
     assert.equal(count('categories'), 0, 'setup does not invent menu categories');
-    assert.equal(count('payment_methods'), 1, 'setup adds only the configured UPI payment method');
+    assert.deepEqual(
+      getDatabase().prepare('SELECT name FROM payment_methods ORDER BY sort_order, id').all(),
+      [{ name: 'Cash' }, { name: 'Card' }, { name: 'UPI' }],
+      'setup provides the confirmed cash, card and UPI tender methods without invented credentials',
+    );
     assert.equal(
       profileRefreshes,
       refreshesBeforeGarhSetup,

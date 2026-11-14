@@ -12,6 +12,8 @@
     "dev": "npm run clean && npm run build:frontend && npm run build && electron .",
     "dev:restart": "bash scripts/dev/restart.sh",
     "dev:sync": "bash scripts/dev/sync.sh",
+    "dev:garh-jaisal-test": "FLO_PROFILE=garh-jaisal-dev npm run dev",
+    "dev:garh-jaisal-pilot": "FLO_PROFILE=garh-jaisal-pilot npm run dev",
     "dev:reset": "bash scripts/dev/nuclear-reset.sh",
     "dev:frontend": "cd frontend && npm run dev",
     "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc && node scripts/copy-runtime-assets.cjs",

@@ -12,15 +12,17 @@ export const GARH_JAISAL_PROFILE = {
   instagramHandle: '@garhjaisal',
   serviceModel: 'finedine',
   billingType: 'postpaid',
-  // GST is optional at onboarding; the owner can add the GSTIN and configure 5% later.
-  taxRegistered: false,
+  // Accountant confirmation is pending. Do not persist "unregistered" as a business fact.
+  // The setup route records a separate pending state and does not activate a rate or pack.
+  taxRegistered: null,
   tablesRequired: true,
   tableCount: 10,
-  kdsEnabled: true,
+  // This deployment uses printed KOTs and a physical KOT holder, not a KDS.
+  kdsEnabled: false,
   serverAppEnabled: true,
   splitChecksEnabled: true,
   roomNumberEnabled: true,
-  paymentMethods: ['UPI'],
+  paymentMethods: ['Cash', 'Card', 'UPI'],
   rolePermissionOverrides: [
     {
       role: 'manager',

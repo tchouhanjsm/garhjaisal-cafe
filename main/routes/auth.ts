@@ -1347,7 +1347,9 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
       .slice(0, 100);
     const resolvedTaxRegistrationNumber = isGarhJaisalSetup ? '' : tax_registration_number;
     const resolvedStateCode = isGarhJaisalSetup ? 'RJ' : state_code;
-    const resolvedTaxRegistered = isGarhJaisalSetup ? 'false' : tax_registered;
+    // "pending" preserves the owner's unresolved GST status. Never encode that
+    // as either registered or unregistered, and do not activate an unapproved pack.
+    const resolvedTaxRegistered = isGarhJaisalSetup ? 'pending' : tax_registered;
     const resolvedBillingType = isGarhJaisalSetup
       ? GARH_JAISAL_PROFILE.billingType
       : billing_type || (normalizedServiceModel === 'qsr' ? 'prepaid' : 'postpaid');
