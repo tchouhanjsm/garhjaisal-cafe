@@ -28,6 +28,7 @@ import CartPanel from '@/components/pos/CartPanel';
 import AddonModal from '@/components/pos/AddonModal';
 import CustomerSearch from '@/components/pos/CustomerSearch';
 import TablePickerModal from '@/components/pos/TablePickerModal';
+import TableFirstSelector from '@/components/pos/TableFirstSelector';
 import TableCheckoutModal from '@/components/pos/TableCheckoutModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import PrepaidCheckoutModal, {
@@ -47,6 +48,7 @@ import { ShiftOpenModal } from '@/components/dashboard/ShiftOpenModal';
 import { ShiftCloseModal } from '@/components/dashboard/ShiftCloseModal';
 import { useCashSession } from '@/hooks/useCashSession';
 import { usePosSortPreference } from '@/hooks/usePosSort';
+import { shouldAutoOpenTablePicker } from '@/lib/table-picker-auto-open';
 import { tenantCan } from '@/lib/permissions';
 import { CashDrawerMovementModal } from '@/components/dashboard/CashDrawerMovementModal';
 import { useCashDrawerMovements } from '@/hooks/useCashDrawerMovements';
@@ -263,6 +265,8 @@ const parsePrepaidPaymentRequest = (serialized: string): PrepaidPaymentRequest |
   }
 };
 
+type TablePickerPresentation = 'modal' | 'inline';
+
 export default function POSPage() {
   const { currentTenant, user, token } = useAuthStore();
   const isRestaurant = (currentTenant?.business_type ?? 'restaurant') === 'restaurant';
@@ -313,8 +317,19 @@ export default function POSPage() {
   } | null>(null);
   const [retryingKotStations, setRetryingKotStations] = useState<string[]>([]);
 
-  // Modal state
+  // Table selection state
   const [showTablePicker, setShowTablePicker] = useState(false);
+  const [tablePickerPresentation, setTablePickerPresentation] =
+    useState<TablePickerPresentation>('modal');
+  const tablePickerAutoOpenedRef = useRef(false);
+  const openTablePicker = () => {
+    setTablePickerPresentation('modal');
+    setShowTablePicker(true);
+  };
+  const closeTablePicker = () => {
+    setShowTablePicker(false);
+    setTablePickerPresentation('modal');
+  };
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [addonProduct, setAddonProduct] = useState<Product | null>(null);
   const [addonInitialQuantity, setAddonInitialQuantity] = useState(1);
@@ -1836,7 +1851,8 @@ export default function POSPage() {
     !!refundModalTarget ||
     actionsMenuOpen ||
     isConfirmOpen;
-  const anyModalOpen = showTablePicker || anyOtherModalOpen;
+  const anyModalOpen =
+    (showTablePicker && tablePickerPresentation === 'modal') || anyOtherModalOpen;
 
   useBarcodeScanner((code) => {
     if (code.startsWith('FLOCAFE-TICKET:')) {
@@ -1856,10 +1872,24 @@ export default function POSPage() {
   const tablesLoaded = tables.length > 0;
   useEffect(() => {
     if (cart.orderType !== 'dine_in') {
+      tablePickerAutoOpenedRef.current = false;
+      if (showTablePicker) {
+        setShowTablePicker(false);
+        setTablePickerPresentation('modal');
+      }
       if (cart.tableId && !pendingOrder) cart.setTableId(null);
       return;
     }
-    if (!isRestaurant || !tablesRequired || !tablesLoaded) return;
+    if (!isRestaurant || !tablesRequired) {
+      tablePickerAutoOpenedRef.current = false;
+      if (showTablePicker) {
+        setShowTablePicker(false);
+        setTablePickerPresentation('modal');
+      }
+      return;
+    }
+    if (!tablesLoaded) return;
+
     const selected = tables.find((tbl) => tbl.id === cart.tableId);
     const staleSelection =
       !!selected &&
@@ -1867,21 +1897,36 @@ export default function POSPage() {
       cart.items.length === 0 &&
       !pendingOrder &&
       !checkoutTable;
-    if (cart.tableId && !staleSelection) return;
-    const next = tables.find(
-      (tbl) => tbl.status === 'available' && !heldOrders.hasHeldOrder(tbl.id),
-    );
-    if (next) cart.setTableId(next.id);
-    else if (staleSelection) cart.setTableId(null);
+
+    if (staleSelection) cart.setTableId(null);
+    else if (cart.tableId) return;
+
+    if (
+      shouldAutoOpenTablePicker({
+        isRestaurant,
+        tablesRequired,
+        tableCount: tables.length,
+        orderType: cart.orderType,
+        tableId: staleSelection ? null : cart.tableId,
+        itemCount: cart.items.length,
+        hasPendingOrder: Boolean(pendingOrder),
+        isCheckoutOpen: Boolean(checkoutTable),
+        alreadyPrompted: tablePickerAutoOpenedRef.current,
+      })
+    ) {
+      tablePickerAutoOpenedRef.current = true;
+      setTablePickerPresentation('inline');
+      setShowTablePicker(true);
+    }
   }, [
     isRestaurant,
     tablesRequired,
     tablesLoaded,
     tables,
     cart,
-    heldOrders,
     pendingOrder,
     checkoutTable,
+    showTablePicker,
   ]);
 
   const validateOrderPreflight = () => {
@@ -1900,7 +1945,7 @@ export default function POSPage() {
       tablesRequired &&
       !cart.tableId
     ) {
-      setShowTablePicker(true);
+      openTablePicker();
       return false;
     }
     if (
@@ -3281,6 +3326,7 @@ export default function POSPage() {
     tableId: string,
     customer?: { id: string; name: string; phone: string } | null,
   ) => {
+    tablePickerAutoOpenedRef.current = false;
     const cartCustomerWasInherited = cart.customerSource === 'reservation';
 
     cart.setTableId(tableId);
@@ -3296,10 +3342,11 @@ export default function POSPage() {
     } else if (!customer && cartCustomerWasInherited) {
       cart.setCustomer(null);
     }
-    setShowTablePicker(false);
+    closeTablePicker();
   };
 
   const handleSelectOccupiedTable = async (table: Table) => {
+    tablePickerAutoOpenedRef.current = false;
     const activeOrder = table.current_order || table.activeOrder || null;
     const activeCustomerId = activeOrder?.customer_id;
     const activeCustomerName = activeOrder?.customer?.name || t('anotherCustomer');
@@ -3320,11 +3367,12 @@ export default function POSPage() {
       if (!shouldProceed) return;
     }
 
-    setShowTablePicker(false);
+    closeTablePicker();
     setCheckoutTable(table);
   };
 
   const handleSelectHeldTable = async (tableId: string) => {
+    tablePickerAutoOpenedRef.current = false;
     try {
       const held = await heldOrders.restoreOrder(tableId);
       if (held) {
@@ -3349,7 +3397,7 @@ export default function POSPage() {
     } catch {
       toast.error(t('loadOrderFailed'));
     } finally {
-      setShowTablePicker(false);
+      closeTablePicker();
       await refreshTables();
     }
   };
@@ -3372,7 +3420,7 @@ export default function POSPage() {
         cart.roomNumber,
       );
       cart.clearCart();
-      setShowTablePicker(false);
+      closeTablePicker();
       toast.success(t('orderHeld', { tableName }));
       await refreshTables();
     } catch (error) {
@@ -3650,7 +3698,8 @@ export default function POSPage() {
       },
       onToggleTables: () => {
         if (isRestaurant && cart.orderType === 'dine_in' && tablesRequired) {
-          setShowTablePicker((prev) => !prev);
+          if (showTablePicker && tablePickerPresentation === 'modal') closeTablePicker();
+          else openTablePicker();
         }
       },
       onOpenCheckout: () => {
@@ -3681,9 +3730,9 @@ export default function POSPage() {
         if (cart.tableId) {
           const tbl = tables.find((t) => t.id === cart.tableId);
           if (tbl) setCheckoutTable(tbl);
-          else setShowTablePicker(true);
+          else openTablePicker();
         } else {
-          setShowTablePicker(true);
+          openTablePicker();
         }
       },
       onOpenCashMovement: () => {
@@ -3746,8 +3795,8 @@ export default function POSPage() {
           activeEl.blur();
           return true;
         }
-        if (showTablePicker) {
-          setShowTablePicker(false);
+        if (showTablePicker && tablePickerPresentation === 'modal') {
+          closeTablePicker();
           return true;
         }
         if (addonProduct) {
@@ -3844,7 +3893,7 @@ export default function POSPage() {
     {
       enabled: true,
       anyModalOpen,
-      tablePickerOpen: showTablePicker && !anyOtherModalOpen,
+      tablePickerOpen: showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,
       cartItemCount: cart.items.length,
     },
   );
@@ -3981,7 +4030,7 @@ export default function POSPage() {
         onTopItemSelect={handleProductClick}
         showTableButton={isRestaurant && cart.orderType === 'dine_in' && tablesRequired}
         tableName={tables.find((tbl) => tbl.id === cart.tableId)?.name ?? null}
-        onShowTablePicker={() => setShowTablePicker(true)}
+        onShowTablePicker={openTablePicker}
         onActionsMenuOpenChange={setActionsMenuOpen}
         onShowCashMovement={cashDrawer.openModal}
         // Re-fetch on entry: the mount snapshot can be hours stale on a
@@ -4042,6 +4091,29 @@ export default function POSPage() {
         }}
       />
 
+      {isRestaurant &&
+        showTablePicker &&
+        (tablePickerPresentation === 'inline' ? (
+          <TableFirstSelector
+            tables={tables}
+            selectedTableId={cart.tableId}
+            onSelectAvailable={handleSelectAvailableTable}
+            onSelectOccupied={handleSelectOccupiedTable}
+            onSelectHeld={handleSelectHeldTable}
+          />
+        ) : (
+          <TablePickerModal
+            tables={tables}
+            selectedTableId={cart.tableId}
+            onSelectAvailable={handleSelectAvailableTable}
+            onSelectOccupied={handleSelectOccupiedTable}
+            onSelectHeld={handleSelectHeldTable}
+            onPlaceOrder={handlePlaceOrder}
+            onHoldTable={handleHoldTable}
+            onClose={closeTablePicker}
+          />
+        ))}
+
       {/* Main content area */}
       <div className="flex flex-1 min-h-0 overflow-hidden px-3 py-2 sm:px-4 sm:py-2.5 gap-3 sm:gap-4">
         {/* Product Grid — full width on mobile, flex-1 on desktop */}
@@ -4096,18 +4168,6 @@ export default function POSPage() {
       <CashDrawerMovementModal model={cashDrawer} />
       <ShiftOpenModal model={shift} />
       <ShiftCloseModal model={shift} />
-      {isRestaurant && showTablePicker && (
-        <TablePickerModal
-          tables={tables}
-          selectedTableId={cart.tableId}
-          onSelectAvailable={handleSelectAvailableTable}
-          onSelectOccupied={handleSelectOccupiedTable}
-          onSelectHeld={handleSelectHeldTable}
-          onPlaceOrder={handlePlaceOrder}
-          onHoldTable={handleHoldTable}
-          onClose={() => setShowTablePicker(false)}
-        />
-      )}
 
       {addonProduct && (
         <AddonModal

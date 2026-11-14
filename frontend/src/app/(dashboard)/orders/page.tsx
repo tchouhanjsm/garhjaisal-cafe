@@ -69,6 +69,7 @@ import { fetchLoadedOrderPages } from '@/lib/orders-search';
 import { tenantCan } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { classifyOrderRequestFailure } from '@/lib/order-attempt';
+import { findOrderForBill } from '@/lib/order-print-context';
 import {
   getCancelOrderFailureKind,
   isOrderItemEditLocked,
@@ -1229,7 +1230,7 @@ export default function OrdersPage() {
   };
 
   const handlePrint = async (billId: number) => {
-    const order = orders.find((o) => o.bill?.id === billId);
+    const order = findOrderForBill(orders, selectedOrder, billId);
     if (!order?.bill) {
       toast.error(tOrders('billNotFound'));
       return;
