@@ -6,6 +6,8 @@ on:
       - m5/garh-jaisal-mac-pilot-onboarding
     paths:
       - .github/workflows/m5-format-once.yml
+      - tests/manual-tax-config.test.ts
+      - tests/print-document.test.ts
 
 permissions:
   contents: write
