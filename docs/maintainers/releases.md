@@ -70,7 +70,6 @@ restaurant profile. On the next launch, the normal migration path performs its p
 and schema checks. Keep the normal local backup and restore process in place, and test one real
 Windows upgrade against a disposable profile before upgrading the hotel's production profile.
 
-
 ## Snap Store publication
 
 Each Linux architecture publishes its own snap, tagged separately, and the Snap Store keeps
