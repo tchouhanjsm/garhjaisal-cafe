@@ -22,7 +22,8 @@ export const GARH_JAISAL_PROFILE = {
   serverAppEnabled: true,
   splitChecksEnabled: true,
   roomNumberEnabled: true,
-  paymentMethods: ['Cash', 'Card', 'UPI'],
+  // Cash and Card are built-in tender options; this list contains custom methods only.
+  paymentMethods: ['UPI'],
   rolePermissionOverrides: [
     {
       role: 'manager',

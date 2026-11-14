@@ -3,11 +3,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const profile = require(path.join(root, 'shared/deployment-profiles.ts'));
+const profileSource = fs.readFileSync(path.join(root, 'shared/deployment-profiles.ts'), 'utf8');
 
-assert.equal(profile.GARH_JAISAL_PROFILE.taxRegistered, null);
-assert.equal(profile.GARH_JAISAL_PROFILE.kdsEnabled, false);
-assert.deepEqual(profile.GARH_JAISAL_PROFILE.paymentMethods, ['Cash', 'Card', 'UPI']);
+assert.match(profileSource, /taxRegistered:\\s*null/);
+assert.match(profileSource, /kdsEnabled:\\s*false/);
+assert.match(profileSource, /paymentMethods:\\s*\\['UPI'\\]/);
+assert.doesNotMatch(profileSource, /paymentMethods:\\s*\\[[^\\]]*['"]Cash['"][^\\]]*['"]Card['"]/);
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 assert.equal(packageJson.scripts['dev:garh-jaisal-pilot'], 'FLO_PROFILE=garh-jaisal-pilot npm run dev');

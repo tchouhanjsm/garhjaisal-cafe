@@ -676,8 +676,8 @@ async function main() {
     assert.equal(count('categories'), 0, 'setup does not invent menu categories');
     assert.deepEqual(
       getDatabase().prepare('SELECT name FROM payment_methods ORDER BY sort_order, id').all(),
-      [{ name: 'Cash' }, { name: 'Card' }, { name: 'UPI' }],
-      'setup provides the approved cash, card and UPI payment methods',
+      [{ name: 'UPI' }],
+      'setup seeds UPI as the custom payment method; Cash and Card remain built-in tender options',
     );
     assert.equal(
       profileRefreshes,
