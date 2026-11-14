@@ -33,7 +33,8 @@ export function getUpdateInstallSafety(at = new Date()): UpdateInstallSafetyResu
     if (isDatabaseMaintenanceActive()) {
       return blocked(
         'database-maintenance',
-        'Database backup, restore, or maintenance is in progress. Wait for it to finish before installing the update.',
+        'Database backup, restore, or maintenance is in progress. ' +
+          'Wait for it to finish before installing the update.',
       );
     }
 
@@ -49,7 +50,9 @@ export function getUpdateInstallSafety(at = new Date()): UpdateInstallSafetyResu
     if (
       countRows(
         db,
-        "SELECT COUNT(*) AS count FROM orders WHERE status IN ('pending', 'preparing', 'ready', 'served')",
+        `SELECT COUNT(*) AS count
+         FROM orders
+         WHERE status IN ('pending', 'preparing', 'ready', 'served')`,
       ) > 0
     ) {
       return blocked(
@@ -61,12 +64,17 @@ export function getUpdateInstallSafety(at = new Date()): UpdateInstallSafetyResu
     if (
       countRows(
         db,
-        "SELECT COUNT(*) AS count FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.status != 'cancelled' AND oi.status IN ('pending', 'preparing', 'ready')",
+        `SELECT COUNT(*) AS count
+         FROM order_items oi
+         JOIN orders o ON o.id = oi.order_id
+         WHERE o.status != 'cancelled'
+           AND oi.status IN ('pending', 'preparing', 'ready')`,
       ) > 0
     ) {
       return blocked(
         'pending-kitchen-work',
-        'Pending kitchen or KOT work remains. Finish the outstanding items before installing the update.',
+        'Pending kitchen or KOT work remains. ' +
+          'Finish the outstanding items before installing the update.',
       );
     }
 
@@ -156,7 +164,8 @@ export function getUpdateInstallSafety(at = new Date()): UpdateInstallSafetyResu
       if (activityBusinessDate === businessDate && activityIsAfterDayClose) {
         return blocked(
           'business-day-open',
-          'The current business day has activity that has not been closed. Complete day-close before installing the update.',
+          'The current business day has activity that has not been closed. ' +
+            'Complete day-close before installing the update.',
         );
       }
     }
@@ -166,7 +175,8 @@ export function getUpdateInstallSafety(at = new Date()): UpdateInstallSafetyResu
     console.error('[Update] Could not verify restaurant install safety:', error);
     return blocked(
       'status-unavailable',
-      'Restaurant operating status could not be verified. Keep the app running and retry after checking the database.',
+      'Restaurant operating status could not be verified. ' +
+        'Keep the app running and retry after checking the database.',
     );
   }
 }
