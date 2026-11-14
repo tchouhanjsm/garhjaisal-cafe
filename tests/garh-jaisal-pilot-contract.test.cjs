@@ -16,7 +16,9 @@ assert.doesNotMatch(
   /paymentMethods:\s*\[[^\]]*['"]Cash['"][^\]]*['"]Card['"]/,
 );
 
-const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const packageJson = JSON.parse(
+  fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
+);
 assert.equal(
   packageJson.scripts['dev:garh-jaisal-pilot'],
   'FLO_PROFILE=garh-jaisal-pilot npm run dev',
@@ -26,10 +28,18 @@ assert.notEqual(
   packageJson.scripts['dev:garh-jaisal-pilot'],
 );
 
-const auth = fs.readFileSync(path.join(root, 'main/routes/auth.ts'), 'utf8');
+const auth = fs.readFileSync(
+  path.join(root, 'main/routes/auth.ts'),
+  'utf8',
+);
 assert.ok(auth.includes("const resolvedTaxRegistered = isGarhJaisalSetup ? 'pending'"));
-const seed = fs.readFileSync(path.join(root, 'main/setup/seed-data.ts'), 'utf8');
-assert.ok(seed.includes('GARH_JAISAL_PROFILE.paymentMethods.forEach'));
+const seed = fs.readFileSync(
+  path.join(root, 'main/setup/seed-data.ts'),
+  'utf8',
+);
+assert.ok(
+  seed.includes('GARH_JAISAL_PROFILE.paymentMethods.forEach'),
+);
 
 const panel = fs.readFileSync(
   path.join(root, 'frontend/src/components/settings/TaxConfigurationPanel.tsx'),
