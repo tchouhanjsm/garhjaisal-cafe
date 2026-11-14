@@ -386,6 +386,19 @@ export function buildTaxBillBytes(
       language,
     ).newline();
   }
+  const roomNumber = String(order?.room_number ?? '').trim();
+  if (roomNumber.length > 0) {
+    safePrinterText(
+      enc,
+      `Room: ${roomNumber}`,
+      warnings,
+      false,
+      arabicShaping,
+      undefined,
+      cols,
+      language,
+    ).newline();
+  }
   // The heading marks the block as the customer's details, so a bill that also
   // prints the store address cannot read as carrying a second business address.
   const deliveryAddress = String(order?.delivery_address ?? '').trim();
