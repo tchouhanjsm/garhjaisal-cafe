@@ -532,14 +532,10 @@ function run(): void {
       ],
     ] as const;
     for (const [renderer, output] of outputs) {
-      const normalizedOutput = normalizeSemanticContent(output);
-      const hasRoom = /\broom\s*:?\s*305\b/i.test(normalizedOutput);
-      if (!hasRoom && renderer.startsWith('backend/')) {
-        console.log(
-          '[room-parity-debug] ' + renderer + ': ' + JSON.stringify(normalizedOutput.slice(0, 900)),
-        );
-      }
-      warn(hasRoom, `${renderer}: optional room number is printed`);
+      warn(
+        /\broom\s*:?\s*305\b/i.test(normalizeSemanticContent(output)),
+        `${renderer}: optional room number is printed`,
+      );
     }
   }
 
