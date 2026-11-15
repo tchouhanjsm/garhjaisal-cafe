@@ -69,11 +69,8 @@ function testDedicatedTableBoardNavigation(): void {
   assert.match(posPage, /<TableFirstSelector/);
   assert.match(posPage, /<ProductGrid[\s\S]*?displayModes/);
   assert.match(picker, /data-testid="pos-table-first-picker"/);
-  assert.match(
-    posPage,
   assert.match(posPage, /showTopItems=/);
   assert.match(posPage, /showTablePicker && tablePickerPresentation === 'inline'/);
-  );
   assert.match(topbar, /showTopItems && <CustomerTopItems/);
   assert.match(picker, /data-testid="pos-table-card"/);
   assert.match(picker, /aria-label="Filter tables by status"/);
