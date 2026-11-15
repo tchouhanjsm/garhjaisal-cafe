@@ -76,11 +76,12 @@ function validateInclusiveFivePercentGst(
   const addonsWithIncorrectTax = addons.filter((row) => {
     const inheritsParent =
       row.inherit_parent_tax_category === true || row.inherit_parent_tax_category === 1;
+    const categoryMatches =
+      inheritsParent || String(row.tax_category_id || '') === fivePercentCategory.id;
     return (
       isActiveCatalogRow(row) &&
       row.tax_behavior !== 'exempt' &&
-      (!inheritsParent && String(row.tax_category_id || '') !== fivePercentCategory.id ||
-        row.tax_behavior !== 'inclusive')
+      (!categoryMatches || row.tax_behavior !== 'inclusive')
     );
   });
 
@@ -333,6 +334,14 @@ export default function MenuPublishPage() {
     );
   }
 
+  const hasPotentialDuplicateMenuRecords = Boolean(
+    preview &&
+      ((preview.summary.categories.created > 0 &&
+        preview.summary.categories.retained_on_windows > 0) ||
+        (preview.summary.products.created > 0 &&
+          preview.summary.products.retained_on_windows > 0)),
+  );
+
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col gap-5 overflow-auto pb-8">
       <div>
@@ -478,10 +487,7 @@ export default function MenuPublishPage() {
               </tbody>
             </table>
           </div>
-          {(preview.summary.categories.created > 0 &&
-            preview.summary.categories.retained_on_windows > 0) ||
-          (preview.summary.products.created > 0 &&
-            preview.summary.products.retained_on_windows > 0) ? (
+          {hasPotentialDuplicateMenuRecords && (
             <div
               role="alert"
               className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm"
@@ -493,7 +499,7 @@ export default function MenuPublishPage() {
                 menu. Do not proceed until same-name entries have been reconciled.
               </p>
             </div>
-          ) : null}
+          )}
           <div className="mt-4 space-y-2 rounded-lg bg-muted/50 p-3 text-sm">
             <p>
               <strong>Safe transfer rules</strong>
