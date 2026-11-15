@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
-import { useCartStore } from '@/store/cart';
+import { useCartStore, type CartOrderType } from '@/store/cart';
 import { useHeldOrdersStore } from '@/store/held-orders';
 import { usePosSettingsStore } from '@/store/pos-settings';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -267,12 +268,18 @@ const parsePrepaidPaymentRequest = (serialized: string): PrepaidPaymentRequest |
 };
 
 type TablePickerPresentation = 'modal' | 'inline';
-type PendingTableSelection =
+type TableSelection =
   | { kind: 'available'; tableId: string; customer?: { id: string; name: string; phone: string } | null }
   | { kind: 'occupied'; table: Table }
   | { kind: 'held'; tableId: string };
+type PendingTableSelection =
+  | TableSelection
+  | { kind: 'tables' }
+  | { kind: 'order-type'; orderType: CartOrderType }
+  | { kind: 'route'; href: string };
 
 export default function POSPage() {
+  const router = useRouter();
   const { currentTenant, user, token } = useAuthStore();
   const isRestaurant = (currentTenant?.business_type ?? 'restaurant') === 'restaurant';
   const cart = useCartStore();
@@ -358,6 +365,77 @@ export default function POSPage() {
   const [cardTransactionIdRequired, setCardTransactionIdRequired] = useState(false);
   const [showKeyboardShortcutsModal, setShowKeyboardShortcutsModal] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<Order | null>(null);
+
+  // Existing submitted orders are not unsent drafts. Only unsent additions or
+  // locally edited order details require a decision before leaving this workspace.
+  const hasUnsentCartWork = useCallback(() => {
+    const state = useCartStore.getState();
+    if (state.items.length > 0) return true;
+    if (pendingOrder) return false;
+    return Boolean(
+      state.customerId != null ||
+        state.guestCount > 1 ||
+        state.orderNotes.trim() ||
+        state.roomNumber.trim() ||
+        state.deliveryAddress.trim() ||
+        state.deliveryNote.trim() ||
+        state.scheduledFor.trim() ||
+        state.expectedPaymentMethod.trim() ||
+        state.onlinePlatform.trim() ||
+        state.externalOrderId.trim() ||
+        state.waivedChargeIds.size > 0 ||
+        state.optedInChargeIds.size > 0,
+    );
+  }, [pendingOrder]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsentCartWork()) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsentCartWork]);
+
+  useEffect(() => {
+    const interceptInternalNavigation = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      if (!(event.target instanceof Element)) return;
+      const anchor = event.target.closest('a[href]');
+      if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#') || !hasUnsentCartWork()) return;
+
+      let destination: URL;
+      try {
+        destination = new URL(href, window.location.href);
+      } catch {
+        return;
+      }
+      if (destination.origin !== window.location.origin) return;
+      const nextHref = `${destination.pathname}${destination.search}${destination.hash}`;
+      const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (nextHref === currentHref) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      setPendingTableSelection({ kind: 'route', href: nextHref });
+    };
+
+    document.addEventListener('click', interceptInternalNavigation, true);
+    return () => document.removeEventListener('click', interceptInternalNavigation, true);
+  }, [hasUnsentCartWork]);
   const [storeTimezone, setStoreTimezone] = useState<string>(currentTenant?.timezone || 'UTC');
   const [scheduledOrders, setScheduledOrders] = useState<Order[]>([]);
   const [nextScheduledCursor, setNextScheduledCursor] = useState<string | null>(null);
@@ -3439,7 +3517,7 @@ export default function POSPage() {
     }
   };
 
-  const executeTableSelection = (selection: PendingTableSelection) => {
+  const executeTableSelection = (selection: TableSelection) => {
     if (selection.kind === 'available') {
       handleSelectAvailableTable(selection.tableId, selection.customer);
     } else if (selection.kind === 'occupied') {
@@ -3449,27 +3527,91 @@ export default function POSPage() {
     }
   };
 
-  const requestTableSelection = (selection: PendingTableSelection) => {
-    const targetTableId =
-      selection.kind === 'occupied' ? selection.table.id : selection.tableId;
-    const hasUnsentWork = cart.items.length > 0 || Boolean(pendingOrder);
-    if (hasUnsentWork && cart.tableId !== targetTableId) {
-      setPendingTableSelection(selection);
+  const continuePendingNavigation = (selection: PendingTableSelection) => {
+    if (selection.kind === 'tables') {
+      openTablePicker();
+      return;
+    }
+    if (selection.kind === 'order-type') {
+      cart.setOrderType(selection.orderType);
+      return;
+    }
+    if (selection.kind === 'route') {
+      router.push(selection.href);
       return;
     }
     executeTableSelection(selection);
   };
 
-  const discardAndSwitchTable = () => {
-    const selection = pendingTableSelection;
-    if (!selection) return;
-    setPendingTableSelection(null);
-    if (pendingOrder) setPendingOrder(null);
-    cart.clearCart();
+  const requestTableSelection = (selection: TableSelection) => {
+    const targetTableId =
+      selection.kind === 'occupied' ? selection.table.id : selection.tableId;
+
+    if (hasUnsentCartWork() && cart.tableId === targetTableId) {
+      closeTablePicker();
+      return;
+    }
+    if (
+      hasUnsentCartWork() &&
+      ((cart.tableId && cart.tableId !== targetTableId) || (pendingOrder && cart.items.length > 0))
+    ) {
+      setPendingTableSelection(selection);
+      return;
+    }
+
+    // Leaving an existing-order editing session with no unsent additions only exits
+    // the local editing context; it never modifies the already-submitted order.
+    if (pendingOrder) {
+      setPendingOrder(null);
+      cart.clearCart();
+    }
     executeTableSelection(selection);
   };
 
-  const holdAndSwitchTable = async () => {
+  const requestOpenTableBoard = () => {
+    if (showTablePicker && tablePickerPresentation === 'inline') return;
+    if (hasUnsentCartWork() && cart.tableId) {
+      setPendingTableSelection({ kind: 'tables' });
+      return;
+    }
+    if (pendingOrder) {
+      setPendingOrder(null);
+      cart.clearCart();
+    }
+    openTablePicker();
+  };
+
+  const toggleTableBoard = () => {
+    if (showTablePicker && tablePickerPresentation === 'inline') {
+      closeTablePicker();
+      return;
+    }
+    requestOpenTableBoard();
+  };
+
+  const requestOrderTypeChange = (orderType: CartOrderType) => {
+    if (orderType === cart.orderType) return;
+    if (hasUnsentCartWork()) {
+      setPendingTableSelection({ kind: 'order-type', orderType });
+      return;
+    }
+    if (pendingOrder) {
+      setPendingOrder(null);
+      cart.clearCart();
+    }
+    cart.setOrderType(orderType);
+  };
+
+  const discardAndContinue = () => {
+    const selection = pendingTableSelection;
+    if (!selection) return;
+    setPendingTableSelection(null);
+    setPendingOrder(null);
+    cart.clearCart();
+    continuePendingNavigation(selection);
+  };
+
+  const holdAndContinue = async () => {
     const selection = pendingTableSelection;
     const currentTableId = cart.tableId;
     if (!selection || !currentTableId || cart.items.length === 0 || pendingOrder) return;
@@ -3489,7 +3631,7 @@ export default function POSPage() {
       cart.clearCart();
       toast.success(t('orderHeld', { tableName }));
       await refreshTables();
-      executeTableSelection(selection);
+      continuePendingNavigation(selection);
     } catch (error) {
       toast.error(extractPrinterErrorMessage(error) || t('holdOrderFailed'));
     }
@@ -3731,6 +3873,7 @@ export default function POSPage() {
     multiCounterEnabled,
     scheduledOrdersEnabled,
     onEditItem: setEditingCartItem,
+    onRequestOrderTypeChange: requestOrderTypeChange,
     onModalOpenChange: setCartPanelModalOpen,
     existingOrder: pendingOrder,
     storeTimezone,
@@ -3765,8 +3908,7 @@ export default function POSPage() {
       onToggleTables: () => {
         if (pendingTableSelection) return;
         if (isRestaurant && cart.orderType === 'dine_in' && tablesRequired) {
-          if (showTablePicker && tablePickerPresentation === 'inline') closeTablePicker();
-          else openTablePicker();
+          toggleTableBoard();
         }
       },
       onOpenCheckout: () => {
@@ -4102,7 +4244,7 @@ export default function POSPage() {
         onTopItemSelect={handleProductClick}
         showTableButton={isRestaurant && cart.orderType === 'dine_in' && tablesRequired}
         tableName={tables.find((tbl) => tbl.id === cart.tableId)?.name ?? null}
-        onShowTablePicker={openTablePicker}
+        onShowTablePicker={requestOpenTableBoard}
         onActionsMenuOpenChange={setActionsMenuOpen}
         onShowCashMovement={cashDrawer.openModal}
         // Re-fetch on entry: the mount snapshot can be hours stale on a
@@ -4198,7 +4340,7 @@ export default function POSPage() {
                   <button
                     type="button"
                     data-testid="pos-all-tables-btn"
-                    onClick={openTablePicker}
+                    onClick={requestOpenTableBoard}
                     className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-brand transition-colors hover:bg-muted"
                   >
                     <ArrowLeft size={16} />
@@ -4355,18 +4497,31 @@ export default function POSPage() {
             : null
         }
         targetTableName={
-          pendingTableSelection
-            ? (() => {
-                const targetId =
-                  pendingTableSelection.kind === 'occupied'
-                    ? pendingTableSelection.table.id
-                    : pendingTableSelection.tableId;
-                return tables.find((table) => table.id === targetId)?.name || targetId;
-              })()
-            : ''
+          !pendingTableSelection
+            ? ''
+            : pendingTableSelection.kind === 'tables'
+              ? 'All Tables'
+              : pendingTableSelection.kind === 'order-type'
+                ? pendingTableSelection.orderType === 'takeaway'
+                  ? t('orderTypeTakeaway')
+                  : pendingTableSelection.orderType === 'delivery'
+                    ? t('orderTypeDelivery')
+                    : pendingTableSelection.orderType === 'online'
+                      ? t('orderTypeOnline')
+                      : t('orderTypeDineIn')
+                : pendingTableSelection.kind === 'route'
+                  ? 'another screen'
+                  : (() => {
+                      const targetId =
+                        pendingTableSelection.kind === 'occupied'
+                          ? pendingTableSelection.table.id
+                          : pendingTableSelection.tableId;
+                      return tables.find((table) => table.id === targetId)?.name || targetId;
+                    })()
         }
         itemCount={cart.items.length}
         hasExistingOrder={Boolean(pendingOrder)}
+        hasUnsentDetails={cart.items.length === 0 && hasUnsentCartWork()}
         canHold={
           Boolean(cart.tableId) &&
           cart.orderType === 'dine_in' &&
@@ -4378,8 +4533,8 @@ export default function POSPage() {
           setPendingTableSelection(null);
           closeTablePicker();
         }}
-        onDiscard={discardAndSwitchTable}
-        onHold={() => void holdAndSwitchTable()}
+        onDiscard={discardAndContinue}
+        onHold={() => void holdAndContinue()}
       />
 
       {/* Modals */}
