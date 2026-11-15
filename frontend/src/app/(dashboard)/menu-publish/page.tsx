@@ -72,9 +72,8 @@ function validateInclusiveFivePercentGst(
       row.inherit_parent_tax_category === true || row.inherit_parent_tax_category === 1;
     return (
       isActiveCatalogRow(row) &&
-      !inheritsParent &&
       row.tax_behavior !== 'exempt' &&
-      (String(row.tax_category_id || '') !== fivePercentCategory.id ||
+      (!inheritsParent && String(row.tax_category_id || '') !== fivePercentCategory.id ||
         row.tax_behavior !== 'inclusive')
     );
   });
