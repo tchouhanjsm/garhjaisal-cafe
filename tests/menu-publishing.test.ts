@@ -97,15 +97,15 @@ async function main() {
   proxyApp.use(databaseMaintenanceMiddleware);
   proxyApp.post('/api/menu-publishing/apply', async (req: any, res: any) => {
     const reservation = req.databaseAdmissionReservation;
-    assert.equal(
-      reservation,
-      undefined,
-      'Server App middleware does not reserve a request that owns the maintenance lock',
-    );
     const handoffToken = reservation
       ? createDatabaseMaintenanceHandoff(reservation)
       : undefined;
     try {
+      assert.equal(
+        reservation,
+        undefined,
+        'Server App middleware does not reserve a request that owns the maintenance lock',
+      );
       const upstream = await fetch(baseUrl + '/api/menu-publishing/apply', {
         method: req.method,
         headers: {
