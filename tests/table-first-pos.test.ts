@@ -96,17 +96,29 @@ function testInlineTableBoardKeepsShortcutsAvailable(): void {
 function testUnsentCartCannotSilentlyChangeTables(): void {
   const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
   const dialog = read('frontend/src/components/pos/TableSwitchDialog.tsx');
+  const cartPanel = read('frontend/src/components/pos/CartPanel.tsx');
 
-  assert.match(posPage, /const requestTableSelection = \(selection: PendingTableSelection\) => \{/);
+  assert.match(posPage, /const requestTableSelection = \(selection: TableSelection\) => \{/);
+  assert.match(posPage, /hasUnsentCartWork\(\) && cart\.tableId === targetTableId/);
+  assert.match(posPage, /const requestOpenTableBoard = \(\) => \{/);
+  assert.match(posPage, /setPendingTableSelection\(\{ kind: 'tables' \}\)/);
+  assert.match(posPage, /onShowTablePicker=\{requestOpenTableBoard\}/);
+  assert.match(posPage, /onRequestOrderTypeChange: requestOrderTypeChange/);
+  assert.match(posPage, /kind: 'order-type'/);
+  assert.match(posPage, /kind: 'route'/);
+  assert.match(posPage, /addEventListener\('beforeunload'/);
+  assert.match(posPage, /addEventListener\('click', interceptInternalNavigation, true\)/);
   assert.match(posPage, /const hasUnsentWork = cart\.items\.length > 0 \|\| Boolean\(pendingOrder\)/);
   assert.match(posPage, /if \(hasUnsentWork && cart\.tableId !== targetTableId\)/);
   assert.match(posPage, /onSelectAvailable=\{\(tableId, customer\) =>\s*requestTableSelection/);
   assert.match(posPage, /onDiscard=\{discardAndSwitchTable\}/);
   assert.match(posPage, /onHold=\{\(\) => void holdAndSwitchTable\(\)\}/);
   assert.match(dialog, /data-testid="pos-table-switch-dialog"/);
-  assert.match(dialog, /Hold current order and switch/);
-  assert.match(dialog, /Discard unsent items and switch/);
-  assert.match(dialog, /Stay on current table/);
+  assert.match(dialog, /Hold order and continue/);
+  assert.match(dialog, /Discard unsent items and continue/);
+  assert.match(dialog, /Continue editing/);
+  assert.match(cartPanel, /onRequestOrderTypeChange\?:/);
+  assert.match(cartPanel, /onRequestOrderTypeChange\(type\)/);
 
   console.log('  ✓ changing tables with unsent work requires an explicit decision');
   console.log('  ✓ hold is offered only for an eligible postpaid dine-in draft');
@@ -136,6 +148,11 @@ function testProductCatalogueModes(): void {
   assert.match(productGrid, /grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5/);
   assert.match(productGrid, /grid-cols-1/);
   assert.match(productGrid, /localStorage\.setItem\(viewPreferenceKey, viewMode\)/);
+  assert.match(productGrid, /p\.sku/);
+  assert.match(productGrid, /p\.barcode/);
+  assert.match(productGrid, /variant\.sku/);
+  assert.match(productGrid, /min-h-\[84px\]/);
+  assert.match(productGrid, /bg-muted text-muted-foreground/);
 
   console.log('  ✓ compact, image-grid, and list modes are available and remembered locally');
 }
