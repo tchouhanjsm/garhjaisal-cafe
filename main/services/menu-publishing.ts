@@ -356,8 +356,9 @@ function normalizeAndValidateBundle(value: unknown): MenuBundle {
     const activeCount = catalog.addons.filter(
       (addon) => addon.addon_group_id === group.id && (addon.is_active === true || addon.is_active === 1),
     ).length;
-    if (Number(group.min_selection) > activeCount) {
-      invalid('An add-on group requires more selections than its active add-ons provide.');
+    if ((group.is_active === true || group.is_active === 1) &&
+        Number(group.min_selection) > activeCount) {
+      invalid('An active add-on group requires more selections than its active add-ons provide.');
     }
   }
 
@@ -600,7 +601,9 @@ export function applyMenuPublish(input: unknown, previewId: unknown, userId: str
       'categories',
       categoryColumns,
       categoryColumns.filter((column) => !['id', 'created_at'].includes(column)),
-      bundle.catalog.categories.map((row) => ({ ...row, created_at: stamp, updated_at: stamp })),
+      [...bundle.catalog.categories]
+        .sort((left, right) => Number(Boolean(left.parent_id)) - Number(Boolean(right.parent_id)))
+        .map((row) => ({ ...row, created_at: stamp, updated_at: stamp })),
     );
     const clearDeletedCategory = db.prepare('UPDATE categories SET deleted_at = NULL WHERE id = ?');
     for (const row of bundle.catalog.categories) clearDeletedCategory.run(row.id);
