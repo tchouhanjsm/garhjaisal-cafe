@@ -14,10 +14,12 @@ const getIsMacPlatform = () =>
   typeof navigator !== 'undefined' && /Macintosh|Mac OS X|MacIntel/.test(navigator.userAgent);
 const getServerIsMacPlatform = () => false;
 
+type MenuCatalogRow = Record<string, unknown>;
+
 type MenuBundle = {
   format_version: number;
   source: { business_name: string; country: string; currency: string };
-  catalog: Record<string, unknown[]>;
+  catalog: Record<string, MenuCatalogRow[]>;
   fingerprint: string;
 };
 
@@ -34,8 +36,6 @@ type TaxCategoriesResponse = {
   configuration_ready: boolean;
   categories: Array<{ id: string; label: string; rate_percent: number | null }>;
 };
-
-type MenuCatalogRow = Record<string, unknown>;
 
 function isActiveCatalogRow(row: MenuCatalogRow): boolean {
   return row.is_active === true || row.is_active === 1;
@@ -57,7 +57,7 @@ function validateInclusiveFivePercentGst(
     return 'The active India tax pack does not expose a 5% GST category. Review the tax-pack configuration before publishing.';
   }
 
-  const products = (bundle.catalog.products || []) as MenuCatalogRow[];
+  const products = bundle.catalog.products || [];
   const productsWithIncorrectTax = products.filter(
     (row) =>
       isActiveCatalogRow(row) &&
@@ -66,7 +66,7 @@ function validateInclusiveFivePercentGst(
         row.tax_behavior !== 'inclusive'),
   );
 
-  const addons = (bundle.catalog.addons || []) as MenuCatalogRow[];
+  const addons = bundle.catalog.addons || [];
   const addonsWithIncorrectTax = addons.filter((row) => {
     const inheritsParent =
       row.inherit_parent_tax_category === true || row.inherit_parent_tax_category === 1;
