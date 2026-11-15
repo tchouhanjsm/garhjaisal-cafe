@@ -35,7 +35,11 @@ type PreviewRecord = {
 };
 
 export class MenuPublishError extends Error {
-  constructor(message: string, readonly statusCode: number, readonly code: string) {
+  constructor(
+    message: string,
+    readonly statusCode: number,
+    readonly code: string,
+  ) {
     super(message);
     this.name = 'MenuPublishError';
   }
@@ -61,26 +65,73 @@ const SETTING_UPSERT_SQL =
 
 const FIELDS: Record<keyof CatalogPayload, string[]> = {
   categories: [
-    'id', 'name', 'description', 'image_url', 'sort_order', 'is_active',
-    'parent_id', 'slug', 'color', 'icon',
+    'id',
+    'name',
+    'description',
+    'image_url',
+    'sort_order',
+    'is_active',
+    'parent_id',
+    'slug',
+    'color',
+    'icon',
   ],
   products: [
-    'id', 'category_id', 'name', 'description', 'price', 'cost', 'sku', 'barcode',
-    'sale_unit', 'allow_fractional_quantity', 'weight_precision', 'image_url',
-    'is_active', 'sort_order', 'tax_type', 'tax_rate', 'tax_category_id',
-    'tax_behavior', 'cb_percent', 'tags', 'dietary_tags',
+    'id',
+    'category_id',
+    'name',
+    'description',
+    'price',
+    'cost',
+    'sku',
+    'barcode',
+    'sale_unit',
+    'allow_fractional_quantity',
+    'weight_precision',
+    'image_url',
+    'is_active',
+    'sort_order',
+    'tax_type',
+    'tax_rate',
+    'tax_category_id',
+    'tax_behavior',
+    'cb_percent',
+    'tags',
+    'dietary_tags',
   ],
   addon_groups: [
-    'id', 'name', 'description', 'is_required', 'min_selection', 'max_selection',
-    'allow_multiple_quantities', 'is_active', 'sort_order',
+    'id',
+    'name',
+    'description',
+    'is_required',
+    'min_selection',
+    'max_selection',
+    'allow_multiple_quantities',
+    'is_active',
+    'sort_order',
   ],
   addons: [
-    'id', 'addon_group_id', 'name', 'price', 'tax_category_id', 'tax_behavior',
-    'inherit_parent_tax_category', 'is_active', 'sort_order',
+    'id',
+    'addon_group_id',
+    'name',
+    'price',
+    'tax_category_id',
+    'tax_behavior',
+    'inherit_parent_tax_category',
+    'is_active',
+    'sort_order',
   ],
   product_variants: [
-    'id', 'product_id', 'name', 'sku', 'barcode', 'price', 'online_price',
-    'cost_price', 'is_active', 'sort_order',
+    'id',
+    'product_id',
+    'name',
+    'sku',
+    'barcode',
+    'price',
+    'online_price',
+    'cost_price',
+    'is_active',
+    'sort_order',
   ],
   category_addon_groups: ['category_id', 'addon_group_id'],
   addon_group_product: ['product_id', 'addon_group_id'],
@@ -98,10 +149,14 @@ function canonicalCatalog(catalog: CatalogPayload): CatalogPayload {
     result[key] = (catalog[key] || [])
       .map((row) => pickFields(row, FIELDS[key]))
       .sort((left, right) => {
-        const leftKey = String(left.id ?? left.category_id ?? left.product_id ?? '') +
-          ':' + String(left.addon_group_id ?? '');
-        const rightKey = String(right.id ?? right.category_id ?? right.product_id ?? '') +
-          ':' + String(right.addon_group_id ?? '');
+        const leftKey =
+          String(left.id ?? left.category_id ?? left.product_id ?? '') +
+          ':' +
+          String(left.addon_group_id ?? '');
+        const rightKey =
+          String(right.id ?? right.category_id ?? right.product_id ?? '') +
+          ':' +
+          String(right.addon_group_id ?? '');
         return leftKey.localeCompare(rightKey);
       });
   }
@@ -109,53 +164,73 @@ function canonicalCatalog(catalog: CatalogPayload): CatalogPayload {
 }
 
 function fingerprintCatalog(catalog: CatalogPayload): string {
-  return createHash('sha256').update(JSON.stringify(canonicalCatalog(catalog))).digest('hex');
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalCatalog(catalog)))
+    .digest('hex');
 }
 
 function readCatalog(): CatalogPayload {
   const db = getDatabase();
   return {
-    categories: db.prepare(
-      'SELECT id, name, description, image_url, sort_order, is_active, parent_id, slug, color, icon ' +
-      'FROM categories WHERE deleted_at IS NULL ORDER BY id',
-    ).all() as CatalogRow[],
-    products: db.prepare(
-      'SELECT id, category_id, name, description, price, cost, sku, barcode, sale_unit, ' +
-      'allow_fractional_quantity, weight_precision, image_url, is_active, sort_order, tax_type, ' +
-      'tax_rate, tax_category_id, tax_behavior, cb_percent, tags, dietary_tags ' +
-      'FROM products WHERE deleted_at IS NULL ORDER BY id',
-    ).all() as CatalogRow[],
-    addon_groups: db.prepare(
-      'SELECT id, name, description, is_required, min_selection, max_selection, ' +
-      'allow_multiple_quantities, is_active, sort_order FROM addon_groups ORDER BY id',
-    ).all() as CatalogRow[],
-    addons: db.prepare(
-      'SELECT id, addon_group_id, name, price, tax_category_id, tax_behavior, ' +
-      'inherit_parent_tax_category, is_active, sort_order FROM addons ORDER BY id',
-    ).all() as CatalogRow[],
-    product_variants: db.prepare(
-      'SELECT v.id, v.product_id, v.name, v.sku, v.barcode, v.price, v.online_price, v.cost_price, ' +
-      'v.is_active, v.sort_order FROM product_variants v ' +
-      'INNER JOIN products p ON p.id = v.product_id AND p.deleted_at IS NULL ORDER BY v.id',
-    ).all() as CatalogRow[],
-    category_addon_groups: db.prepare(
-      'SELECT r.category_id, r.addon_group_id FROM category_addon_groups r ' +
-      'INNER JOIN categories c ON c.id = r.category_id AND c.deleted_at IS NULL ' +
-      'ORDER BY r.category_id, r.addon_group_id',
-    ).all() as CatalogRow[],
-    addon_group_product: db.prepare(
-      'SELECT r.product_id, r.addon_group_id FROM addon_group_product r ' +
-      'INNER JOIN products p ON p.id = r.product_id AND p.deleted_at IS NULL ' +
-      'ORDER BY r.product_id, r.addon_group_id',
-    ).all() as CatalogRow[],
+    categories: db
+      .prepare(
+        'SELECT id, name, description, image_url, sort_order, is_active, parent_id, slug, color, icon ' +
+          'FROM categories WHERE deleted_at IS NULL ORDER BY id',
+      )
+      .all() as CatalogRow[],
+    products: db
+      .prepare(
+        'SELECT id, category_id, name, description, price, cost, sku, barcode, sale_unit, ' +
+          'allow_fractional_quantity, weight_precision, image_url, is_active, sort_order, tax_type, ' +
+          'tax_rate, tax_category_id, tax_behavior, cb_percent, tags, dietary_tags ' +
+          'FROM products WHERE deleted_at IS NULL ORDER BY id',
+      )
+      .all() as CatalogRow[],
+    addon_groups: db
+      .prepare(
+        'SELECT id, name, description, is_required, min_selection, max_selection, ' +
+          'allow_multiple_quantities, is_active, sort_order FROM addon_groups ORDER BY id',
+      )
+      .all() as CatalogRow[],
+    addons: db
+      .prepare(
+        'SELECT id, addon_group_id, name, price, tax_category_id, tax_behavior, ' +
+          'inherit_parent_tax_category, is_active, sort_order FROM addons ORDER BY id',
+      )
+      .all() as CatalogRow[],
+    product_variants: db
+      .prepare(
+        'SELECT v.id, v.product_id, v.name, v.sku, v.barcode, v.price, v.online_price, v.cost_price, ' +
+          'v.is_active, v.sort_order FROM product_variants v ' +
+          'INNER JOIN products p ON p.id = v.product_id AND p.deleted_at IS NULL ORDER BY v.id',
+      )
+      .all() as CatalogRow[],
+    category_addon_groups: db
+      .prepare(
+        'SELECT r.category_id, r.addon_group_id FROM category_addon_groups r ' +
+          'INNER JOIN categories c ON c.id = r.category_id AND c.deleted_at IS NULL ' +
+          'ORDER BY r.category_id, r.addon_group_id',
+      )
+      .all() as CatalogRow[],
+    addon_group_product: db
+      .prepare(
+        'SELECT r.product_id, r.addon_group_id FROM addon_group_product r ' +
+          'INNER JOIN products p ON p.id = r.product_id AND p.deleted_at IS NULL ' +
+          'ORDER BY r.product_id, r.addon_group_id',
+      )
+      .all() as CatalogRow[],
   };
 }
 
 function currentStoreIdentity() {
   return {
     business_name: String(getSettingValue('business_name') || '').trim(),
-    country: String(getSettingValue('country') || '').trim().toUpperCase(),
-    currency: String(getSettingValue('currency') || '').trim().toUpperCase(),
+    country: String(getSettingValue('country') || '')
+      .trim()
+      .toUpperCase(),
+    currency: String(getSettingValue('currency') || '')
+      .trim()
+      .toUpperCase(),
   };
 }
 
@@ -228,22 +303,31 @@ function validateImage(value: unknown, field: string): void {
   if (typeof value !== 'string' || value.length > MAX_IMAGE_DATA_URI_LENGTH) {
     invalid(field + ' exceeds the supported image size.');
   }
-  if (value.startsWith('data:') &&
-      !/^data:image\/(webp|png|jpeg|jpg);base64,[A-Za-z0-9+/=\r\n]+$/.test(value)) {
+  if (
+    value.startsWith('data:') &&
+    !/^data:image\/(webp|png|jpeg|jpg);base64,[A-Za-z0-9+/=\r\n]+$/.test(value)
+  ) {
     invalid(field + ' contains an unsupported image data URI.');
   }
 }
 
 function normalizeAndValidateBundle(value: unknown): MenuBundle {
-  if (!isRecord(value) || value.format_version !== 1 || !isRecord(value.source) ||
-      !isRecord(value.catalog)) {
+  if (
+    !isRecord(value) ||
+    value.format_version !== 1 ||
+    !isRecord(value.source) ||
+    !isRecord(value.catalog)
+  ) {
     invalid('Unsupported menu package. Export the menu again from Menu Studio.');
   }
 
   const source = {
-    business_name: typeof value.source.business_name === 'string' ? value.source.business_name.trim() : '',
-    country: typeof value.source.country === 'string' ? value.source.country.trim().toUpperCase() : '',
-    currency: typeof value.source.currency === 'string' ? value.source.currency.trim().toUpperCase() : '',
+    business_name:
+      typeof value.source.business_name === 'string' ? value.source.business_name.trim() : '',
+    country:
+      typeof value.source.country === 'string' ? value.source.country.trim().toUpperCase() : '',
+    currency:
+      typeof value.source.currency === 'string' ? value.source.currency.trim().toUpperCase() : '',
   };
   if (!source.business_name || !source.country || !source.currency) {
     invalid('The menu package is missing its restaurant identity.', 'source_identity_incomplete');
@@ -285,12 +369,16 @@ function normalizeAndValidateBundle(value: unknown): MenuBundle {
       const parentId = String(row.parent_id);
       const parent = categoryById.get(parentId);
       if (!categoryIds.has(parentId) || !parent || String(parent.parent_id || '') !== '') {
-        invalid('Category hierarchy must contain at most two levels and every parent must be a root category.');
+        invalid(
+          'Category hierarchy must contain at most two levels and every parent must be a root category.',
+        );
       }
       if (parentId === String(row.id)) invalid('A category cannot be its own parent.');
     }
-    const siblingKey = String(row.parent_id || '') + ':' + String(row.name).trim().toLocaleLowerCase();
-    if (siblingNames.has(siblingKey)) invalid('Category names must be unique within the same parent.');
+    const siblingKey =
+      String(row.parent_id || '') + ':' + String(row.name).trim().toLocaleLowerCase();
+    if (siblingNames.has(siblingKey))
+      invalid('Category names must be unique within the same parent.');
     siblingNames.add(siblingKey);
     validateImage(row.image_url, 'Category image');
   }
@@ -301,24 +389,46 @@ function normalizeAndValidateBundle(value: unknown): MenuBundle {
     requireBoolean(row.is_active, 'Product availability');
     requireNumber(row.price, 'Product price');
     if (row.cost !== null && row.cost !== undefined) requireNumber(row.cost, 'Product cost');
-    if (row.category_id !== null && row.category_id !== undefined && !categoryIds.has(String(row.category_id))) {
+    if (
+      row.category_id !== null &&
+      row.category_id !== undefined &&
+      !categoryIds.has(String(row.category_id))
+    ) {
       invalid('A product refers to a category that is not in this menu package.');
     }
-    if (row.sale_unit !== null && row.sale_unit !== undefined && !validSaleUnits.has(String(row.sale_unit))) {
+    if (
+      row.sale_unit !== null &&
+      row.sale_unit !== undefined &&
+      !validSaleUnits.has(String(row.sale_unit))
+    ) {
       invalid('A product has an unsupported sale unit.');
     }
     requireBoolean(row.allow_fractional_quantity, 'Product fractional-quantity setting');
-    if (row.tax_behavior !== null && row.tax_behavior !== undefined &&
-        !['country_default', 'inclusive', 'exclusive', 'exempt'].includes(String(row.tax_behavior))) {
+    if (
+      row.tax_behavior !== null &&
+      row.tax_behavior !== undefined &&
+      !['country_default', 'inclusive', 'exclusive', 'exempt'].includes(String(row.tax_behavior))
+    ) {
       invalid('A product has an unsupported tax behavior.');
     }
-    if (row.tax_rate !== null && row.tax_rate !== undefined) requireNumber(row.tax_rate, 'Product tax rate', 100);
-    if (row.cb_percent !== null && row.cb_percent !== undefined) requireNumber(row.cb_percent, 'Product cashback percentage', 100);
-    if (row.sort_order !== null && row.sort_order !== undefined && !Number.isInteger(row.sort_order)) {
+    if (row.tax_rate !== null && row.tax_rate !== undefined)
+      requireNumber(row.tax_rate, 'Product tax rate', 100);
+    if (row.cb_percent !== null && row.cb_percent !== undefined)
+      requireNumber(row.cb_percent, 'Product cashback percentage', 100);
+    if (
+      row.sort_order !== null &&
+      row.sort_order !== undefined &&
+      !Number.isInteger(row.sort_order)
+    ) {
       invalid('A product has an invalid sort order.');
     }
-    if (row.weight_precision !== null && row.weight_precision !== undefined &&
-        (!Number.isInteger(row.weight_precision) || Number(row.weight_precision) < 0 || Number(row.weight_precision) > 4)) {
+    if (
+      row.weight_precision !== null &&
+      row.weight_precision !== undefined &&
+      (!Number.isInteger(row.weight_precision) ||
+        Number(row.weight_precision) < 0 ||
+        Number(row.weight_precision) > 4)
+    ) {
       invalid('A product has an invalid weight precision.');
     }
     validateImage(row.image_url, 'Product image');
@@ -328,11 +438,19 @@ function normalizeAndValidateBundle(value: unknown): MenuBundle {
     requireName(row.name, 'Add-on group name');
     requireBoolean(row.is_active, 'Add-on group availability');
     requireBoolean(row.is_required, 'Add-on group required flag');
-    if (!Number.isInteger(row.min_selection) || Number(row.min_selection) < 0 ||
-        !Number.isInteger(row.max_selection) || Number(row.max_selection) < Number(row.min_selection)) {
+    if (
+      !Number.isInteger(row.min_selection) ||
+      Number(row.min_selection) < 0 ||
+      !Number.isInteger(row.max_selection) ||
+      Number(row.max_selection) < Number(row.min_selection)
+    ) {
       invalid('An add-on group has invalid selection limits.');
     }
-    if (row.sort_order !== null && row.sort_order !== undefined && !Number.isInteger(row.sort_order)) {
+    if (
+      row.sort_order !== null &&
+      row.sort_order !== undefined &&
+      !Number.isInteger(row.sort_order)
+    ) {
       invalid('An add-on group has an invalid sort order.');
     }
   }
@@ -346,18 +464,24 @@ function normalizeAndValidateBundle(value: unknown): MenuBundle {
     if (row.inherit_parent_tax_category !== null && row.inherit_parent_tax_category !== undefined) {
       requireBoolean(row.inherit_parent_tax_category, 'Add-on tax inheritance');
     }
-    if (row.tax_behavior !== null && row.tax_behavior !== undefined &&
-        !['country_default', 'inclusive', 'exclusive', 'exempt'].includes(String(row.tax_behavior))) {
+    if (
+      row.tax_behavior !== null &&
+      row.tax_behavior !== undefined &&
+      !['country_default', 'inclusive', 'exclusive', 'exempt'].includes(String(row.tax_behavior))
+    ) {
       invalid('An add-on has an unsupported tax behavior.');
     }
   }
 
   for (const group of catalog.addon_groups) {
     const activeCount = catalog.addons.filter(
-      (addon) => addon.addon_group_id === group.id && (addon.is_active === true || addon.is_active === 1),
+      (addon) =>
+        addon.addon_group_id === group.id && (addon.is_active === true || addon.is_active === 1),
     ).length;
-    if ((group.is_active === true || group.is_active === 1) &&
-        Number(group.min_selection) > activeCount) {
+    if (
+      (group.is_active === true || group.is_active === 1) &&
+      Number(group.min_selection) > activeCount
+    ) {
       invalid('An active add-on group requires more selections than its active add-ons provide.');
     }
   }
@@ -367,8 +491,10 @@ function normalizeAndValidateBundle(value: unknown): MenuBundle {
     requireId(row.product_id, 'Variant product reference');
     if (!productIds.has(String(row.product_id))) invalid('A variant refers to a missing product.');
     requireNumber(row.price, 'Variant price');
-    if (row.online_price !== null && row.online_price !== undefined) requireNumber(row.online_price, 'Variant online price');
-    if (row.cost_price !== null && row.cost_price !== undefined) requireNumber(row.cost_price, 'Variant cost price');
+    if (row.online_price !== null && row.online_price !== undefined)
+      requireNumber(row.online_price, 'Variant online price');
+    if (row.cost_price !== null && row.cost_price !== undefined)
+      requireNumber(row.cost_price, 'Variant cost price');
     requireBoolean(row.is_active, 'Variant availability');
   }
 
@@ -395,7 +521,10 @@ function normalizeAndValidateBundle(value: unknown): MenuBundle {
   }
 
   if (Buffer.byteLength(JSON.stringify(value), 'utf8') > MAX_BUNDLE_BYTES) {
-    invalid('The menu package is too large. Reduce the number or size of product images.', 'bundle_too_large');
+    invalid(
+      'The menu package is too large. Reduce the number or size of product images.',
+      'bundle_too_large',
+    );
   }
 
   return {
@@ -430,8 +559,10 @@ function assertSameStore(source: MenuBundle['source']): void {
 
 function assertTaxCategories(catalog: CatalogPayload): void {
   const referenced = new Set<string>();
-  for (const row of catalog.products) if (row.tax_category_id) referenced.add(String(row.tax_category_id));
-  for (const row of catalog.addons) if (row.tax_category_id) referenced.add(String(row.tax_category_id));
+  for (const row of catalog.products)
+    if (row.tax_category_id) referenced.add(String(row.tax_category_id));
+  for (const row of catalog.addons)
+    if (row.tax_category_id) referenced.add(String(row.tax_category_id));
   if (referenced.size === 0) return;
 
   try {
@@ -443,7 +574,8 @@ function assertTaxCategories(catalog: CatalogPayload): void {
     }
     const allowed = new Set(pack.categories.map((category) => category.id));
     for (const id of referenced) {
-      if (!allowed.has(id)) throw new Error('Windows tax pack does not contain category ' + id + '.');
+      if (!allowed.has(id))
+        throw new Error('Windows tax pack does not contain category ' + id + '.');
     }
   } catch (error) {
     throw new MenuPublishError(
@@ -463,7 +595,8 @@ function entitySummary(incoming: CatalogRow[], existing: CatalogRow[], key: stri
   for (const row of incoming) {
     const before = current.get(String(row[key]));
     if (!before) created++;
-    else if (JSON.stringify(pickFields(before, Object.keys(row))) === JSON.stringify(row)) unchanged++;
+    else if (JSON.stringify(pickFields(before, Object.keys(row))) === JSON.stringify(row))
+      unchanged++;
     else updated++;
   }
   return {
@@ -510,7 +643,11 @@ export function previewMenuPublish(input: unknown, userId: string) {
       products: entitySummary(bundle.catalog.products, currentCatalog.products, 'id'),
       addon_groups: entitySummary(bundle.catalog.addon_groups, currentCatalog.addon_groups, 'id'),
       addons: entitySummary(bundle.catalog.addons, currentCatalog.addons, 'id'),
-      variants: entitySummary(bundle.catalog.product_variants, currentCatalog.product_variants, 'id'),
+      variants: entitySummary(
+        bundle.catalog.product_variants,
+        currentCatalog.product_variants,
+        'id',
+      ),
     },
     policy: {
       deletions_applied: false,
@@ -531,8 +668,15 @@ function upsertRows(
   const db = getDatabase();
   const placeholders = columns.map(() => '?').join(', ');
   const updates = updateColumns.map((column) => column + ' = excluded.' + column).join(', ');
-  const sql = 'INSERT INTO ' + table + ' (' + columns.join(', ') + ') VALUES (' + placeholders +
-    ') ON CONFLICT(id) DO UPDATE SET ' + updates;
+  const sql =
+    'INSERT INTO ' +
+    table +
+    ' (' +
+    columns.join(', ') +
+    ') VALUES (' +
+    placeholders +
+    ') ON CONFLICT(id) DO UPDATE SET ' +
+    updates;
   const statement = db.prepare(sql);
   for (const row of rows) statement.run(...columns.map((column) => row[column] ?? null));
 }
@@ -557,15 +701,27 @@ function syncRelations(
 export function applyMenuPublish(input: unknown, previewId: unknown, userId: string) {
   const bundle = normalizeAndValidateBundle(input);
   if (typeof previewId !== 'string' || !previewId) {
-    throw new MenuPublishError('A valid menu preview is required before publishing.', 400, 'preview_required');
+    throw new MenuPublishError(
+      'A valid menu preview is required before publishing.',
+      400,
+      'preview_required',
+    );
   }
   const preview = previews.get(previewId);
   if (!preview || preview.expiresAt <= Date.now()) {
     previews.delete(previewId);
-    throw new MenuPublishError('The menu preview expired. Generate a new preview.', 409, 'preview_expired');
+    throw new MenuPublishError(
+      'The menu preview expired. Generate a new preview.',
+      409,
+      'preview_expired',
+    );
   }
   if (preview.userId !== userId || preview.bundleFingerprint !== bundle.fingerprint) {
-    throw new MenuPublishError('The menu package or publishing user changed after preview.', 409, 'preview_mismatch');
+    throw new MenuPublishError(
+      'The menu package or publishing user changed after preview.',
+      409,
+      'preview_mismatch',
+    );
   }
 
   assertSameStore(bundle.source);
@@ -594,8 +750,18 @@ export function applyMenuPublish(input: unknown, previewId: unknown, userId: str
   db.transaction(() => {
     const stamp = now();
     const categoryColumns = [
-      'id', 'name', 'description', 'image_url', 'sort_order', 'is_active',
-      'parent_id', 'slug', 'color', 'icon', 'created_at', 'updated_at',
+      'id',
+      'name',
+      'description',
+      'image_url',
+      'sort_order',
+      'is_active',
+      'parent_id',
+      'slug',
+      'color',
+      'icon',
+      'created_at',
+      'updated_at',
     ];
     upsertRows(
       'categories',
@@ -609,10 +775,29 @@ export function applyMenuPublish(input: unknown, previewId: unknown, userId: str
     for (const row of bundle.catalog.categories) clearDeletedCategory.run(row.id);
 
     const productColumns = [
-      'id', 'category_id', 'name', 'description', 'price', 'cost', 'sku', 'barcode',
-      'sale_unit', 'allow_fractional_quantity', 'weight_precision', 'image_url',
-      'is_active', 'sort_order', 'tax_type', 'tax_rate', 'tax_category_id',
-      'tax_behavior', 'cb_percent', 'tags', 'dietary_tags', 'created_at', 'updated_at',
+      'id',
+      'category_id',
+      'name',
+      'description',
+      'price',
+      'cost',
+      'sku',
+      'barcode',
+      'sale_unit',
+      'allow_fractional_quantity',
+      'weight_precision',
+      'image_url',
+      'is_active',
+      'sort_order',
+      'tax_type',
+      'tax_rate',
+      'tax_category_id',
+      'tax_behavior',
+      'cb_percent',
+      'tags',
+      'dietary_tags',
+      'created_at',
+      'updated_at',
     ];
     upsertRows(
       'products',
@@ -624,8 +809,17 @@ export function applyMenuPublish(input: unknown, previewId: unknown, userId: str
     for (const row of bundle.catalog.products) clearDeletedProduct.run(row.id);
 
     const groupColumns = [
-      'id', 'name', 'description', 'is_required', 'min_selection', 'max_selection',
-      'allow_multiple_quantities', 'is_active', 'sort_order', 'created_at', 'updated_at',
+      'id',
+      'name',
+      'description',
+      'is_required',
+      'min_selection',
+      'max_selection',
+      'allow_multiple_quantities',
+      'is_active',
+      'sort_order',
+      'created_at',
+      'updated_at',
     ];
     upsertRows(
       'addon_groups',
@@ -634,8 +828,17 @@ export function applyMenuPublish(input: unknown, previewId: unknown, userId: str
       bundle.catalog.addon_groups.map((row) => ({ ...row, created_at: stamp, updated_at: stamp })),
     );
     const addonColumns = [
-      'id', 'addon_group_id', 'name', 'price', 'tax_category_id', 'tax_behavior',
-      'inherit_parent_tax_category', 'is_active', 'sort_order', 'created_at', 'updated_at',
+      'id',
+      'addon_group_id',
+      'name',
+      'price',
+      'tax_category_id',
+      'tax_behavior',
+      'inherit_parent_tax_category',
+      'is_active',
+      'sort_order',
+      'created_at',
+      'updated_at',
     ];
     upsertRows(
       'addons',
@@ -644,14 +847,28 @@ export function applyMenuPublish(input: unknown, previewId: unknown, userId: str
       bundle.catalog.addons.map((row) => ({ ...row, created_at: stamp, updated_at: stamp })),
     );
     const variantColumns = [
-      'id', 'product_id', 'name', 'sku', 'barcode', 'price', 'online_price',
-      'cost_price', 'is_active', 'sort_order', 'created_at', 'updated_at',
+      'id',
+      'product_id',
+      'name',
+      'sku',
+      'barcode',
+      'price',
+      'online_price',
+      'cost_price',
+      'is_active',
+      'sort_order',
+      'created_at',
+      'updated_at',
     ];
     upsertRows(
       'product_variants',
       variantColumns,
       variantColumns.filter((column) => !['id', 'created_at'].includes(column)),
-      bundle.catalog.product_variants.map((row) => ({ ...row, created_at: stamp, updated_at: stamp })),
+      bundle.catalog.product_variants.map((row) => ({
+        ...row,
+        created_at: stamp,
+        updated_at: stamp,
+      })),
     );
 
     syncRelations(
@@ -712,7 +929,6 @@ export function applyMenuPublish(input: unknown, previewId: unknown, userId: str
   };
 }
 
-
 /**
  * Creates a recovery backup under the database maintenance lock, then applies
  * the already-previewed catalog package without allowing an intervening write.
@@ -724,15 +940,27 @@ export async function applyMenuPublishWithBackup(
 ) {
   const bundle = normalizeAndValidateBundle(input);
   if (typeof previewId !== 'string' || !previewId) {
-    throw new MenuPublishError('A valid menu preview is required before publishing.', 400, 'preview_required');
+    throw new MenuPublishError(
+      'A valid menu preview is required before publishing.',
+      400,
+      'preview_required',
+    );
   }
   const preview = previews.get(previewId);
   if (!preview || preview.expiresAt <= Date.now()) {
     previews.delete(previewId);
-    throw new MenuPublishError('The menu preview expired. Generate a new preview.', 409, 'preview_expired');
+    throw new MenuPublishError(
+      'The menu preview expired. Generate a new preview.',
+      409,
+      'preview_expired',
+    );
   }
   if (preview.userId !== userId || preview.bundleFingerprint !== bundle.fingerprint) {
-    throw new MenuPublishError('The menu package or publishing user changed after preview.', 409, 'preview_mismatch');
+    throw new MenuPublishError(
+      'The menu package or publishing user changed after preview.',
+      409,
+      'preview_mismatch',
+    );
   }
   assertSameStore(bundle.source);
   assertTaxCategories(bundle.catalog);

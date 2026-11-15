@@ -37,18 +37,14 @@ router.post('/preview', requirePermission('catalog.manage'), (req: Request, res:
   }
 });
 
-router.post(
-  '/apply',
-  requirePermission('catalog.manage'),
-  async (req: Request, res: Response) => {
-    try {
-      const userId = String((req as Request & { user?: { userId?: string } }).user?.userId || '');
-      const result = await applyMenuPublishWithBackup(req.body?.bundle, req.body?.preview_id, userId);
-      res.json(result);
-    } catch (error: any) {
-      return respondWithMenuPublishError(res, error);
-    }
-  },
-);
+router.post('/apply', requirePermission('catalog.manage'), async (req: Request, res: Response) => {
+  try {
+    const userId = String((req as Request & { user?: { userId?: string } }).user?.userId || '');
+    const result = await applyMenuPublishWithBackup(req.body?.bundle, req.body?.preview_id, userId);
+    res.json(result);
+  } catch (error: any) {
+    return respondWithMenuPublishError(res, error);
+  }
+});
 
 export const menuPublishingRoutes = router;
