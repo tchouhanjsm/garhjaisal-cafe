@@ -4353,7 +4353,7 @@ export default function POSPage() {
                     onClick={requestOpenTableBoard}
                     className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-brand transition-colors hover:bg-muted"
                   >
-                    <ArrowLeft size={16} />
+                    <ArrowLeft size={16} className="rtl-flip" />
                     All Tables
                   </button>
                   <div className="flex min-w-0 items-center gap-2">
