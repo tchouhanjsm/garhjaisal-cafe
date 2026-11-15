@@ -134,14 +134,19 @@ function readCatalog(): CatalogPayload {
       'inherit_parent_tax_category, is_active, sort_order FROM addons ORDER BY id',
     ).all() as CatalogRow[],
     product_variants: db.prepare(
-      'SELECT id, product_id, name, sku, barcode, price, online_price, cost_price, ' +
-      'is_active, sort_order FROM product_variants ORDER BY id',
+      'SELECT v.id, v.product_id, v.name, v.sku, v.barcode, v.price, v.online_price, v.cost_price, ' +
+      'v.is_active, v.sort_order FROM product_variants v ' +
+      'INNER JOIN products p ON p.id = v.product_id AND p.deleted_at IS NULL ORDER BY v.id',
     ).all() as CatalogRow[],
     category_addon_groups: db.prepare(
-      'SELECT category_id, addon_group_id FROM category_addon_groups ORDER BY category_id, addon_group_id',
+      'SELECT r.category_id, r.addon_group_id FROM category_addon_groups r ' +
+      'INNER JOIN categories c ON c.id = r.category_id AND c.deleted_at IS NULL ' +
+      'ORDER BY r.category_id, r.addon_group_id',
     ).all() as CatalogRow[],
     addon_group_product: db.prepare(
-      'SELECT product_id, addon_group_id FROM addon_group_product ORDER BY product_id, addon_group_id',
+      'SELECT r.product_id, r.addon_group_id FROM addon_group_product r ' +
+      'INNER JOIN products p ON p.id = r.product_id AND p.deleted_at IS NULL ' +
+      'ORDER BY r.product_id, r.addon_group_id',
     ).all() as CatalogRow[],
   };
 }
