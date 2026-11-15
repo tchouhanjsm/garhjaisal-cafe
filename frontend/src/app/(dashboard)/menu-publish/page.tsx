@@ -29,6 +29,79 @@ type EntitySummary = {
   retained_on_windows: number;
 };
 
+type TaxCategoriesResponse = {
+  country: string;
+  configuration_ready: boolean;
+  categories: Array<{ id: string; label: string; rate_percent: number | null }>;
+};
+
+type MenuCatalogRow = Record<string, unknown>;
+
+function isActiveCatalogRow(row: MenuCatalogRow): boolean {
+  return row.is_active === true || row.is_active === 1;
+}
+
+function validateInclusiveFivePercentGst(
+  bundle: MenuBundle,
+  taxCategories: TaxCategoriesResponse,
+): string | null {
+  if (bundle.source.country !== 'IN') return null;
+  if (!taxCategories.configuration_ready) {
+    return 'Configure the India GST tax pack before publishing. The Mac installation cannot verify the applicable GST category yet.';
+  }
+
+  const fivePercentCategory = taxCategories.categories.find(
+    (category) => Number(category.rate_percent) === 5,
+  );
+  if (!fivePercentCategory) {
+    return 'The active India tax pack does not expose a 5% GST category. Review the tax-pack configuration before publishing.';
+  }
+
+  const products = (bundle.catalog.products || []) as MenuCatalogRow[];
+  const productsWithIncorrectTax = products.filter(
+    (row) =>
+      isActiveCatalogRow(row) &&
+      row.tax_behavior !== 'exempt' &&
+      (String(row.tax_category_id || '') !== fivePercentCategory.id ||
+        row.tax_behavior !== 'inclusive'),
+  );
+
+  const addons = (bundle.catalog.addons || []) as MenuCatalogRow[];
+  const addonsWithIncorrectTax = addons.filter((row) => {
+    const inheritsParent =
+      row.inherit_parent_tax_category === true || row.inherit_parent_tax_category === 1;
+    return (
+      isActiveCatalogRow(row) &&
+      !inheritsParent &&
+      row.tax_behavior !== 'exempt' &&
+      (String(row.tax_category_id || '') !== fivePercentCategory.id ||
+        row.tax_behavior !== 'inclusive')
+    );
+  });
+
+  if (productsWithIncorrectTax.length === 0 && addonsWithIncorrectTax.length === 0) return null;
+
+  const describe = (rows: MenuCatalogRow[]) =>
+    rows
+      .slice(0, 5)
+      .map((row) => String(row.name || 'Unnamed item'))
+      .join(', ');
+  const details = [
+    productsWithIncorrectTax.length > 0
+      ? `Products: ${describe(productsWithIncorrectTax)}${productsWithIncorrectTax.length > 5 ? ', …' : ''}`
+      : '',
+    addonsWithIncorrectTax.length > 0
+      ? `Add-ons: ${describe(addonsWithIncorrectTax)}${addonsWithIncorrectTax.length > 5 ? ', …' : ''}`
+      : '',
+  ].filter(Boolean);
+
+  return (
+    'Publishing is blocked until active taxable products and non-inheriting add-ons use the India 5% GST category with Inclusive tax behaviour. ' +
+    details.join('; ') +
+    '. Correct these records in Menu Studio, then preview again. Items explicitly marked Exempt are not changed.'
+  );
+}
+
 type MenuPreview = {
   preview_id: string;
   expires_in_seconds: number;
@@ -122,6 +195,7 @@ export default function MenuPublishPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [published, setPublished] = useState(false);
+  const [recoveryBackup, setRecoveryBackup] = useState('');
 
   const handlePreview = async () => {
     setMessage('');
@@ -129,6 +203,7 @@ export default function MenuPublishPage() {
     setBundle(null);
     setRemoteToken('');
     setPublished(false);
+    setRecoveryBackup('');
     let baseUrl = '';
     try {
       baseUrl = normalizeWindowsUrl(windowsUrl);
@@ -143,6 +218,17 @@ export default function MenuPublishPage() {
 
     setBusy(true);
     try {
+      const localExport = await api.get('/menu-publishing/export', { timeout: 60_000 });
+      const menuBundle = localExport.data as MenuBundle;
+      if (menuBundle.source.country === 'IN') {
+        const taxCategoriesResponse = await api.get('/tax/categories', { timeout: 30_000 });
+        const taxReadinessError = validateInclusiveFivePercentGst(
+          menuBundle,
+          taxCategoriesResponse.data as TaxCategoriesResponse,
+        );
+        if (taxReadinessError) throw new Error(taxReadinessError);
+      }
+
       const login = await axios.post(
         baseUrl + '/api/auth/login',
         { email: email.trim(), password, remember_me: false },
@@ -151,9 +237,6 @@ export default function MenuPublishPage() {
       const token = String(login.data?.access_token || '');
       setPassword('');
       if (!token) throw new Error('Windows did not return an authentication token.');
-
-      const localExport = await api.get('/menu-publishing/export', { timeout: 60_000 });
-      const menuBundle = localExport.data as MenuBundle;
       const previewResponse = await axios.post(
         baseUrl + '/api/menu-publishing/preview',
         menuBundle,
@@ -186,7 +269,7 @@ export default function MenuPublishPage() {
     setBusy(true);
     setMessage('');
     try {
-      await axios.post(
+      const applyResponse = await axios.post(
         baseUrl + '/api/menu-publishing/apply',
         { bundle, preview_id: preview.preview_id },
         {
@@ -194,6 +277,7 @@ export default function MenuPublishPage() {
           timeout: 120_000,
         },
       );
+      setRecoveryBackup(String(applyResponse.data?.recovery_backup || ''));
       setPublished(true);
       setPreview(null);
       setBundle(null);
@@ -265,6 +349,18 @@ export default function MenuPublishPage() {
           a Windows owner or manager account. Your password is used only for sign-in and is not
           saved.
         </p>
+        <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+          <p>
+            <strong>GST preflight:</strong> For India, active taxable products must already use the
+            5% GST category with <strong>Inclusive</strong> tax behaviour. The screen checks this
+            before connecting to Windows; publishing never invents or adds a GST rate.
+          </p>
+          <p>
+            <strong>First publication:</strong> Windows should have an empty catalogue or one
+            already cloned from this Mac with matching record IDs. Separately created copies of
+            the same menu can otherwise become duplicate entries.
+          </p>
+        </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block text-sm font-medium">
             Windows Server App URL
@@ -330,6 +426,11 @@ export default function MenuPublishPage() {
               Windows now has the approved catalog changes. Orders, payments, staff, cash sessions
               and stock quantities were not transferred.
             </p>
+            {recoveryBackup && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Recovery backup created on Windows: <strong>{recoveryBackup}</strong>
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -365,6 +466,22 @@ export default function MenuPublishPage() {
               </tbody>
             </table>
           </div>
+          {(preview.summary.categories.created > 0 &&
+            preview.summary.categories.retained_on_windows > 0) ||
+          (preview.summary.products.created > 0 &&
+            preview.summary.products.retained_on_windows > 0) ? (
+            <div
+              role="alert"
+              className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm"
+            >
+              <strong>Check for possible duplicate menu entries before publishing.</strong>
+              <p className="mt-1">
+                Records are matched by ID, not by name. Both new Mac records and Windows-only
+                records are present, so compare the Windows categories and products with the Mac
+                menu. Do not proceed until same-name entries have been reconciled.
+              </p>
+            </div>
+          ) : null}
           <div className="mt-4 space-y-2 rounded-lg bg-muted/50 p-3 text-sm">
             <p>
               <strong>Safe transfer rules</strong>
