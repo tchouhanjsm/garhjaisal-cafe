@@ -7,7 +7,6 @@ import type { Category, Product, ProductVariant } from '@/lib/types';
 import { useCartStore } from '@/store/cart';
 import { useAuthStore } from '@/store/auth';
 import { usePosSettingsStore } from '@/store/pos-settings';
-import { nameToColor } from '@/lib/image-utils';
 import TagBadge from './DietaryBadge';
 import { productNeedsCustomizer } from '@/lib/product-variants';
 import api from '@/lib/api';
@@ -431,7 +430,18 @@ export default function ProductGrid({
     const matchCat =
       filterCategoryId === null ||
       (p.category_id != null && String(p.category_id) === filterCategoryId);
-    const matchSearch = !activeQuery || p.name.toLowerCase().includes(activeQuery.toLowerCase());
+    const query = activeQuery.trim().toLocaleLowerCase();
+    const searchableValues = [
+      p.name,
+      p.sku,
+      p.barcode,
+      ...(p.variants ?? []).flatMap((variant) => [variant.name, variant.sku, variant.barcode]),
+    ];
+    const matchSearch =
+      !query ||
+      searchableValues.some(
+        (value) => typeof value === 'string' && value.toLocaleLowerCase().includes(query),
+      );
     return matchCat && matchSearch;
   });
 
@@ -602,7 +612,7 @@ export default function ProductGrid({
                   catalogMode === 'grid'
                     ? 'min-h-36 flex-col p-2.5'
                     : catalogMode === 'compact'
-                      ? 'min-h-[76px] items-center gap-2.5 p-2'
+                      ? 'min-h-[84px] items-center gap-2.5 p-2'
                       : 'min-h-16 items-center gap-3 px-2.5 py-2'
                 }`}
               >
@@ -627,10 +637,9 @@ export default function ProductGrid({
 
                 {catalogMode !== 'grid' && (
                   <div
-                    className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg"
-                    style={{ backgroundColor: nameToColor(product.name) }}
+                    className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground"
                   >
-                    <span className="text-sm font-bold text-white/80">
+                    <span className="text-sm font-bold text-muted-foreground">
                       {product.name.substring(0, 2).toUpperCase()}
                     </span>
                     {showProductImages && product.has_image && (
@@ -650,10 +659,9 @@ export default function ProductGrid({
                   <div className="relative mb-2.5 aspect-square w-full overflow-hidden rounded-lg">
                     {/* Always-visible background tile — no flash when image loads */}
                     <div
-                      className="absolute inset-0 flex items-center justify-center"
-                      style={{ backgroundColor: nameToColor(product.name) }}
+                      className="absolute inset-0 flex items-center justify-center bg-muted
                     >
-                      <span className="text-2xl font-bold text-white/80">
+                      <span className="text-2xl font-bold text-muted-foreground">
                         {product.name.substring(0, 2).toUpperCase()}
                       </span>
                     </div>
