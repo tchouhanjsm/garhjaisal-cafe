@@ -659,7 +659,7 @@ export default function ProductGrid({
                   <div className="relative mb-2.5 aspect-square w-full overflow-hidden rounded-lg">
                     {/* Always-visible background tile — no flash when image loads */}
                     <div
-                      className="absolute inset-0 flex items-center justify-center bg-muted
+                      className="absolute inset-0 flex items-center justify-center bg-muted"
                     >
                       <span className="text-2xl font-bold text-muted-foreground">
                         {product.name.substring(0, 2).toUpperCase()}
