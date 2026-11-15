@@ -57,7 +57,7 @@ function testDedicatedTableBoardNavigation(): void {
   const picker = read('frontend/src/components/pos/TableFirstSelector.tsx');
 
   assert.match(posPage, /const openTablePicker = \(\) => \{\s*setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/);
-  assert.match(posPage, /onShowTablePicker=\{openTablePicker\}/);
+  assert.match(posPage, /onShowTablePicker=\{requestOpenTableBoard\}/);
   assert.match(posPage, /isRestaurant && showTablePicker && tablePickerPresentation === 'inline' \?/);
   assert.match(posPage, /data-testid="pos-all-tables-btn"/);
   assert.match(posPage, /<TableFirstSelector/);
@@ -76,10 +76,8 @@ function testDedicatedTableBoardNavigation(): void {
 function testInlineTableBoardKeepsShortcutsAvailable(): void {
   const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
 
-  assert.match(
-    posPage,
-    /onToggleTables: \(\) => \{\s*if \(isRestaurant && cart\.orderType === 'dine_in' && tablesRequired\) \{\s*if \(showTablePicker && tablePickerPresentation === 'inline'\) closeTablePicker\(\);\s*else openTablePicker\(\);/,
-  );
+  assert.match(posPage, /const toggleTableBoard = \(\) => \{/);
+  assert.match(posPage, /onToggleTables: \(\) => \{\s*if \(pendingTableSelection\) return;\s*if \(isRestaurant && cart\.orderType === 'dine_in' && tablesRequired\) \{\s*toggleTableBoard\(\);/);
   assert.match(
     posPage,
     /if \(showTablePicker\) \{\s*closeTablePicker\(\);\s*return true;/,
@@ -104,15 +102,15 @@ function testUnsentCartCannotSilentlyChangeTables(): void {
   assert.match(posPage, /setPendingTableSelection\(\{ kind: 'tables' \}\)/);
   assert.match(posPage, /onShowTablePicker=\{requestOpenTableBoard\}/);
   assert.match(posPage, /onRequestOrderTypeChange: requestOrderTypeChange/);
+  assert.match(posPage, /if \(pendingOrder\) return false;/);
+  assert.match(posPage, /router\.push\(selection\.href\)/);
   assert.match(posPage, /kind: 'order-type'/);
   assert.match(posPage, /kind: 'route'/);
   assert.match(posPage, /addEventListener\('beforeunload'/);
   assert.match(posPage, /addEventListener\('click', interceptInternalNavigation, true\)/);
-  assert.match(posPage, /const hasUnsentWork = cart\.items\.length > 0 \|\| Boolean\(pendingOrder\)/);
-  assert.match(posPage, /if \(hasUnsentWork && cart\.tableId !== targetTableId\)/);
   assert.match(posPage, /onSelectAvailable=\{\(tableId, customer\) =>\s*requestTableSelection/);
-  assert.match(posPage, /onDiscard=\{discardAndSwitchTable\}/);
-  assert.match(posPage, /onHold=\{\(\) => void holdAndSwitchTable\(\)\}/);
+  assert.match(posPage, /onDiscard=\{discardAndContinue\}/);
+  assert.match(posPage, /onHold=\{\(\) => void holdAndContinue\(\)\}/);
   assert.match(dialog, /data-testid="pos-table-switch-dialog"/);
   assert.match(dialog, /Hold order and continue/);
   assert.match(dialog, /Discard unsent items and continue/);
