@@ -4245,6 +4245,7 @@ export default function POSPage() {
         showTableButton={isRestaurant && cart.orderType === 'dine_in' && tablesRequired}
         tableName={tables.find((tbl) => tbl.id === cart.tableId)?.name ?? null}
         onShowTablePicker={requestOpenTableBoard}
+        showTopItems={!(isRestaurant && showTablePicker && tablePickerPresentation === 'inline')}
         onActionsMenuOpenChange={setActionsMenuOpen}
         onShowCashMovement={cashDrawer.openModal}
         // Re-fetch on entry: the mount snapshot can be hours stale on a
