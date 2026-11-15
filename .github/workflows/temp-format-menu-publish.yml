@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - client/menu-publish-mac-to-windows-20261115
+    paths-ignore:
+      - '**/*.ts'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -30,17 +32,10 @@ jobs:
       - name: Format menu publishing files
         run: npx --no-install oxfmt --write -- main/routes/menu-publishing.ts main/services/menu-publishing.ts tests/menu-publishing.test.ts
 
-      - name: Package formatted files
+      - name: Commit repository-formatted files
         run: |
-          mkdir -p formatted/routes formatted/services formatted/tests
-          cp main/routes/menu-publishing.ts formatted/routes/
-          cp main/services/menu-publishing.ts formatted/services/
-          cp tests/menu-publishing.test.ts formatted/tests/
-
-      - name: Upload formatted files
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.0
-        with:
-          name: menu-publishing-formatted-source
-          path: formatted/
-          if-no-files-found: error
-          retention-days: 1
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add main/routes/menu-publishing.ts main/services/menu-publishing.ts tests/menu-publishing.test.ts
+          git commit -m "style: format menu publishing sources"
+          git push origin HEAD:refs/heads/client/menu-publish-mac-to-windows-20261115
