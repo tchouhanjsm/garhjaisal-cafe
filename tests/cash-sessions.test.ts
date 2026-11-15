@@ -3447,7 +3447,9 @@ async function main() {
       console.log(
         'Section 13: proportional cross-shift bill tax attribution + shift-scoped X-report exports',
       );
-      await withFixedClock('2026-11-15T10:00:00.000Z', async () => {
+      // Keep this fixture on an isolated historical business date: earlier sections use todayLocal
+      // for cash movements, which must not be counted in this independent day-close scenario.
+      await withFixedClock('2020-11-15T10:00:00.000Z', async () => {
         const priorTaxRate = getSettingValue('tax_rate');
         const priorTaxRules = getSettingValue('tax_rules');
         try {
@@ -3461,12 +3463,12 @@ async function main() {
             .send({ opening_float_cents: 3000 });
           assert(
             openTaxShift1.status === 200 && openTaxShift2.status === 200,
-            'Section 13: Cashier A and Cashier B open concurrent shifts on 2026-11-15 (200)',
+            'Section 13: Cashier A and Cashier B open concurrent shifts on 2020-11-15 (200)',
           );
           const taxShift1Id = Number(openTaxShift1.body?.id);
           const taxShift2Id = Number(openTaxShift2.body?.id);
 
-          const ts = '2026-11-15T10:05:00.000Z';
+          const ts = '2020-11-15T10:05:00.000Z';
           // Bill 1: subtotal=100, VAT 10% = 10, total=110, split 66.00 (Shift 1 cash) + 44.00 (Shift 2 card)
           const order1Insert = db
             .prepare(
@@ -3584,13 +3586,13 @@ async function main() {
             Math.round((comps || []).reduce((sum, c) => sum + Number(c.amount), 0) * 100) / 100;
 
           const xShift1 = await request(app)
-            .get(`/api/reports/x-report?date=2026-11-15&session_id=${taxShift1Id}`)
+            .get(`/api/reports/x-report?date=2020-11-15&session_id=${taxShift1Id}`)
             .set('Authorization', `Bearer ${s11ManagerToken}`);
           const xShift2 = await request(app)
-            .get(`/api/reports/x-report?date=2026-11-15&session_id=${taxShift2Id}`)
+            .get(`/api/reports/x-report?date=2020-11-15&session_id=${taxShift2Id}`)
             .set('Authorization', `Bearer ${s11ManagerToken}`);
           const xDaily = await request(app)
-            .get('/api/reports/x-report?date=2026-11-15')
+            .get('/api/reports/x-report?date=2020-11-15')
             .set('Authorization', `Bearer ${s11ManagerToken}`);
 
           const s1Tax = xShift1.body?.xReport?.taxComponents;
@@ -3627,13 +3629,13 @@ async function main() {
 
           // Verify GET /api/reports/x-report/export validation, permissions, and shift-scoped content
           const badExportId = await request(app)
-            .get('/api/reports/x-report/export?date=2026-11-15&format=csv&session_id=abc')
+            .get('/api/reports/x-report/export?date=2020-11-15&format=csv&session_id=abc')
             .set('Authorization', `Bearer ${s11ManagerToken}`);
           const zeroExportId = await request(app)
-            .get('/api/reports/x-report/export?date=2026-11-15&format=csv&session_id=0')
+            .get('/api/reports/x-report/export?date=2020-11-15&format=csv&session_id=0')
             .set('Authorization', `Bearer ${s11ManagerToken}`);
           const missingExportId = await request(app)
-            .get('/api/reports/x-report/export?date=2026-11-15&format=csv&session_id=999999')
+            .get('/api/reports/x-report/export?date=2020-11-15&format=csv&session_id=999999')
             .set('Authorization', `Bearer ${s11ManagerToken}`);
           assert(
             badExportId.status === 400 &&
@@ -3652,12 +3654,12 @@ async function main() {
           ).run(ts);
           const ownShiftExport = await request(app)
             .get(
-              `/api/reports/x-report/export?date=2026-11-15&format=csv&session_id=${taxShift1Id}`,
+              `/api/reports/x-report/export?date=2020-11-15&format=csv&session_id=${taxShift1Id}`,
             )
             .set('Authorization', `Bearer ${s11CashierAToken}`);
           const crossShiftExportForbidden = await request(app)
             .get(
-              `/api/reports/x-report/export?date=2026-11-15&format=csv&session_id=${taxShift2Id}`,
+              `/api/reports/x-report/export?date=2020-11-15&format=csv&session_id=${taxShift2Id}`,
             )
             .set('Authorization', `Bearer ${s11CashierAToken}`);
           db.prepare(
@@ -3667,7 +3669,7 @@ async function main() {
           assert(
             ownShiftExport.status === 200 &&
               String(ownShiftExport.headers['content-disposition'] || '').includes(
-                `filename="x-report-2026-11-15-shift-${taxShift1Id}.csv"`,
+                `filename="x-report-2020-11-15-shift-${taxShift1Id}.csv"`,
               ) &&
               ownShiftExport.text.includes(`summary,Shift,,,,Shift #${taxShift1Id} - `) &&
               ownShiftExport.text.includes('summary,Gross Sales,,,,99.33') &&
@@ -3684,13 +3686,13 @@ async function main() {
 
           const mgrShift2HtmlExport = await request(app)
             .get(
-              `/api/reports/x-report/export?date=2026-11-15&format=html&session_id=${taxShift2Id}`,
+              `/api/reports/x-report/export?date=2020-11-15&format=html&session_id=${taxShift2Id}`,
             )
             .set('Authorization', `Bearer ${s11ManagerToken}`);
           assert(
             mgrShift2HtmlExport.status === 200 &&
               String(mgrShift2HtmlExport.headers['content-disposition'] || '').includes(
-                `filename="x-report-2026-11-15-shift-${taxShift2Id}.html"`,
+                `filename="x-report-2020-11-15-shift-${taxShift2Id}.html"`,
               ) &&
               mgrShift2HtmlExport.text.includes(`Shift #${taxShift2Id} - `) &&
               mgrShift2HtmlExport.text.includes('data-metric="Shift"') &&
@@ -3722,13 +3724,13 @@ async function main() {
             .post('/api/cash-closures')
             .set('Authorization', `Bearer ${s11OwnerToken}`)
             .send({
-              business_date: '2026-11-15',
+              business_date: '2020-11-15',
               opening_float_cents: 8000,
               counted_cash_cents: 24600,
             });
           assert(
             closeTaxDay.status === 201 && closeTaxDay.body?.zReport?.variance_cents === 0,
-            `Section 13: day close on 2026-11-15 succeeds with 0 variance (got status=${closeTaxDay.status}, variance=${closeTaxDay.body?.zReport?.variance_cents})`,
+            `Section 13: day close on 2020-11-15 succeeds with 0 variance (got status=${closeTaxDay.status}, variance=${closeTaxDay.body?.zReport?.variance_cents})`,
           );
 
           const shift1ClosureRow = db
