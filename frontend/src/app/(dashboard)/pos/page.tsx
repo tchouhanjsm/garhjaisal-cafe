@@ -411,7 +411,7 @@ export default function POSPage() {
         return;
       }
       if (!(event.target instanceof Element)) return;
-      const anchor = event.target.closest('a[href]');
+      const anchor = event.target.closest('a[href]') as HTMLAnchorElement | null;
       if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return;
       const href = anchor.getAttribute('href');
       if (!href || href.startsWith('#') || !hasUnsentCartWork()) return;
