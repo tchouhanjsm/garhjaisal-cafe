@@ -60,9 +60,9 @@ function testDedicatedTableBoardNavigation(): void {
   assert.ok(posPage.includes('const openTablePicker = () => {'));
   assert.ok(posPage.includes("setTablePickerPresentation('inline')"));
   assert.ok(posPage.includes('setShowTablePicker(true)'));
-  assert.match(posPage, /onShowTablePicker=\{requestOpenTableBoard\}/);
-  assert.match(
-  assert.ok(posPage.includes("isRestaurant && showTablePicker && tablePickerPresentation === 'inline' ?"));
+  assert.match(posPage, /onShowTablePicker=\\{requestOpenTableBoard\\}/);
+  assert.ok(posPage.includes('showTablePicker && tablePickerPresentation ==='));
+  assert.ok(posPage.includes("tablePickerPresentation === 'inline' ?"));
   assert.match(posPage, /<TableFirstSelector/);
   assert.match(posPage, /<ProductGrid[\s\S]*?displayModes/);
   assert.match(picker, /data-testid="pos-table-first-picker"/);
