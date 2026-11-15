@@ -472,7 +472,11 @@ try {
     if (/[/\\\\]frontend[/\\\\]src[/\\\\]store[/\\\\]auth(?:\\.ts)?$/.test(normalizedRequest)) {
       return mocks['@/store/auth'];
     }
-    if (/[/\\\\]frontend[/\\\\]src[/\\\\]store[/\\\\]pos-settings(?:\\.ts)?$/.test(normalizedRequest)) {
+    if (
+      /[/\\\\]frontend[/\\\\]src[/\\\\]store[/\\\\]pos-settings(?:\\.ts)?$/.test(
+        normalizedRequest,
+      )
+    ) {
       return mocks['@/store/pos-settings'];
     }
     return originalLoad.call(this, request, parent, isMain);
