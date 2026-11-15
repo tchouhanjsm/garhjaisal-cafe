@@ -41,7 +41,7 @@ Windows-local inventory tracking configuration, stock quantities, reorder thresh
 
 ## Conflict handling
 
-The first successful publication establishes a Windows catalog baseline. Later publications are blocked if the Windows catalog has been edited outside the Mac publishing flow. This is deliberate: review and reconcile the Windows change on Mac before publishing again. A change made on Windows after a preview also invalidates that preview.
+The first successful publication establishes a Windows catalog baseline. Later publications are blocked if the Windows catalog has been edited outside the Mac publishing flow. A change made on Windows after a preview also invalidates that preview. This first release has no force-overwrite or automatic rebase action; stop and resolve the divergence through a reviewed recovery/reconciliation process before publishing again. Keep routine catalog editing on Mac after the first publication.
 
 Each successful publication records an audit event with the publishing user, timestamps, fingerprints and catalog counts. The catalogue apply runs as one SQLite transaction; a validation or database error rolls back the full apply.
 
