@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { TableTurnoverBadge } from '@/components/tables/TableTurnoverBadge';
 import { useFormatCurrency } from '@/hooks/useFormatCurrency';
@@ -46,7 +46,7 @@ export default function TableFirstSelector({
   onSelectOccupied,
   onSelectHeld,
 }: Props) {
-  const heldOrders = useHeldOrdersStore();
+  const hasHeldOrder = useHeldOrdersStore((state) => state.hasHeldOrder);
   const t = useTranslations('pos');
   const tTables = useTranslations('tables');
   const formatCurrency = useFormatCurrency();
@@ -66,10 +66,11 @@ export default function TableFirstSelector({
     [tables],
   );
 
-  const getEffectiveStatus = (table: Table): TableFilter => {
-    if (heldOrders.hasHeldOrder(table.id)) return 'held';
-    return table.status;
-  };
+  const getEffectiveStatus = useCallback(
+    (table: Table): Table['status'] | 'held' =>
+      hasHeldOrder(table.id) ? 'held' : table.status,
+    [hasHeldOrder],
+  );
 
   const counts = useMemo(() => {
     const result: Record<TableFilter, number> = {
@@ -82,7 +83,7 @@ export default function TableFirstSelector({
     };
     for (const table of tables) result[getEffectiveStatus(table)] += 1;
     return result;
-  }, [tables, heldOrders.orders]);
+  }, [tables, getEffectiveStatus]);
 
   const visibleTables = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -93,10 +94,10 @@ export default function TableFirstSelector({
       const matchesSearch = !query || table.name.toLocaleLowerCase().includes(query);
       return matchesStatus && matchesSection && matchesSearch;
     });
-  }, [tables, activeFilter, activeSection, search, heldOrders.orders]);
+  }, [tables, activeFilter, activeSection, search, getEffectiveStatus]);
 
   const handleClick = (table: Table) => {
-    const isHeld = heldOrders.hasHeldOrder(table.id);
+    const isHeld = hasHeldOrder(table.id);
     if (isHeld) {
       onSelectHeld(table.id);
       return;
@@ -216,14 +217,12 @@ export default function TableFirstSelector({
       <div className="min-h-0 flex-1 overflow-y-auto pb-1">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {visibleTables.map((table) => {
-            const isHeld = heldOrders.hasHeldOrder(table.id);
+            const isHeld = hasHeldOrder(table.id);
             const isSelected = selectedTableId === table.id;
             const activeOrder = table.current_order || table.activeOrder;
             const status = getEffectiveStatus(table);
-            const isDisabled = table.status === 'cleaning' || (table.status === 'held' && !isHeld);
-            const statusLabel = isHeld
-              ? t('tableHeld')
-              : tTables(TABLE_STATUS_LABEL_KEYS[table.status]);
+            const isDisabled = status === 'cleaning' || (status === 'held' && !isHeld);
+            const statusLabel = isHeld ? t('tableHeld') : tTables(TABLE_STATUS_LABEL_KEYS[status]);
             const cardStyle = isSelected
               ? 'border-brand bg-brand-light ring-2 ring-brand/20'
               : tableStatusStyles[status];
