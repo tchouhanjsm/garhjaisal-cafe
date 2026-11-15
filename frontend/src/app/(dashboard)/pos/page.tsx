@@ -269,7 +269,11 @@ const parsePrepaidPaymentRequest = (serialized: string): PrepaidPaymentRequest |
 
 type TablePickerPresentation = 'modal' | 'inline';
 type TableSelection =
-  | { kind: 'available'; tableId: string; customer?: { id: string; name: string; phone: string } | null }
+  | {
+      kind: 'available';
+      tableId: string;
+      customer?: { id: string; name: string; phone: string } | null;
+    }
   | { kind: 'occupied'; table: Table }
   | { kind: 'held'; tableId: string };
 type PendingTableSelection =
@@ -336,7 +340,9 @@ export default function POSPage() {
   const [showTablePicker, setShowTablePicker] = useState(false);
   const [tablePickerPresentation, setTablePickerPresentation] =
     useState<TablePickerPresentation>('modal');
-  const [pendingTableSelection, setPendingTableSelection] = useState<PendingTableSelection | null>(null);
+  const [pendingTableSelection, setPendingTableSelection] = useState<PendingTableSelection | null>(
+    null,
+  );
   const tablePickerAutoOpenedRef = useRef(false);
   const openTablePicker = () => {
     setTablePickerPresentation('inline');
@@ -374,20 +380,20 @@ export default function POSPage() {
     if (pendingOrder) return false;
     return Boolean(
       state.customerId != null ||
-        state.customer != null ||
-        state.customerSource != null ||
-        state.guestCount > 1 ||
-        state.orderNotes.trim() ||
-        state.roomNumber.trim() ||
-        state.deliveryAddress.trim() ||
-        state.deliveryNote.trim() ||
-        state.scheduledFor.trim() ||
-        state.expectedPaymentMethod.trim() ||
-        state.expectedPaymentMethodId != null ||
-        state.onlinePlatform.trim() ||
-        state.externalOrderId.trim() ||
-        state.waivedChargeIds.size > 0 ||
-        state.optedInChargeIds.size > 0,
+      state.customer != null ||
+      state.customerSource != null ||
+      state.guestCount > 1 ||
+      state.orderNotes.trim() ||
+      state.roomNumber.trim() ||
+      state.deliveryAddress.trim() ||
+      state.deliveryNote.trim() ||
+      state.scheduledFor.trim() ||
+      state.expectedPaymentMethod.trim() ||
+      state.expectedPaymentMethodId != null ||
+      state.onlinePlatform.trim() ||
+      state.externalOrderId.trim() ||
+      state.waivedChargeIds.size > 0 ||
+      state.optedInChargeIds.size > 0,
     );
   }, [pendingOrder]);
 
@@ -3547,16 +3553,13 @@ export default function POSPage() {
   };
 
   const requestTableSelection = (selection: TableSelection) => {
-    const targetTableId =
-      selection.kind === 'occupied' ? selection.table.id : selection.tableId;
+    const targetTableId = selection.kind === 'occupied' ? selection.table.id : selection.tableId;
 
     if (hasUnsentCartWork() && cart.tableId === targetTableId) {
       closeTablePicker();
       return;
     }
-    if (
-      hasUnsentCartWork()
-    ) {
+    if (hasUnsentCartWork()) {
       setPendingTableSelection(selection);
       return;
     }
@@ -4455,7 +4458,9 @@ export default function POSPage() {
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
-                      <span className="text-xs font-semibold text-muted-foreground">Order cart</span>
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        Order cart
+                      </span>
                       <button
                         type="button"
                         data-testid="pos-collapse-cart"
@@ -4477,24 +4482,24 @@ export default function POSPage() {
           </div>
 
           <Drawer open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
-        <DrawerTrigger asChild>
-          <button
-            className="touch-target fixed bottom-5 end-5 z-40 w-14 h-14 bg-brand text-white rounded-full shadow-lg hover:bg-brand-hover active:bg-brand-hover transition-colors md:hidden"
-            aria-label={t('cart')}
-          >
-            <ShoppingCart size={22} />
-            {itemCount > 0 && (
-              <span className="absolute -top-0.5 -end-0.5 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                {itemCount}
-              </span>
-            )}
-          </button>
-        </DrawerTrigger>
-        <DrawerContent className="max-h-[85vh]">
-          <div className="overflow-y-auto max-h-[80vh] px-2 pb-2">
-            <CartPanel {...cartPanelProps} variant="drawer" />
-          </div>
-        </DrawerContent>
+            <DrawerTrigger asChild>
+              <button
+                className="touch-target fixed bottom-5 end-5 z-40 w-14 h-14 bg-brand text-white rounded-full shadow-lg hover:bg-brand-hover active:bg-brand-hover transition-colors md:hidden"
+                aria-label={t('cart')}
+              >
+                <ShoppingCart size={22} />
+                {itemCount > 0 && (
+                  <span className="absolute -top-0.5 -end-0.5 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    {itemCount}
+                  </span>
+                )}
+              </button>
+            </DrawerTrigger>
+            <DrawerContent className="max-h-[85vh]">
+              <div className="overflow-y-auto max-h-[80vh] px-2 pb-2">
+                <CartPanel {...cartPanelProps} variant="drawer" />
+              </div>
+            </DrawerContent>
           </Drawer>
         </>
       )}
