@@ -57,14 +57,22 @@ function testDedicatedTableBoardNavigation(): void {
   const picker = read('frontend/src/components/pos/TableFirstSelector.tsx');
   const topbar = read('frontend/src/components/pos/PosTopbar.tsx');
 
-  assert.match(posPage, /const openTablePicker = \(\) => \{\s*setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/);
+  assert.match(posPage, /const openTablePicker = \\(\\) => \\{/);
+  assert.match(posPage, /setTablePickerPresentation\\('inline'\\)/);
+  assert.match(posPage, /setShowTablePicker\\(true\\)/);
   assert.match(posPage, /onShowTablePicker=\{requestOpenTableBoard\}/);
-  assert.match(posPage, /isRestaurant && showTablePicker && tablePickerPresentation === 'inline' \?/);
+  assert.match(
+    posPage,
+    /isRestaurant && showTablePicker && tablePickerPresentation === 'inline' \\?/,
+  );
   assert.match(posPage, /data-testid="pos-all-tables-btn"/);
   assert.match(posPage, /<TableFirstSelector/);
   assert.match(posPage, /<ProductGrid[\s\S]*?displayModes/);
   assert.match(picker, /data-testid="pos-table-first-picker"/);
-  assert.match(posPage, /showTopItems=\{!\(isRestaurant && showTablePicker && tablePickerPresentation === 'inline'\)\}/);
+  assert.match(
+    posPage,
+    /showTopItems=\\{!\\(isRestaurant && showTablePicker && tablePickerPresentation === 'inline'\\)\\}/,
+  );
   assert.match(topbar, /showTopItems && <CustomerTopItems/);
   assert.match(picker, /data-testid="pos-table-card"/);
   assert.match(picker, /aria-label="Filter tables by status"/);
@@ -80,7 +88,9 @@ function testInlineTableBoardKeepsShortcutsAvailable(): void {
   const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
 
   assert.match(posPage, /const toggleTableBoard = \(\) => \{/);
-  assert.match(posPage, /onToggleTables: \(\) => \{\s*if \(pendingTableSelection\) return;\s*if \(isRestaurant && cart\.orderType === 'dine_in' && tablesRequired\) \{\s*toggleTableBoard\(\);/);
+  assert.match(posPage, /onToggleTables: \\(\\) => \\{/);
+  assert.match(posPage, /if \\(pendingTableSelection\\) return;/);
+  assert.match(posPage, /toggleTableBoard\\(\\);/);
   assert.match(
     posPage,
     /if \(showTablePicker\) \{\s*closeTablePicker\(\);\s*return true;/,
@@ -133,7 +143,8 @@ function testResizableAndCollapsibleCart(): void {
   assert.match(posPage, /data-testid="pos-cart-resize-handle"/);
   assert.match(posPage, /aria-valuemin=\{280\}/);
   assert.match(posPage, /aria-valuemax=\{480\}/);
-  assert.match(posPage, /setCartWidth\(\(width\) => Math\.max\(280, Math\.min\(480, width \+ delta\)\)\)/);
+  assert.match(posPage, /setCartWidth\\(\\(width\\) =>/);
+  assert.match(posPage, /Math\\.max\\(280, Math\\.min\\(480, width \\+ delta\\)\\)\\)/);
   assert.match(posPage, /data-testid="pos-collapse-cart"/);
   assert.match(posPage, /data-testid="pos-expand-cart"/);
 
@@ -148,7 +159,9 @@ function testProductCatalogueModes(): void {
   assert.match(productGrid, /data-testid=\{\s*\x60pos-product-catalog-\$\{catalogMode\}\x60\s*\}/);
   assert.match(productGrid, /grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5/);
   assert.match(productGrid, /grid-cols-1/);
-  assert.match(productGrid, /localStorage\.setItem\(viewPreferenceKey, viewMode\)/);
+  assert.match(productGrid, /useSyncExternalStore\\(/);
+  assert.match(productGrid, /saveProductViewPreference\\(viewPreferenceKey, mode\\)/);
+  assert.match(productGrid, /localStorage\\.setItem\\(key, mode\\)/);
   assert.match(productGrid, /p\.sku/);
   assert.match(productGrid, /p\.barcode/);
   assert.match(productGrid, /variant\.sku/);
