@@ -198,14 +198,25 @@ console.log('Testing usePosKeyboardShortcuts keydown behavior...');
 
   const cleanups: Array<() => void> = [];
   moduleApi._load = function (request: string, parent: unknown, isMain: boolean) {
-    if (request === 'react') {
-      return {
-        useRef: <T>(initial: T) => ({ current: initial }),
-        useEffect: (fn: () => void | (() => void)) => {
-          const cleanup = fn();
-          if (typeof cleanup === 'function') cleanups.push(cleanup);
-        },
-      };
+    if (request in mocks) return mocks[request];
+    const normalizedRequest = request.replaceAll('\\\\', '/');
+    if (
+      normalizedRequest.endsWith('/frontend/src/store/cart.ts') ||
+      normalizedRequest.endsWith('/frontend/src/store/cart')
+    ) {
+      return mocks['@/store/cart'];
+    }
+    if (
+      normalizedRequest.endsWith('/frontend/src/store/auth.ts') ||
+      normalizedRequest.endsWith('/frontend/src/store/auth')
+    ) {
+      return mocks['@/store/auth'];
+    }
+    if (
+      normalizedRequest.endsWith('/frontend/src/store/pos-settings.ts') ||
+      normalizedRequest.endsWith('/frontend/src/store/pos-settings')
+    ) {
+      return mocks['@/store/pos-settings'];
     }
     return originalLoad.call(this, request, parent, isMain);
   };
