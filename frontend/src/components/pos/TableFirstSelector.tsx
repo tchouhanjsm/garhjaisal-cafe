@@ -46,7 +46,11 @@ export default function TableFirstSelector({
   onSelectOccupied,
   onSelectHeld,
 }: Props) {
-  const hasHeldOrder = useHeldOrdersStore((state) => state.hasHeldOrder);
+  const heldOrders = useHeldOrdersStore((state) => state.orders);
+  const hasHeldOrder = useCallback(
+    (tableId: string) => Boolean(heldOrders[tableId]),
+    [heldOrders],
+  );
   const t = useTranslations('pos');
   const tTables = useTranslations('tables');
   const formatCurrency = useFormatCurrency();
