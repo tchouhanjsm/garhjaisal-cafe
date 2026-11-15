@@ -69,8 +69,7 @@ function normalizeWindowsUrl(value: string): string {
     throw new Error('Enter a valid Windows Server App address.');
   }
   const host = parsed.hostname.toLowerCase();
-  const allowedHost =
-    host === 'localhost' || host.endsWith('.local') || isPrivateIpv4(host);
+  const allowedHost = host === 'localhost' || host.endsWith('.local') || isPrivateIpv4(host);
   if (
     !['http:', 'https:'].includes(parsed.protocol) ||
     parsed.username ||
@@ -88,9 +87,8 @@ function normalizeWindowsUrl(value: string): string {
 }
 
 function getErrorMessage(error: unknown): string {
-  const responseError = (
-    error as { response?: { data?: { error?: string } } }
-  )?.response?.data?.error;
+  const responseError = (error as { response?: { data?: { error?: string } } })?.response?.data
+    ?.error;
   if (responseError) return responseError;
   return error instanceof Error ? error.message : 'Menu publishing failed. Please try again.';
 }
@@ -217,7 +215,8 @@ export default function MenuPublishPage() {
       <div className="mx-auto max-w-3xl rounded-xl border border-border bg-card p-8">
         <h1 className="text-xl font-semibold">Publish menu to Windows</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Menu publishing must be initiated from the Mac staging computer. This Windows POS remains the production database.
+          Menu publishing must be initiated from the Mac staging computer. This Windows POS remains
+          the production database.
         </p>
         <Button className="mt-4" variant="outline" onClick={() => router.push('/menu-studio')}>
           <ArrowLeft className="me-2 size-4" /> Back to Menu Studio
@@ -263,7 +262,8 @@ export default function MenuPublishPage() {
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
           Use the address shown on the Windows computer under Settings → Mobile Access. Sign in with
-          a Windows owner or manager account. Your password is used only for sign-in and is not saved.
+          a Windows owner or manager account. Your password is used only for sign-in and is not
+          saved.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block text-sm font-medium">
@@ -299,7 +299,11 @@ export default function MenuPublishPage() {
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button onClick={() => void handlePreview()} disabled={busy}>
-            {busy ? <Loader2 className="me-2 size-4 animate-spin" /> : <CloudUpload className="me-2 size-4" />}
+            {busy ? (
+              <Loader2 className="me-2 size-4 animate-spin" />
+            ) : (
+              <CloudUpload className="me-2 size-4" />
+            )}
             {busy ? 'Preparing preview…' : 'Preview menu changes'}
           </Button>
           <Button variant="outline" onClick={() => router.push('/menu-studio')} disabled={busy}>
@@ -309,7 +313,10 @@ export default function MenuPublishPage() {
       </div>
 
       {message && (
-        <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+        >
           {message}
         </div>
       )}
@@ -331,7 +338,8 @@ export default function MenuPublishPage() {
         <div className="rounded-xl border border-border bg-card p-4">
           <h2 className="font-semibold">Review before publishing</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Source: {bundle.source.business_name} · {bundle.source.country} · {bundle.source.currency}
+            Source: {bundle.source.business_name} · {bundle.source.country} ·{' '}
+            {bundle.source.currency}
           </p>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[520px] text-sm">
@@ -358,7 +366,9 @@ export default function MenuPublishPage() {
             </table>
           </div>
           <div className="mt-4 space-y-2 rounded-lg bg-muted/50 p-3 text-sm">
-            <p><strong>Safe transfer rules</strong></p>
+            <p>
+              <strong>Safe transfer rules</strong>
+            </p>
             <p>• Existing Windows-only catalog records are preserved.</p>
             <p>• Missing records are not deleted automatically.</p>
             <p>• Windows stock quantities and inventory balances are preserved.</p>
@@ -367,7 +377,11 @@ export default function MenuPublishPage() {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button onClick={() => void handleApply()} disabled={busy}>
-              {busy ? <Loader2 className="me-2 size-4 animate-spin" /> : <CloudUpload className="me-2 size-4" />}
+              {busy ? (
+                <Loader2 className="me-2 size-4 animate-spin" />
+              ) : (
+                <CloudUpload className="me-2 size-4" />
+              )}
               {busy ? 'Publishing…' : 'Approve and publish to Windows'}
             </Button>
             <Button
@@ -383,15 +397,16 @@ export default function MenuPublishPage() {
             </Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            This preview expires in {Math.max(1, Math.floor(preview.expires_in_seconds / 60))} minutes.
+            This preview expires in {Math.max(1, Math.floor(preview.expires_in_seconds / 60))}{' '}
+            minutes.
           </p>
         </div>
       )}
 
       <p className="text-xs text-muted-foreground">
-        This tool is intended to publish from the Mac staging profile to the hotel Windows production
-        computer. Make future menu edits on Mac after the first publication; manual Windows catalog
-        changes are treated as a conflict and stop the next publication.
+        This tool is intended to publish from the Mac staging profile to the hotel Windows
+        production computer. Make future menu edits on Mac after the first publication; manual
+        Windows catalog changes are treated as a conflict and stop the next publication.
       </p>
     </div>
   );
