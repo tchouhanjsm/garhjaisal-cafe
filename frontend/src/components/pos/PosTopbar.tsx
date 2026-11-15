@@ -32,6 +32,7 @@ interface Props {
   showTableButton: boolean;
   tableName: string | null;
   onShowTablePicker: () => void;
+  showTopItems?: boolean;
   onActionsMenuOpenChange: (open: boolean) => void;
   onShowCashMovement: () => void;
   onShowShift: () => void;
@@ -63,6 +64,7 @@ export default function PosTopbar({
   showTableButton,
   tableName,
   onShowTablePicker,
+  showTopItems = true,
   onActionsMenuOpenChange,
   onShowCashMovement,
   onShowShift,
@@ -302,7 +304,7 @@ export default function PosTopbar({
       </div>
 
       {/* Full-width favorites row beneath the identity/actions region. */}
-      <CustomerTopItems products={products} onSelect={onTopItemSelect} />
+      {showTopItems && <CustomerTopItems products={products} onSelect={onTopItemSelect} />}
     </div>
   );
 }
