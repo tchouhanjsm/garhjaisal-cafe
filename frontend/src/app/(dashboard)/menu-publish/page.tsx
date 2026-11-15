@@ -105,6 +105,7 @@ export default function MenuPublishPage() {
   const router = useRouter();
   const tenant = useAuthStore((state) => state.currentTenant);
   const canManage = tenantCan(tenant, 'catalog.manage');
+  const [isMacClient, setIsMacClient] = useState(false);
   const [windowsUrl, setWindowsUrl] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -116,6 +117,7 @@ export default function MenuPublishPage() {
   const [published, setPublished] = useState(false);
 
   useEffect(() => {
+    setIsMacClient(/Macintosh|Mac OS X|MacIntel/.test(window.navigator.userAgent));
     const saved = window.localStorage.getItem('flo.menuPublisher.windowsUrl');
     if (saved) setWindowsUrl(saved);
   }, []);
@@ -207,6 +209,20 @@ export default function MenuPublishPage() {
       setBusy(false);
     }
   };
+
+  if (!isMacClient) {
+    return (
+      <div className="mx-auto max-w-3xl rounded-xl border border-border bg-card p-8">
+        <h1 className="text-xl font-semibold">Publish menu to Windows</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Menu publishing must be initiated from the Mac staging computer. This Windows POS remains the production database.
+        </p>
+        <Button className="mt-4" variant="outline" onClick={() => router.push('/menu-studio')}>
+          <ArrowLeft className="me-2 size-4" /> Back to Menu Studio
+        </Button>
+      </div>
+    );
+  }
 
   if (!canManage) {
     return (

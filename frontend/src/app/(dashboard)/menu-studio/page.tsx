@@ -128,6 +128,7 @@ export default function MenuStudioPage() {
   const formatCurrency = useFormatCurrency();
   const amountFormat = useAmountFormat();
 
+  const [isMacClient, setIsMacClient] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,6 +156,10 @@ export default function MenuStudioPage() {
   const [csvPreview, setCsvPreview] = useState<MenuStudioCsvPreview | null>(null);
   const [csvPreviewLoading, setCsvPreviewLoading] = useState(false);
   const [csvSaving, setCsvSaving] = useState(false);
+
+  useEffect(() => {
+    setIsMacClient(/Macintosh|Mac OS X|MacIntel/.test(window.navigator.userAgent));
+  }, []);
 
   const loadData = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
@@ -605,10 +610,12 @@ export default function MenuStudioPage() {
             aria-label="Choose a Menu Studio CSV file"
             onChange={(event) => void handleCsvFileChange(event)}
           />
-          <Button size="sm" variant="outline" onClick={() => router.push('/menu-publish')}>
-            <CloudUpload className="me-2 size-4" />
-            Publish to Windows
-          </Button>
+          {isMacClient && (
+            <Button size="sm" variant="outline" onClick={() => router.push('/menu-publish')}>
+              <CloudUpload className="me-2 size-4" />
+              Publish to Windows
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
