@@ -158,10 +158,7 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
       await page.goto(`${E2E_BASE_URL}/pos`);
       const tableBoard = page.getByTestId('pos-table-first-picker');
       await expect(tableBoard).toBeVisible();
-      await tableBoard
-        .getByTestId('pos-table-card')
-        .filter({ hasText: tableName })
-        .click();
+      await tableBoard.getByTestId('pos-table-card').filter({ hasText: tableName }).click();
       await expect(page.getByTestId('pos-product-grid')).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('lang', 'te-IN');
       await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
@@ -292,7 +289,7 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
         table = ((await tableRes.json()) as { table: { id: string | number; number: string } })
           .table;
       }
-      const tableName = table.number;
+      const serverTableName = table.number;
 
       const serverContext = await browser.newContext();
       const serverPage = await serverContext.newPage();
@@ -309,7 +306,7 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
       );
       await serverPage.reload();
       await expect(serverPage.locator('html')).toHaveAttribute('lang', 'te-IN');
-      await serverPage.getByRole('button', { name: new RegExp(tableName) }).click();
+      await serverPage.getByRole('button', { name: new RegExp(serverTableName) }).click();
       const grid = serverPage.getByTestId('pos-product-grid');
       await expect(grid.getByPlaceholder('మెనూ వెతుకు')).toBeVisible();
       await grid.getByText('హైదరాబాదీ బిర్యానీ').first().click();
@@ -564,10 +561,10 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
       });
       expect(restoreLangRes.ok()).toBeTruthy();
       await setLanguage(page, initialLanguage as 'en').catch(() => {});
-      const restoreBusinessRes = await request.put(
-        `${E2E_BASE_URL}/api/settings/business`,
-        { headers, data: initialBizSettings },
-      );
+      const restoreBusinessRes = await request.put(`${E2E_BASE_URL}/api/settings/business`, {
+        headers,
+        data: initialBizSettings,
+      });
       expect(restoreBusinessRes.ok()).toBeTruthy();
       for (const tableId of createdTableIds) {
         const deactivateTableRes = await request.post(
