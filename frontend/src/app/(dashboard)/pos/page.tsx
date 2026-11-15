@@ -1859,6 +1859,7 @@ export default function POSPage() {
     showTicketModal ||
     !!refundModalTarget ||
     actionsMenuOpen ||
+    pendingTableSelection !== null ||
     isConfirmOpen;
   const anyModalOpen =
     (showTablePicker && tablePickerPresentation === 'modal') || anyOtherModalOpen;
@@ -3762,6 +3763,7 @@ export default function POSPage() {
         }
       },
       onToggleTables: () => {
+        if (pendingTableSelection) return;
         if (isRestaurant && cart.orderType === 'dine_in' && tablesRequired) {
           if (showTablePicker && tablePickerPresentation === 'inline') closeTablePicker();
           else openTablePicker();
@@ -3850,6 +3852,11 @@ export default function POSPage() {
       onDismissModalOrBlur: () => {
         if (showKeyboardShortcutsModal) {
           setShowKeyboardShortcutsModal(false);
+          return true;
+        }
+        if (pendingTableSelection) {
+          setPendingTableSelection(null);
+          closeTablePicker();
           return true;
         }
         if (customerModalOpen || cartPanelModalOpen) {
