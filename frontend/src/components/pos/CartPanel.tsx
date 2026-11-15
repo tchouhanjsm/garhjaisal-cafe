@@ -25,7 +25,7 @@ import {
 import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
 import type { CustomPaymentMethod } from '@/lib/payment-methods';
-import { useCartStore } from '@/store/cart';
+import { useCartStore, type CartOrderType } from '@/store/cart';
 import { useHeldOrdersStore } from '@/store/held-orders';
 import { useAuthStore } from '@/store/auth';
 import { usePosSettingsStore } from '@/store/pos-settings';
@@ -60,6 +60,7 @@ interface Props {
   existingOrder?: Order | null;
   storeTimezone?: string;
   onCancelExistingOrderMode?: () => void;
+  onRequestOrderTypeChange?: (type: CartOrderType) => void;
 }
 
 const orderTypeIcons = {
@@ -187,6 +188,7 @@ export default function CartPanel({
   existingOrder,
   storeTimezone,
   onCancelExistingOrderMode,
+  onRequestOrderTypeChange,
 }: Props) {
   const cart = useCartStore();
   const heldOrders = useHeldOrdersStore();
@@ -403,7 +405,10 @@ export default function CartPanel({
                   key={type}
                   type="button"
                   disabled={Boolean(existingOrder && existingOrder.type !== type)}
-                  onClick={() => cart.setOrderType(type)}
+                  onClick={() => {
+                    if (onRequestOrderTypeChange) onRequestOrderTypeChange(type);
+                    else cart.setOrderType(type);
+                  }}
                   className={`touch-target h-6 min-h-6 flex-1 gap-1 px-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showIcon ? '' : 'whitespace-nowrap'} ${
                     cart.orderType === type
                       ? 'bg-card text-brand shadow-sm'
