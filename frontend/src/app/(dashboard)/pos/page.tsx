@@ -4317,9 +4317,11 @@ export default function POSPage() {
         <TablePickerModal
           tables={tables}
           selectedTableId={cart.tableId}
-          onSelectAvailable={handleSelectAvailableTable}
-          onSelectOccupied={handleSelectOccupiedTable}
-          onSelectHeld={handleSelectHeldTable}
+          onSelectAvailable={(tableId, customer) =>
+            requestTableSelection({ kind: 'available', tableId, customer })
+          }
+          onSelectOccupied={(table) => requestTableSelection({ kind: 'occupied', table })}
+          onSelectHeld={(tableId) => requestTableSelection({ kind: 'held', tableId })}
           onPlaceOrder={handlePlaceOrder}
           onHoldTable={handleHoldTable}
           onClose={closeTablePicker}
