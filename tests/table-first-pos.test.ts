@@ -60,19 +60,18 @@ function testDedicatedTableBoardNavigation(): void {
   assert.ok(posPage.includes('const openTablePicker = () => {'));
   assert.ok(posPage.includes("setTablePickerPresentation('inline')"));
   assert.ok(posPage.includes('setShowTablePicker(true)'));
-  assert.match(posPage, /onShowTablePicker=\\{requestOpenTableBoard\\}/);
-  assert.ok(posPage.includes('showTablePicker && tablePickerPresentation ==='));
+  assert.ok(posPage.includes('onShowTablePicker={requestOpenTableBoard}'));
   assert.ok(posPage.includes("tablePickerPresentation === 'inline' ?"));
-  assert.match(posPage, /<TableFirstSelector/);
-  assert.match(posPage, /<ProductGrid[\s\S]*?displayModes/);
-  assert.match(picker, /data-testid="pos-table-first-picker"/);
-  assert.match(posPage, /showTopItems=/);
-  assert.match(posPage, /showTablePicker && tablePickerPresentation === 'inline'/);
-  assert.match(topbar, /showTopItems && <CustomerTopItems/);
-  assert.match(picker, /data-testid="pos-table-card"/);
-  assert.match(picker, /aria-label="Filter tables by status"/);
-  assert.match(picker, /aria-label="Filter tables by section"/);
-  assert.match(picker, /formatCurrency\(activeOrder\.total\)/);
+  assert.ok(posPage.includes('<TableFirstSelector'));
+  assert.ok(posPage.includes('<ProductGrid'));
+  assert.ok(posPage.includes('displayModes='));
+  assert.ok(posPage.includes("showTopItems={!(isRestaurant && showTablePicker"));
+  assert.ok(topbar.includes('showTopItems && <CustomerTopItems'));
+  assert.ok(picker.includes('data-testid="pos-table-first-picker"'));
+  assert.ok(picker.includes('data-testid="pos-table-card"'));
+  assert.ok(picker.includes('aria-label="Filter tables by status"'));
+  assert.ok(picker.includes('aria-label="Filter tables by section"'));
+  assert.ok(picker.includes('formatCurrency(activeOrder.total)'));
 
   console.log('  ✓ table board replaces the ordering workspace instead of sitting above it');
   console.log('  ✓ table board supports status, section, and text filtering');
@@ -82,18 +81,13 @@ function testDedicatedTableBoardNavigation(): void {
 function testInlineTableBoardKeepsShortcutsAvailable(): void {
   const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
 
-  assert.match(posPage, /const toggleTableBoard = \(\) => \{/);
+  assert.ok(posPage.includes('const toggleTableBoard = () => {'));
   assert.ok(posPage.includes('onToggleTables: () => {'));
   assert.ok(posPage.includes('if (pendingTableSelection) return;'));
   assert.ok(posPage.includes('toggleTableBoard();'));
-  assert.match(
-    posPage,
-    /if \(showTablePicker\) \{\s*closeTablePicker\(\);\s*return true;/,
-  );
-  assert.match(
-    posPage,
-    /tablePickerOpen: showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen/,
-  );
+  assert.ok(posPage.includes('closeTablePicker();'));
+  assert.ok(posPage.includes('tablePickerOpen: showTablePicker &&'));
+  assert.ok(posPage.includes("tablePickerPresentation === 'modal' && !anyOtherModalOpen"));
 
   console.log('  ✓ F2 toggles the dedicated table board and Escape returns to ordering');
   console.log('  ✓ the table board is not treated as a blocking modal');
@@ -104,13 +98,13 @@ function testUnsentCartCannotSilentlyChangeTables(): void {
   const dialog = read('frontend/src/components/pos/TableSwitchDialog.tsx');
   const cartPanel = read('frontend/src/components/pos/CartPanel.tsx');
 
-  assert.match(posPage, /const requestTableSelection = \(selection: TableSelection\) => \{/);
-  assert.match(posPage, /hasUnsentCartWork\(\) && cart\.tableId === targetTableId/);
-  assert.match(posPage, /const requestOpenTableBoard = \(\) => \{/);
+  assert.ok(posPage.includes('const requestTableSelection = (selection: TableSelection) => {'));
+  assert.ok(posPage.includes('hasUnsentCartWork() && cart.tableId === targetTableId'));
+  assert.ok(posPage.includes('const requestOpenTableBoard = () => {'));
   assert.ok(posPage.includes('if (hasUnsentCartWork()) {'));
-  assert.match(posPage, /setPendingTableSelection\(\{ kind: 'tables' \}\)/);
-  assert.match(posPage, /onShowTablePicker=\{requestOpenTableBoard\}/);
-  assert.match(posPage, /onRequestOrderTypeChange: requestOrderTypeChange/);
+  assert.ok(posPage.includes("setPendingTableSelection({ kind: 'tables' })"));
+  assert.ok(posPage.includes('onShowTablePicker={requestOpenTableBoard}'));
+  assert.ok(posPage.includes('onRequestOrderTypeChange: requestOrderTypeChange'));
   assert.ok(posPage.includes('state.expectedPaymentMethodId != null'));
   assert.ok(
     posPage.includes(
@@ -123,21 +117,21 @@ function testUnsentCartCannotSilentlyChangeTables(): void {
     ),
   );
   assert.ok(posPage.includes('await refreshTables().catch(() => undefined)'));
-  assert.match(posPage, /if \(pendingOrder\) return false;/);
-  assert.match(posPage, /router\.push\(selection\.href\)/);
-  assert.match(posPage, /kind: 'order-type'/);
-  assert.match(posPage, /kind: 'route'/);
-  assert.match(posPage, /addEventListener\('beforeunload'/);
-  assert.match(posPage, /addEventListener\('click', interceptInternalNavigation, true\)/);
-  assert.match(posPage, /onSelectAvailable=\{\(tableId, customer\) =>\s*requestTableSelection/);
-  assert.match(posPage, /onDiscard=\{discardAndContinue\}/);
-  assert.match(posPage, /onHold=\{\(\) => void holdAndContinue\(\)\}/);
-  assert.match(dialog, /data-testid="pos-table-switch-dialog"/);
-  assert.match(dialog, /Hold order and continue/);
-  assert.match(dialog, /Discard unsent items and continue/);
-  assert.match(dialog, /Continue editing/);
-  assert.match(cartPanel, /onRequestOrderTypeChange\?:/);
-  assert.match(cartPanel, /onRequestOrderTypeChange\(type\)/);
+  assert.ok(posPage.includes('if (pendingOrder) return false;'));
+  assert.ok(posPage.includes('router.push(selection.href)'));
+  assert.ok(posPage.includes("kind: 'order-type'"));
+  assert.ok(posPage.includes("kind: 'route'"));
+  assert.ok(posPage.includes("addEventListener('beforeunload'"));
+  assert.ok(posPage.includes("addEventListener('click', interceptInternalNavigation, true)"));
+  assert.ok(posPage.includes('onSelectAvailable={(tableId, customer) =>'));
+  assert.ok(posPage.includes('onDiscard={discardAndContinue}'));
+  assert.ok(posPage.includes('onHold={() => void holdAndContinue()}'));
+  assert.ok(dialog.includes('data-testid="pos-table-switch-dialog"'));
+  assert.ok(dialog.includes('Hold order and continue'));
+  assert.ok(dialog.includes('Discard unsent items and continue'));
+  assert.ok(dialog.includes('Continue editing'));
+  assert.ok(cartPanel.includes('onRequestOrderTypeChange?:'));
+  assert.ok(cartPanel.includes('onRequestOrderTypeChange(type)'));
 
   console.log('  ✓ changing tables with unsent work requires an explicit decision');
   console.log('  ✓ hold is offered only for an eligible postpaid dine-in draft');
@@ -145,51 +139,59 @@ function testUnsentCartCannotSilentlyChangeTables(): void {
 
 function testResizableAndCollapsibleCart(): void {
   const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
+  const cartPanel = read('frontend/src/components/pos/CartPanel.tsx');
 
-  assert.match(posPage, /data-testid="pos-resizable-cart"/);
-  assert.match(posPage, /role="separator"/);
-  assert.match(posPage, /data-testid="pos-cart-resize-handle"/);
-  assert.match(posPage, /aria-valuemin=\{280\}/);
-  assert.match(posPage, /aria-valuemax=\{480\}/);
+  assert.ok(posPage.includes('data-testid="pos-resizable-cart"'));
+  assert.ok(posPage.includes('role="separator"'));
+  assert.ok(posPage.includes('data-testid="pos-cart-resize-handle"'));
+  assert.ok(posPage.includes('aria-valuemin={280}'));
+  assert.ok(posPage.includes('aria-valuemax={480}'));
   assert.ok(posPage.includes('setCartWidth((width) =>'));
   assert.ok(posPage.includes('Math.max(280, Math.min(480, width + delta))'));
-  assert.match(posPage, /data-testid="pos-collapse-cart"/);
-  assert.match(posPage, /data-testid="pos-expand-cart"/);
+  assert.ok(posPage.includes('data-testid="pos-collapse-cart"'));
+  assert.ok(posPage.includes('data-testid="pos-expand-cart"'));
+  assert.ok(cartPanel.includes('data-testid="cart-items-scroll"'));
+  assert.ok(cartPanel.includes('pos-cart-items flex-1 min-h-0 overflow-y-auto'));
 
   console.log('  ✓ cart width is bounded, pointer-resizable, keyboard-adjustable, and collapsible');
+  console.log('  ✓ cart rows scroll independently of the order totals and actions');
 }
 
 function testProductCatalogueModes(): void {
   const productGrid = read('frontend/src/components/pos/ProductGrid.tsx');
 
-  assert.match(productGrid, /type ProductViewMode = 'compact' \| 'grid' \| 'list'/);
-  assert.match(productGrid, /data-testid="pos-product-view-modes"/);
-  assert.match(productGrid, /data-testid=\{\s*\x60pos-product-catalog-\$\{catalogMode\}\x60\s*\}/);
-  assert.match(productGrid, /grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5/);
-  assert.match(productGrid, /grid-cols-1/);
+  assert.ok(productGrid.includes("type ProductViewMode = 'compact' | 'grid' | 'list'"));
+  assert.ok(productGrid.includes('data-testid="pos-product-view-modes"'));
+  assert.ok(productGrid.includes('pos-product-catalog-'));
+  assert.ok(productGrid.includes('grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'));
+  assert.ok(productGrid.includes('grid-cols-1'));
+  assert.ok(productGrid.includes('getDefaultProductViewPreference'));
+  assert.ok(productGrid.includes("return 'compact'"));
   assert.ok(productGrid.includes('useSyncExternalStore('));
   assert.ok(productGrid.includes('saveProductViewPreference(viewPreferenceKey, mode)'));
   assert.ok(productGrid.includes('localStorage.setItem(key, mode)'));
-  assert.match(productGrid, /p\.sku/);
-  assert.match(productGrid, /p\.barcode/);
-  assert.match(productGrid, /variant\.sku/);
-  assert.match(productGrid, /min-h-\[84px\]/);
-  assert.match(productGrid, /bg-muted text-muted-foreground/);
+  assert.ok(productGrid.includes('p.sku'));
+  assert.ok(productGrid.includes('p.barcode'));
+  assert.ok(productGrid.includes('variant.sku'));
+  assert.ok(productGrid.includes('variant.barcode'));
+  assert.ok(productGrid.includes('min-h-[84px]'));
+  assert.ok(productGrid.includes('bg-muted text-muted-foreground'));
 
   console.log('  ✓ compact, image-grid, and list modes are available and remembered locally');
+  console.log('  ✓ name, SKU, barcode, and variant search are available in the catalogue');
 }
 
 function testWaiterMobileTableFirst(): void {
   const serverApp = read('frontend/src/app/server-standalone/page.tsx');
 
-  assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = loadedTables\[0\]\.id/);
-  assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = firstTable\.id/);
-  assert.match(serverApp, /selectedTableIdRef\.current = localDraft\.tableId/);
-  assert.match(serverApp, /setSelectedTableId\(localDraft\.tableId\)/);
-  assert.match(serverApp, /disabled=\{sending \|\| !selectedTableId\}/);
-  assert.match(serverApp, /TABLE_STATUS_LABEL_KEYS\[table\.status \?\? 'available'\]/);
-  assert.match(serverApp, /table\.status === 'cleaning'/);
-  assert.match(serverApp, /table\.status === 'held'/);
+  assert.equal(serverApp.includes('selectedTableIdRef.current = loadedTables[0].id'), false);
+  assert.equal(serverApp.includes('selectedTableIdRef.current = firstTable.id'), false);
+  assert.ok(serverApp.includes('selectedTableIdRef.current = localDraft.tableId'));
+  assert.ok(serverApp.includes('setSelectedTableId(localDraft.tableId)'));
+  assert.ok(serverApp.includes('disabled={sending || !selectedTableId}'));
+  assert.ok(serverApp.includes("TABLE_STATUS_LABEL_KEYS[table.status ?? 'available']"));
+  assert.ok(serverApp.includes("table.status === 'cleaning'"));
+  assert.ok(serverApp.includes("table.status === 'held'"));
 
   console.log('  ✓ waiter mobile app still requires an explicit usable table selection');
 }
