@@ -8,7 +8,7 @@ import { useHeldOrdersStore } from '@/store/held-orders';
 import { usePosSettingsStore } from '@/store/pos-settings';
 import { useSidebar } from '@/components/ui/sidebar';
 import toast from 'react-hot-toast';
-import { ShoppingCart, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, GripVertical, ShoppingCart, X } from 'lucide-react';
 import type {
   Addon,
   Category,
@@ -29,6 +29,7 @@ import AddonModal from '@/components/pos/AddonModal';
 import CustomerSearch from '@/components/pos/CustomerSearch';
 import TablePickerModal from '@/components/pos/TablePickerModal';
 import TableFirstSelector from '@/components/pos/TableFirstSelector';
+import TableSwitchDialog from '@/components/pos/TableSwitchDialog';
 import TableCheckoutModal from '@/components/pos/TableCheckoutModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import PrepaidCheckoutModal, {
@@ -266,6 +267,10 @@ const parsePrepaidPaymentRequest = (serialized: string): PrepaidPaymentRequest |
 };
 
 type TablePickerPresentation = 'modal' | 'inline';
+type PendingTableSelection =
+  | { kind: 'available'; tableId: string; customer?: { id: string; name: string; phone: string } | null }
+  | { kind: 'occupied'; table: Table }
+  | { kind: 'held'; tableId: string };
 
 export default function POSPage() {
   const { currentTenant, user, token } = useAuthStore();
@@ -309,6 +314,9 @@ export default function POSPage() {
   const [search, setSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const [cartWidth, setCartWidth] = useState(320);
+  const [cartCollapsed, setCartCollapsed] = useState(false);
+  const cartResizePointerRef = useRef<{ pointerId: number; lastX: number } | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [showPrintMenuModal, setShowPrintMenuModal] = useState(false);
   const [kotRecovery, setKotRecovery] = useState<{
@@ -321,9 +329,10 @@ export default function POSPage() {
   const [showTablePicker, setShowTablePicker] = useState(false);
   const [tablePickerPresentation, setTablePickerPresentation] =
     useState<TablePickerPresentation>('modal');
+  const [pendingTableSelection, setPendingTableSelection] = useState<PendingTableSelection | null>(null);
   const tablePickerAutoOpenedRef = useRef(false);
   const openTablePicker = () => {
-    setTablePickerPresentation('modal');
+    setTablePickerPresentation('inline');
     setShowTablePicker(true);
   };
   const closeTablePicker = () => {
@@ -3429,6 +3438,62 @@ export default function POSPage() {
     }
   };
 
+  const executeTableSelection = (selection: PendingTableSelection) => {
+    if (selection.kind === 'available') {
+      handleSelectAvailableTable(selection.tableId, selection.customer);
+    } else if (selection.kind === 'occupied') {
+      void handleSelectOccupiedTable(selection.table);
+    } else {
+      void handleSelectHeldTable(selection.tableId);
+    }
+  };
+
+  const requestTableSelection = (selection: PendingTableSelection) => {
+    const targetTableId =
+      selection.kind === 'occupied' ? selection.table.id : selection.tableId;
+    const hasUnsentWork = cart.items.length > 0 || Boolean(pendingOrder);
+    if (hasUnsentWork && cart.tableId !== targetTableId) {
+      setPendingTableSelection(selection);
+      return;
+    }
+    executeTableSelection(selection);
+  };
+
+  const discardAndSwitchTable = () => {
+    const selection = pendingTableSelection;
+    if (!selection) return;
+    setPendingTableSelection(null);
+    if (pendingOrder) setPendingOrder(null);
+    cart.clearCart();
+    executeTableSelection(selection);
+  };
+
+  const holdAndSwitchTable = async () => {
+    const selection = pendingTableSelection;
+    const currentTableId = cart.tableId;
+    if (!selection || !currentTableId || cart.items.length === 0 || pendingOrder) return;
+    const tableName = tables.find((table) => table.id === currentTableId)?.name || currentTableId;
+    try {
+      await heldOrders.holdOrder(
+        currentTableId,
+        cart.items,
+        cart.customerId,
+        cart.guestCount,
+        cart.orderNotes,
+        [...cart.waivedChargeIds],
+        [...cart.optedInChargeIds],
+        cart.roomNumber,
+      );
+      setPendingTableSelection(null);
+      cart.clearCart();
+      toast.success(t('orderHeld', { tableName }));
+      await refreshTables();
+      executeTableSelection(selection);
+    } catch (error) {
+      toast.error(extractPrinterErrorMessage(error) || t('holdOrderFailed'));
+    }
+  };
+
   const handleAddItemsToOrder = (table: Table, order: Order) => {
     setCheckoutTable(null);
     cart.setTableId(table.id);
@@ -3698,7 +3763,7 @@ export default function POSPage() {
       },
       onToggleTables: () => {
         if (isRestaurant && cart.orderType === 'dine_in' && tablesRequired) {
-          if (showTablePicker && tablePickerPresentation === 'modal') closeTablePicker();
+          if (showTablePicker && tablePickerPresentation === 'inline') closeTablePicker();
           else openTablePicker();
         }
       },
@@ -3795,7 +3860,7 @@ export default function POSPage() {
           activeEl.blur();
           return true;
         }
-        if (showTablePicker && tablePickerPresentation === 'modal') {
+        if (showTablePicker) {
           closeTablePicker();
           return true;
         }
@@ -4091,59 +4156,168 @@ export default function POSPage() {
         }}
       />
 
-      {isRestaurant &&
-        showTablePicker &&
-        (tablePickerPresentation === 'inline' ? (
+      {isRestaurant && showTablePicker && tablePickerPresentation === 'modal' && (
+        <TablePickerModal
+          tables={tables}
+          selectedTableId={cart.tableId}
+          onSelectAvailable={handleSelectAvailableTable}
+          onSelectOccupied={handleSelectOccupiedTable}
+          onSelectHeld={handleSelectHeldTable}
+          onPlaceOrder={handlePlaceOrder}
+          onHoldTable={handleHoldTable}
+          onClose={closeTablePicker}
+        />
+      )}
+
+      {/* The table board and the ordering workspace are mutually exclusive screens. */}
+      {isRestaurant && showTablePicker && tablePickerPresentation === 'inline' ? (
+        <div className="flex min-h-0 flex-1 overflow-hidden px-3 py-2 sm:px-4 sm:py-2.5">
           <TableFirstSelector
             tables={tables}
             selectedTableId={cart.tableId}
-            onSelectAvailable={handleSelectAvailableTable}
-            onSelectOccupied={handleSelectOccupiedTable}
-            onSelectHeld={handleSelectHeldTable}
-          />
-        ) : (
-          <TablePickerModal
-            tables={tables}
-            selectedTableId={cart.tableId}
-            onSelectAvailable={handleSelectAvailableTable}
-            onSelectOccupied={handleSelectOccupiedTable}
-            onSelectHeld={handleSelectHeldTable}
-            onPlaceOrder={handlePlaceOrder}
-            onHoldTable={handleHoldTable}
-            onClose={closeTablePicker}
-          />
-        ))}
-
-      {/* Main content area */}
-      <div className="flex flex-1 min-h-0 overflow-hidden px-3 py-2 sm:px-4 sm:py-2.5 gap-3 sm:gap-4">
-        {/* Product Grid — full width on mobile, flex-1 on desktop */}
-        <div className="flex-1 min-w-0 h-full flex flex-col">
-          <ProductGrid
-            categories={categories}
-            products={products}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            search={search}
-            setSearch={setSearch}
-            currency={currency}
-            onProductClick={handleProductClick}
-            onScannedVariant={handleScannedVariant}
-            onScaledProduct={(product, quantity) => cart.addItem(product, quantity)}
-            sidebarOpen={leftSidebarOpen}
-            categorySort={categorySort}
-            itemSort={itemSort}
-            collapseCategories
+            onSelectAvailable={(tableId, customer) =>
+              requestTableSelection({ kind: 'available', tableId, customer })
+            }
+            onSelectOccupied={(table) => requestTableSelection({ kind: 'occupied', table })}
+            onSelectHeld={(tableId) => requestTableSelection({ kind: 'held', tableId })}
           />
         </div>
+      ) : (
+        <>
+          <div className="flex min-h-0 flex-1 gap-3 overflow-hidden px-3 py-2 sm:gap-4 sm:px-4 sm:py-2.5">
+            <div className="flex h-full min-w-0 flex-1 flex-col">
+              {isRestaurant && cart.orderType === 'dine_in' && tablesRequired && cart.tableId && (
+                <div className="mb-2 flex shrink-0 items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2">
+                  <button
+                    type="button"
+                    data-testid="pos-all-tables-btn"
+                    onClick={openTablePicker}
+                    className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-brand transition-colors hover:bg-muted"
+                  >
+                    <ArrowLeft size={16} />
+                    All Tables
+                  </button>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-foreground">
+                      {tables.find((table) => table.id === cart.tableId)?.name || cart.tableId}
+                    </span>
+                    <span className="rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-medium text-green-700 dark:bg-green-950/30 dark:text-green-300">
+                      Current table
+                    </span>
+                  </div>
+                </div>
+              )}
+              <ProductGrid
+                categories={categories}
+                products={products}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                search={search}
+                setSearch={setSearch}
+                currency={currency}
+                onProductClick={handleProductClick}
+                onScannedVariant={handleScannedVariant}
+                onScaledProduct={(product, quantity) => cart.addItem(product, quantity)}
+                sidebarOpen={leftSidebarOpen}
+                categorySort={categorySort}
+                itemSort={itemSort}
+                collapseCategories
+                displayModes
+              />
+            </div>
 
-        {/* Desktop Cart — always open, hidden on mobile */}
-        <div className="hidden md:flex md:w-80 md:shrink-0 h-full">
-          <CartPanel {...cartPanelProps} />
-        </div>
-      </div>
+            <div
+              className="hidden h-full shrink-0 md:flex"
+              style={{ width: cartCollapsed ? 48 : cartWidth }}
+              data-testid="pos-resizable-cart"
+            >
+              {cartCollapsed ? (
+                <button
+                  type="button"
+                  data-testid="pos-expand-cart"
+                  onClick={() => setCartCollapsed(false)}
+                  aria-label="Expand cart"
+                  className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <ShoppingCart size={19} />
+                  <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-white">
+                    {itemCount}
+                  </span>
+                  <ChevronLeft size={16} />
+                </button>
+              ) : (
+                <div className="flex h-full min-w-0 w-full">
+                  <div
+                    role="separator"
+                    aria-label="Resize order cart"
+                    aria-orientation="vertical"
+                    aria-valuemin={280}
+                    aria-valuemax={480}
+                    aria-valuenow={cartWidth}
+                    aria-valuetext={`Cart width ${cartWidth} pixels`}
+                    tabIndex={0}
+                    data-testid="pos-cart-resize-handle"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      cartResizePointerRef.current = {
+                        pointerId: event.pointerId,
+                        lastX: event.clientX,
+                      };
+                    }}
+                    onPointerMove={(event) => {
+                      const active = cartResizePointerRef.current;
+                      if (!active || active.pointerId !== event.pointerId) return;
+                      const delta = active.lastX - event.clientX;
+                      active.lastX = event.clientX;
+                      setCartWidth((width) => Math.max(280, Math.min(480, width + delta)));
+                    }}
+                    onPointerUp={(event) => {
+                      if (cartResizePointerRef.current?.pointerId === event.pointerId) {
+                        cartResizePointerRef.current = null;
+                        event.currentTarget.releasePointerCapture(event.pointerId);
+                      }
+                    }}
+                    onPointerCancel={() => {
+                      cartResizePointerRef.current = null;
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'ArrowLeft') {
+                        event.preventDefault();
+                        setCartWidth((width) => Math.min(480, width + 16));
+                      } else if (event.key === 'ArrowRight') {
+                        event.preventDefault();
+                        setCartWidth((width) => Math.max(280, width - 16));
+                      }
+                    }}
+                    className="group flex w-3 shrink-0 cursor-col-resize touch-none items-center justify-center text-muted-foreground/50 transition-colors hover:text-brand focus-visible:outline-none focus-visible:text-brand"
+                  >
+                    <GripVertical size={16} />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
+                      <span className="text-xs font-semibold text-muted-foreground">Order cart</span>
+                      <button
+                        type="button"
+                        data-testid="pos-collapse-cart"
+                        onClick={() => setCartCollapsed(true)}
+                        aria-label="Collapse cart"
+                        title="Collapse cart"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                    <div className="min-h-0 flex-1">
+                      <CartPanel {...cartPanelProps} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
-      {/* Mobile: Floating Cart Button + Bottom Sheet — outside flex container */}
-      <Drawer open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
+          <Drawer open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
         <DrawerTrigger asChild>
           <button
             className="touch-target fixed bottom-5 end-5 z-40 w-14 h-14 bg-brand text-white rounded-full shadow-lg hover:bg-brand-hover active:bg-brand-hover transition-colors md:hidden"
@@ -4162,7 +4336,44 @@ export default function POSPage() {
             <CartPanel {...cartPanelProps} variant="drawer" />
           </div>
         </DrawerContent>
-      </Drawer>
+          </Drawer>
+        </>
+      )}
+
+      <TableSwitchDialog
+        open={pendingTableSelection !== null}
+        currentTableName={
+          cart.tableId
+            ? tables.find((table) => table.id === cart.tableId)?.name || cart.tableId
+            : null
+        }
+        targetTableName={
+          pendingTableSelection
+            ? (() => {
+                const targetId =
+                  pendingTableSelection.kind === 'occupied'
+                    ? pendingTableSelection.table.id
+                    : pendingTableSelection.tableId;
+                return tables.find((table) => table.id === targetId)?.name || targetId;
+              })()
+            : ''
+        }
+        itemCount={cart.items.length}
+        hasExistingOrder={Boolean(pendingOrder)}
+        canHold={
+          Boolean(cart.tableId) &&
+          cart.orderType === 'dine_in' &&
+          cart.items.length > 0 &&
+          billingType === 'postpaid' &&
+          !pendingOrder
+        }
+        onCancel={() => {
+          setPendingTableSelection(null);
+          closeTablePicker();
+        }}
+        onDiscard={discardAndSwitchTable}
+        onHold={() => void holdAndSwitchTable()}
+      />
 
       {/* Modals */}
       <CashDrawerMovementModal model={cashDrawer} />
