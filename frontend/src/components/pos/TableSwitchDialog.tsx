@@ -55,8 +55,8 @@ export default function TableSwitchDialog({
                   ? `You have ${itemCount} unsent ${itemCount === 1 ? 'item' : 'items'}${currentTableName ? ` for ${currentTableName}` : ' in the cart'}.`
                   : hasUnsentDetails
                     ? `You have unfinished order details${currentTableName ? ` for ${currentTableName}` : ''}.`
-                    : `You have unfinished work${currentTableName ? ` for ${currentTableName}` : ''}.`}
-              {' '}Continuing to {targetTableName} will not move this work automatically.
+                    : `You have unfinished work${currentTableName ? ` for ${currentTableName}` : ''}.`}{' '}
+              Continuing to {targetTableName} will not move this work automatically.
             </p>
             {hasExistingOrder && (
               <p className="mt-2 text-xs text-muted-foreground">
