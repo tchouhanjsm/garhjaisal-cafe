@@ -687,7 +687,9 @@ export default function ProductGrid({
                   <div className="mt-1 flex items-center justify-between gap-1">
                     <p className="font-bold text-brand">{fmt(Number(product.price))}</p>
                     <div className="flex shrink-0 items-center gap-1">
-                      {product.tags && product.tags.length > 0 && <TagBadge tag={product.tags[0]} />}
+                      {(catalogMode !== 'grid' || !showProductImages) && product.tags && product.tags.length > 0 && (
+                        <TagBadge tag={product.tags[0]} />
+                      )}
                       {productNeedsCustomizer(product) && (
                         <span
                           className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground"
