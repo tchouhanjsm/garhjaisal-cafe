@@ -95,7 +95,7 @@ function validateInclusiveFivePercentGst(
   ].filter(Boolean);
 
   return (
-    'Publishing is blocked until active taxable products and non-inheriting add-ons use the India 5% GST category with Inclusive tax behaviour. ' +
+    'Publishing is blocked until active taxable products use the India 5% GST category with Inclusive tax behaviour, and active taxable add-ons use Inclusive behaviour plus either inherit the parent category or use that same 5% category. ' +
     details.join('; ') +
     '. Correct these records in Menu Studio, then preview again. Items explicitly marked Exempt are not changed.'
   );
@@ -351,8 +351,10 @@ export default function MenuPublishPage() {
         <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
           <p>
             <strong>GST preflight:</strong> For India, active taxable products must already use the
-            5% GST category with <strong>Inclusive</strong> tax behaviour. The screen checks this
-            before connecting to Windows; publishing never invents or adds a GST rate.
+            5% GST category with <strong>Inclusive</strong> tax behaviour. Taxable add-ons must
+            also be Inclusive and either inherit the parent category or use the same 5% category.
+            The screen checks this before connecting to Windows; publishing never invents or adds
+            a GST rate.
           </p>
           <p>
             <strong>First publication:</strong> Windows should have an empty catalogue or one
