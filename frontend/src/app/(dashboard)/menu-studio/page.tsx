@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -100,6 +100,10 @@ type MenuStudioCsvPreview = {
 };
 
 const MAX_BULK_SELECTION = 250;
+const subscribeToPlatform = (_onStoreChange: () => void) => () => {};
+const getIsMacPlatform = () =>
+  typeof navigator !== 'undefined' && /Macintosh|Mac OS X|MacIntel/.test(navigator.userAgent);
+const getServerIsMacPlatform = () => false;
 
 const inputClass =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand';
@@ -125,10 +129,14 @@ export default function MenuStudioPage() {
   const router = useRouter();
   const tenant = useAuthStore((state) => state.currentTenant);
   const canManage = tenantCan(tenant, 'catalog.manage');
+  const isMacClient = useSyncExternalStore(
+    subscribeToPlatform,
+    getIsMacPlatform,
+    getServerIsMacPlatform,
+  );
   const formatCurrency = useFormatCurrency();
   const amountFormat = useAmountFormat();
 
-  const [isMacClient, setIsMacClient] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,10 +164,6 @@ export default function MenuStudioPage() {
   const [csvPreview, setCsvPreview] = useState<MenuStudioCsvPreview | null>(null);
   const [csvPreviewLoading, setCsvPreviewLoading] = useState(false);
   const [csvSaving, setCsvSaving] = useState(false);
-
-  useEffect(() => {
-    setIsMacClient(/Macintosh|Mac OS X|MacIntel/.test(window.navigator.userAgent));
-  }, []);
 
   const loadData = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);

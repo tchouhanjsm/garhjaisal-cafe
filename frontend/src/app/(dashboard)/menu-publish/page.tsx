@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import axios from 'axios';
 import { ArrowLeft, CheckCircle2, CloudUpload, Loader2, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -8,6 +8,11 @@ import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
 import { tenantCan } from '@/lib/permissions';
+
+const subscribeToPlatform = (_onStoreChange: () => void) => () => {};
+const getIsMacPlatform = () =>
+  typeof navigator !== 'undefined' && /Macintosh|Mac OS X|MacIntel/.test(navigator.userAgent);
+const getServerIsMacPlatform = () => false;
 
 type MenuBundle = {
   format_version: number;
@@ -105,7 +110,11 @@ export default function MenuPublishPage() {
   const router = useRouter();
   const tenant = useAuthStore((state) => state.currentTenant);
   const canManage = tenantCan(tenant, 'catalog.manage');
-  const [isMacClient, setIsMacClient] = useState(false);
+  const isMacClient = useSyncExternalStore(
+    subscribeToPlatform,
+    getIsMacPlatform,
+    getServerIsMacPlatform,
+  );
   const [windowsUrl, setWindowsUrl] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -117,7 +126,6 @@ export default function MenuPublishPage() {
   const [published, setPublished] = useState(false);
 
   useEffect(() => {
-    setIsMacClient(/Macintosh|Mac OS X|MacIntel/.test(window.navigator.userAgent));
     const saved = window.localStorage.getItem('flo.menuPublisher.windowsUrl');
     if (saved) setWindowsUrl(saved);
   }, []);
