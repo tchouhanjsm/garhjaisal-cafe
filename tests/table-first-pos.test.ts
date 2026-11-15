@@ -160,9 +160,9 @@ function testProductCatalogueModes(): void {
   assert.match(productGrid, /data-testid=\{\s*\x60pos-product-catalog-\$\{catalogMode\}\x60\s*\}/);
   assert.match(productGrid, /grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5/);
   assert.match(productGrid, /grid-cols-1/);
-  assert.match(productGrid, /useSyncExternalStore\\(/);
-  assert.match(productGrid, /saveProductViewPreference\\(viewPreferenceKey, mode\\)/);
-  assert.match(productGrid, /localStorage\\.setItem\\(key, mode\\)/);
+  assert.ok(productGrid.includes('useSyncExternalStore('));
+  assert.ok(productGrid.includes('saveProductViewPreference(viewPreferenceKey, mode)'));
+  assert.ok(productGrid.includes('localStorage.setItem(key, mode)'));
   assert.match(productGrid, /p\.sku/);
   assert.match(productGrid, /p\.barcode/);
   assert.match(productGrid, /variant\.sku/);
