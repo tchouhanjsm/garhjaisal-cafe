@@ -82,7 +82,7 @@ export default function TableFirstSelector({
     };
     for (const table of tables) result[getEffectiveStatus(table)] += 1;
     return result;
-  }, [tables, heldOrders.heldOrders]);
+  }, [tables, heldOrders.orders]);
 
   const visibleTables = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -93,7 +93,7 @@ export default function TableFirstSelector({
       const matchesSearch = !query || table.name.toLocaleLowerCase().includes(query);
       return matchesStatus && matchesSection && matchesSearch;
     });
-  }, [tables, activeFilter, activeSection, search, heldOrders.heldOrders]);
+  }, [tables, activeFilter, activeSection, search, heldOrders.orders]);
 
   const handleClick = (table: Table) => {
     const isHeld = heldOrders.hasHeldOrder(table.id);
