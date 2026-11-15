@@ -47,10 +47,7 @@ export default function TableFirstSelector({
   onSelectHeld,
 }: Props) {
   const heldOrders = useHeldOrdersStore((state) => state.orders);
-  const hasHeldOrder = useCallback(
-    (tableId: string) => Boolean(heldOrders[tableId]),
-    [heldOrders],
-  );
+  const hasHeldOrder = useCallback((tableId: string) => Boolean(heldOrders[tableId]), [heldOrders]);
   const t = useTranslations('pos');
   const tTables = useTranslations('tables');
   const formatCurrency = useFormatCurrency();
@@ -71,8 +68,7 @@ export default function TableFirstSelector({
   );
 
   const getEffectiveStatus = useCallback(
-    (table: Table): Table['status'] | 'held' =>
-      hasHeldOrder(table.id) ? 'held' : table.status,
+    (table: Table): Table['status'] | 'held' => (hasHeldOrder(table.id) ? 'held' : table.status),
     [hasHeldOrder],
   );
 
@@ -244,17 +240,19 @@ export default function TableFirstSelector({
               >
                 <div className="flex w-full items-start justify-between gap-2">
                   <span className="text-xl font-bold text-foreground">{table.name}</span>
-                  <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
-                    status === 'available'
-                      ? 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
-                      : status === 'occupied'
-                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300'
-                        : status === 'held'
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300'
-                          : status === 'reserved'
-                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/50 dark:text-yellow-300'
-                            : 'bg-muted text-muted-foreground'
-                  }`}>
+                  <span
+                    className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
+                      status === 'available'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
+                        : status === 'occupied'
+                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300'
+                          : status === 'held'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300'
+                            : status === 'reserved'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/50 dark:text-yellow-300'
+                              : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
                     {statusLabel}
                   </span>
                 </div>
