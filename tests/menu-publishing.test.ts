@@ -26,6 +26,7 @@ const {
   closeDatabase,
 } = require('./helpers/test-setup');
 const { menuPublishingRoutes } = require('../main/routes/menu-publishing');
+const { getActiveDatabaseRequestsCount } = require('../main/db');
 
 async function main() {
   const db = initTestDb();
@@ -74,7 +75,10 @@ async function main() {
     'addon-publish-large',
   );
 
-  const app = createApp({ '/api/menu-publishing': menuPublishingRoutes });
+  const app = createApp(
+    { '/api/menu-publishing': menuPublishingRoutes },
+    { databaseMaintenance: true, jsonLimit: '50mb' },
+  );
   const started = await startServer(app);
   const baseUrl = started.baseUrl;
   const server = started.server;
@@ -84,6 +88,11 @@ async function main() {
     assert.equal(response.status, 200, 'catalog managers can export a menu bundle');
     const bundle = response.data;
     assert.equal(bundle.format_version, 1, 'menu package has a versioned format');
+    assert.equal(
+      getActiveDatabaseRequestsCount(),
+      0,
+      'completed menu export releases its database admission reservation',
+    );
     assert.equal(bundle.catalog.products.length, 1, 'menu bundle contains products');
     assert.equal(
       bundle.catalog.product_variants.length,
@@ -107,6 +116,11 @@ async function main() {
       body: bundle,
     });
     assert.equal(response.status, 200, 'Windows can preview a valid menu package');
+    assert.equal(
+      getActiveDatabaseRequestsCount(),
+      0,
+      'completed menu preview releases its database admission reservation',
+    );
     assert.equal(response.data.summary.products.updated, 1, 'preview identifies a changed product');
     assert.equal(
       response.data.summary.products.retained_on_windows,
@@ -154,6 +168,11 @@ async function main() {
       body: { bundle, preview_id: response.data.preview_id },
     });
     assert.equal(response.status, 200, 'an approved menu package is applied');
+    assert.equal(
+      getActiveDatabaseRequestsCount(),
+      0,
+      'menu apply is excluded from the active-request drain while it owns the maintenance lock',
+    );
     assert.equal(response.data.success, true, 'apply returns success');
     assert.ok(
       typeof response.data.recovery_backup === 'string' &&
