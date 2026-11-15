@@ -55,6 +55,7 @@ function testFreshDineInSelection(): void {
 function testDedicatedTableBoardNavigation(): void {
   const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
   const picker = read('frontend/src/components/pos/TableFirstSelector.tsx');
+  const topbar = read('frontend/src/components/pos/PosTopbar.tsx');
 
   assert.match(posPage, /const openTablePicker = \(\) => \{\s*setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/);
   assert.match(posPage, /onShowTablePicker=\{requestOpenTableBoard\}/);
@@ -63,6 +64,8 @@ function testDedicatedTableBoardNavigation(): void {
   assert.match(posPage, /<TableFirstSelector/);
   assert.match(posPage, /<ProductGrid[\s\S]*?displayModes/);
   assert.match(picker, /data-testid="pos-table-first-picker"/);
+  assert.match(posPage, /showTopItems=\{!\(isRestaurant && showTablePicker && tablePickerPresentation === 'inline'\)\}/);
+  assert.match(topbar, /showTopItems && <CustomerTopItems/);
   assert.match(picker, /data-testid="pos-table-card"/);
   assert.match(picker, /aria-label="Filter tables by status"/);
   assert.match(picker, /aria-label="Filter tables by section"/);
