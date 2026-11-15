@@ -47,14 +47,20 @@ function validateInclusiveFivePercentGst(
 ): string | null {
   if (bundle.source.country !== 'IN') return null;
   if (!taxCategories.configuration_ready) {
-    return 'Configure the India GST tax pack before publishing. The Mac installation cannot verify the applicable GST category yet.';
+    return (
+      'Configure the India GST tax pack before publishing. ' +
+      'The Mac installation cannot verify the applicable GST category yet.'
+    );
   }
 
   const fivePercentCategory = taxCategories.categories.find(
     (category) => Number(category.rate_percent) === 5,
   );
   if (!fivePercentCategory) {
-    return 'The active India tax pack does not expose a 5% GST category. Review the tax-pack configuration before publishing.';
+    return (
+      'The active India tax pack does not expose a 5% GST category. ' +
+      'Review the tax-pack configuration before publishing.'
+    );
   }
 
   const products = bundle.catalog.products || [];
@@ -85,20 +91,25 @@ function validateInclusiveFivePercentGst(
       .slice(0, 5)
       .map((row) => String(row.name || 'Unnamed item'))
       .join(', ');
+  const formatIssues = (label: string, rows: MenuCatalogRow[]) => {
+    if (rows.length === 0) return '';
+    const names = describe(rows);
+    return `${label}: ${names}${rows.length > 5 ? ', …' : ''}`;
+  };
   const details = [
-    productsWithIncorrectTax.length > 0
-      ? `Products: ${describe(productsWithIncorrectTax)}${productsWithIncorrectTax.length > 5 ? ', …' : ''}`
-      : '',
-    addonsWithIncorrectTax.length > 0
-      ? `Add-ons: ${describe(addonsWithIncorrectTax)}${addonsWithIncorrectTax.length > 5 ? ', …' : ''}`
-      : '',
+    formatIssues('Products', productsWithIncorrectTax),
+    formatIssues('Add-ons', addonsWithIncorrectTax),
   ].filter(Boolean);
 
-  return (
-    'Publishing is blocked until active taxable products use the India 5% GST category with Inclusive tax behaviour, and active taxable add-ons use Inclusive behaviour plus either inherit the parent category or use that same 5% category. ' +
-    details.join('; ') +
-    '. Correct these records in Menu Studio, then preview again. Items explicitly marked Exempt are not changed.'
-  );
+  const requirement =
+    'Publishing is blocked until active taxable products use the India 5% GST category ' +
+    'with Inclusive tax behaviour, and active taxable add-ons use Inclusive behaviour ' +
+    'plus either inherit the parent category or use that same 5% category.';
+  const nextStep =
+    'Correct these records in Menu Studio, then preview again. Items explicitly marked ' +
+    'Exempt are not changed.';
+
+  return `${requirement} ${details.join('; ')}. ${nextStep}`;
 }
 
 type MenuPreview = {
