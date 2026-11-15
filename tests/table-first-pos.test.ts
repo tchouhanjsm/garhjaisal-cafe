@@ -107,9 +107,22 @@ function testUnsentCartCannotSilentlyChangeTables(): void {
   assert.match(posPage, /const requestTableSelection = \(selection: TableSelection\) => \{/);
   assert.match(posPage, /hasUnsentCartWork\(\) && cart\.tableId === targetTableId/);
   assert.match(posPage, /const requestOpenTableBoard = \(\) => \{/);
+  assert.ok(posPage.includes('if (hasUnsentCartWork()) {'));
   assert.match(posPage, /setPendingTableSelection\(\{ kind: 'tables' \}\)/);
   assert.match(posPage, /onShowTablePicker=\{requestOpenTableBoard\}/);
   assert.match(posPage, /onRequestOrderTypeChange: requestOrderTypeChange/);
+  assert.ok(posPage.includes('state.expectedPaymentMethodId != null'));
+  assert.ok(
+    posPage.includes(
+      "onSelectOccupied={(table) => requestTableSelection({ kind: 'occupied', table })}",
+    ),
+  );
+  assert.ok(
+    posPage.includes(
+      "onSelectHeld={(tableId) => requestTableSelection({ kind: 'held', tableId })}",
+    ),
+  );
+  assert.ok(posPage.includes('await refreshTables().catch(() => undefined)'));
   assert.match(posPage, /if \(pendingOrder\) return false;/);
   assert.match(posPage, /router\.push\(selection\.href\)/);
   assert.match(posPage, /kind: 'order-type'/);
