@@ -571,11 +571,13 @@ export default function ProductGrid({
               aria-label="Product display mode"
               data-testid="pos-product-view-modes"
             >
-              {([
-                { id: 'compact', label: 'Compact', Icon: SlidersHorizontal },
-                { id: 'grid', label: 'Images', Icon: LayoutGrid },
-                { id: 'list', label: 'List', Icon: List },
-              ] as const).map(({ id, label, Icon }) => (
+              {(
+                [
+                  { id: 'compact', label: 'Compact', Icon: SlidersHorizontal },
+                  { id: 'grid', label: 'Images', Icon: LayoutGrid },
+                  { id: 'list', label: 'List', Icon: List },
+                ] as const
+              ).map(({ id, label, Icon }) => (
                 <button
                   key={id}
                   type="button"
@@ -685,9 +687,7 @@ export default function ProductGrid({
                 )}
 
                 {catalogMode !== 'grid' && (
-                  <div
-                    className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground"
-                  >
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
                     <span className="text-sm font-bold text-muted-foreground">
                       {product.name.substring(0, 2).toUpperCase()}
                     </span>
@@ -707,9 +707,7 @@ export default function ProductGrid({
                 {showProductImages && catalogMode === 'grid' && (
                   <div className="relative mb-2.5 aspect-square w-full overflow-hidden rounded-lg">
                     {/* Always-visible background tile — no flash when image loads */}
-                    <div
-                      className="absolute inset-0 flex items-center justify-center bg-muted"
-                    >
+                    <div className="absolute inset-0 flex items-center justify-center bg-muted">
                       <span className="text-2xl font-bold text-muted-foreground">
                         {product.name.substring(0, 2).toUpperCase()}
                       </span>
@@ -736,17 +734,21 @@ export default function ProductGrid({
                 )}
 
                 <div className={catalogMode === 'grid' ? 'min-w-0 w-full' : 'min-w-0 flex-1'}>
-                  <h3 className={`font-medium leading-snug text-foreground ${
-                    catalogMode === 'grid' ? 'line-clamp-2 text-sm' : 'line-clamp-2 text-xs sm:text-sm'
-                  }`}>
+                  <h3
+                    className={`font-medium leading-snug text-foreground ${
+                      catalogMode === 'grid'
+                        ? 'line-clamp-2 text-sm'
+                        : 'line-clamp-2 text-xs sm:text-sm'
+                    }`}
+                  >
                     {product.name}
                   </h3>
                   <div className="mt-1 flex items-center justify-between gap-1">
                     <p className="font-bold text-brand">{fmt(Number(product.price))}</p>
                     <div className="flex shrink-0 items-center gap-1">
-                      {(catalogMode !== 'grid' || !showProductImages) && product.tags && product.tags.length > 0 && (
-                        <TagBadge tag={product.tags[0]} />
-                      )}
+                      {(catalogMode !== 'grid' || !showProductImages) &&
+                        product.tags &&
+                        product.tags.length > 0 && <TagBadge tag={product.tags[0]} />}
                       {productNeedsCustomizer(product) && (
                         <span
                           className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground"
