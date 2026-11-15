@@ -374,6 +374,8 @@ export default function POSPage() {
     if (pendingOrder) return false;
     return Boolean(
       state.customerId != null ||
+        state.customer != null ||
+        state.customerSource != null ||
         state.guestCount > 1 ||
         state.orderNotes.trim() ||
         state.roomNumber.trim() ||
@@ -381,6 +383,7 @@ export default function POSPage() {
         state.deliveryNote.trim() ||
         state.scheduledFor.trim() ||
         state.expectedPaymentMethod.trim() ||
+        state.expectedPaymentMethodId != null ||
         state.onlinePlatform.trim() ||
         state.externalOrderId.trim() ||
         state.waivedChargeIds.size > 0 ||
@@ -3552,8 +3555,7 @@ export default function POSPage() {
       return;
     }
     if (
-      hasUnsentCartWork() &&
-      ((cart.tableId && cart.tableId !== targetTableId) || (pendingOrder && cart.items.length > 0))
+      hasUnsentCartWork()
     ) {
       setPendingTableSelection(selection);
       return;
@@ -3570,7 +3572,7 @@ export default function POSPage() {
 
   const requestOpenTableBoard = () => {
     if (showTablePicker && tablePickerPresentation === 'inline') return;
-    if (hasUnsentCartWork() && cart.tableId) {
+    if (hasUnsentCartWork()) {
       setPendingTableSelection({ kind: 'tables' });
       return;
     }
@@ -3616,6 +3618,7 @@ export default function POSPage() {
     const currentTableId = cart.tableId;
     if (!selection || !currentTableId || cart.items.length === 0 || pendingOrder) return;
     const tableName = tables.find((table) => table.id === currentTableId)?.name || currentTableId;
+
     try {
       await heldOrders.holdOrder(
         currentTableId,
@@ -3627,14 +3630,18 @@ export default function POSPage() {
         [...cart.optedInChargeIds],
         cart.roomNumber,
       );
-      setPendingTableSelection(null);
-      cart.clearCart();
-      toast.success(t('orderHeld', { tableName }));
-      await refreshTables();
-      continuePendingNavigation(selection);
     } catch (error) {
       toast.error(extractPrinterErrorMessage(error) || t('holdOrderFailed'));
+      return;
     }
+
+    // The hold is already persisted. A failed projection refresh must not report
+    // a failed hold or leave the operator stranded with an empty ordering cart.
+    setPendingTableSelection(null);
+    cart.clearCart();
+    toast.success(t('orderHeld', { tableName }));
+    await refreshTables().catch(() => undefined);
+    continuePendingNavigation(selection);
   };
 
   const handleAddItemsToOrder = (table: Table, order: Order) => {
