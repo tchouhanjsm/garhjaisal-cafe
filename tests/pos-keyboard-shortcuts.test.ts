@@ -410,6 +410,16 @@ try {
     react: {
       ...React,
       useRef: (initial: unknown) => ({ current: initial }),
+      useState: (initial: unknown) => [
+        typeof initial === 'function' ? (initial as () => unknown)() : initial,
+        () => undefined,
+      ],
+      useCallback: (callback: unknown) => callback,
+      useSyncExternalStore: (
+        _subscribe: unknown,
+        getSnapshot: () => unknown,
+        getServerSnapshot: () => unknown,
+      ) => (typeof window === 'undefined' ? getServerSnapshot() : getSnapshot()),
       useEffect: () => undefined,
       useMemo: (fn: () => unknown) => fn(),
     },
@@ -427,6 +437,9 @@ try {
     '@/store/cart': {
       useCartStore: () => ({ items: [] }),
     },
+    '@/store/auth': {
+      useAuthStore: () => ({ user: { id: 'test-user' }, currentTenant: { id: 'test-tenant' } }),
+    },
     '@/store/pos-settings': {
       usePosSettingsStore: () => ({ showProductImages: false }),
     },
@@ -441,6 +454,12 @@ try {
 
   moduleApi._load = function (request: string, parent: unknown, isMain: boolean) {
     if (request in mocks) return mocks[request];
+    const normalizedRequest = request.replace(/\\/g, '/');
+    if (normalizedRequest.endsWith('/frontend/src/store/cart.ts')) return mocks['@/store/cart'];
+    if (normalizedRequest.endsWith('/frontend/src/store/auth.ts')) return mocks['@/store/auth'];
+    if (normalizedRequest.endsWith('/frontend/src/store/pos-settings.ts')) {
+      return mocks['@/store/pos-settings'];
+    }
     return originalLoad.call(this, request, parent, isMain);
   };
 
