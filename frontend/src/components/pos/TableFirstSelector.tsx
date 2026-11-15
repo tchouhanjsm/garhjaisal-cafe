@@ -128,7 +128,7 @@ export default function TableFirstSelector({
     >
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold tracking-tight">{t('selectTable')}</h2>
+          <h2 className="text-xl font-bold tracking-tight">All Tables</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Choose a table to start an order or open its current activity.
           </p>
