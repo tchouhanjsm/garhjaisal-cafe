@@ -1,4 +1,5 @@
 const Module = require('module');
+const express = require('express');
 const originalLoad = Module._load;
 const fs = require('node:fs');
 const os = require('node:os');
@@ -26,7 +27,12 @@ const {
   closeDatabase,
 } = require('./helpers/test-setup');
 const { menuPublishingRoutes } = require('../main/routes/menu-publishing');
-const { getActiveDatabaseRequestsCount } = require('../main/db');
+const {
+  getActiveDatabaseRequestsCount,
+  databaseMaintenanceMiddleware,
+  createDatabaseMaintenanceHandoff,
+  revokeDatabaseMaintenanceHandoff,
+} = require('../main/db');
 
 async function main() {
   const db = initTestDb();
@@ -82,6 +88,42 @@ async function main() {
   const started = await startServer(app);
   const baseUrl = started.baseUrl;
   const server = started.server;
+
+  // Mirror the Server App proxy admission + handoff used in production. The
+  // Main API app above also installs the same middleware, so this covers both
+  // sides of the Server App -> Main API request path.
+  const proxyApp = express();
+  proxyApp.use(express.json({ limit: '50mb' }));
+  proxyApp.use(databaseMaintenanceMiddleware);
+  proxyApp.post('/api/menu-publishing/apply', async (req: any, res: any) => {
+    const reservation = req.databaseAdmissionReservation;
+    assert.equal(
+      reservation,
+      undefined,
+      'Server App middleware does not reserve a request that owns the maintenance lock',
+    );
+    const handoffToken = reservation
+      ? createDatabaseMaintenanceHandoff(reservation)
+      : undefined;
+    try {
+      const upstream = await fetch(baseUrl + '/api/menu-publishing/apply', {
+        method: req.method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(req.headers.authorization ? { Authorization: req.headers.authorization } : {}),
+          ...(handoffToken ? { 'x-flo-maintenance-handoff': handoffToken } : {}),
+        },
+        body: JSON.stringify(req.body || {}),
+      });
+      const responseBody = await upstream.json();
+      res.status(upstream.status).json(responseBody);
+    } catch {
+      res.status(502).json({ error: 'Could not reach the Main API in the test proxy.' });
+    } finally {
+      if (handoffToken) revokeDatabaseMaintenanceHandoff(handoffToken);
+    }
+  });
+  const proxyStarted = await startServer(proxyApp);
 
   try {
     let response = await api(baseUrl, '/api/menu-publishing/export', { headers: owner.authHeader });
@@ -162,12 +204,16 @@ async function main() {
       200,
       'a fresh preview can be generated after reviewing the newer menu',
     );
-    response = await api(baseUrl, '/api/menu-publishing/apply', {
+    response = await api(proxyStarted.baseUrl, '/api/menu-publishing/apply', {
       method: 'POST',
       headers: owner.authHeader,
       body: { bundle, preview_id: response.data.preview_id },
     });
-    assert.equal(response.status, 200, 'an approved menu package is applied');
+    assert.equal(
+      response.status,
+      200,
+      'an approved menu package completes through the Server App proxy and Main API',
+    );
     assert.equal(
       getActiveDatabaseRequestsCount(),
       0,
@@ -279,7 +325,10 @@ async function main() {
 
     console.log('Menu publishing API tests passed');
   } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await Promise.all([
+      new Promise<void>((resolve) => server.close(() => resolve())),
+      new Promise<void>((resolve) => proxyStarted.server.close(() => resolve())),
+    ]);
     closeDatabase();
     fs.rmSync(testDir, { recursive: true, force: true });
   }
