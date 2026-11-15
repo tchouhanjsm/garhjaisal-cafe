@@ -42,7 +42,13 @@ const jwt = require('jsonwebtoken');
 const http = require('http');
 const fs = require('fs');
 const crypto = require('crypto');
-const { initDatabase, getDatabase, closeDatabase, now } = require('../../main/db');
+const {
+  initDatabase,
+  getDatabase,
+  closeDatabase,
+  now,
+  databaseMaintenanceMiddleware,
+} = require('../../main/db');
 
 // ── Assertion Helpers ────────────────────────────────────────────────────────
 
@@ -180,10 +186,13 @@ function initTestDb() {
 
 function createApp(
   routeModules: Record<string, any>,
-  options?: { authRole?: string; jsonLimit?: string },
+  options?: { authRole?: string; jsonLimit?: string; databaseMaintenance?: boolean },
 ) {
   const app = express();
   app.use(express.json({ limit: options?.jsonLimit || '10mb' }));
+
+  // Opt-in for integration suites that need to exercise production database admission.
+  if (options?.databaseMaintenance) app.use(databaseMaintenanceMiddleware);
 
   // Set JWT_SECRET for tests
   if (!process.env.JWT_SECRET) {
