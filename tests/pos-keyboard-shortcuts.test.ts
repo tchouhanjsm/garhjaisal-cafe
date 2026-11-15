@@ -198,25 +198,14 @@ console.log('Testing usePosKeyboardShortcuts keydown behavior...');
 
   const cleanups: Array<() => void> = [];
   moduleApi._load = function (request: string, parent: unknown, isMain: boolean) {
-    if (request in mocks) return mocks[request];
-    const normalizedRequest = request.replaceAll('\\\\', '/');
-    if (
-      normalizedRequest.endsWith('/frontend/src/store/cart.ts') ||
-      normalizedRequest.endsWith('/frontend/src/store/cart')
-    ) {
-      return mocks['@/store/cart'];
-    }
-    if (
-      normalizedRequest.endsWith('/frontend/src/store/auth.ts') ||
-      normalizedRequest.endsWith('/frontend/src/store/auth')
-    ) {
-      return mocks['@/store/auth'];
-    }
-    if (
-      normalizedRequest.endsWith('/frontend/src/store/pos-settings.ts') ||
-      normalizedRequest.endsWith('/frontend/src/store/pos-settings')
-    ) {
-      return mocks['@/store/pos-settings'];
+    if (request === 'react') {
+      return {
+        useRef: <T>(initial: T) => ({ current: initial }),
+        useEffect: (fn: () => void | (() => void)) => {
+          const cleanup = fn();
+          if (typeof cleanup === 'function') cleanups.push(cleanup);
+        },
+      };
     }
     return originalLoad.call(this, request, parent, isMain);
   };
@@ -466,16 +455,21 @@ try {
   moduleApi._load = function (request: string, parent: unknown, isMain: boolean) {
     if (request in mocks) return mocks[request];
     const normalizedRequest = request.replace(/\\/g, '/');
-    if (/[/\\\\]frontend[/\\\\]src[/\\\\]store[/\\\\]cart(?:\\.ts)?$/.test(normalizedRequest)) {
+    if (
+      normalizedRequest.endsWith('/frontend/src/store/cart.ts') ||
+      normalizedRequest.endsWith('/frontend/src/store/cart')
+    ) {
       return mocks['@/store/cart'];
     }
-    if (/[/\\\\]frontend[/\\\\]src[/\\\\]store[/\\\\]auth(?:\\.ts)?$/.test(normalizedRequest)) {
+    if (
+      normalizedRequest.endsWith('/frontend/src/store/auth.ts') ||
+      normalizedRequest.endsWith('/frontend/src/store/auth')
+    ) {
       return mocks['@/store/auth'];
     }
     if (
-      /[/\\\\]frontend[/\\\\]src[/\\\\]store[/\\\\]pos-settings(?:\\.ts)?$/.test(
-        normalizedRequest,
-      )
+      normalizedRequest.endsWith('/frontend/src/store/pos-settings.ts') ||
+      normalizedRequest.endsWith('/frontend/src/store/pos-settings')
     ) {
       return mocks['@/store/pos-settings'];
     }
