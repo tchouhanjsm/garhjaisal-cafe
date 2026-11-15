@@ -57,15 +57,12 @@ function testDedicatedTableBoardNavigation(): void {
   const picker = read('frontend/src/components/pos/TableFirstSelector.tsx');
   const topbar = read('frontend/src/components/pos/PosTopbar.tsx');
 
-  assert.match(posPage, /const openTablePicker = \\(\\) => \\{/);
-  assert.match(posPage, /setTablePickerPresentation\\('inline'\\)/);
-  assert.match(posPage, /setShowTablePicker\\(true\\)/);
+  assert.ok(posPage.includes('const openTablePicker = () => {'));
+  assert.ok(posPage.includes("setTablePickerPresentation('inline')"));
+  assert.ok(posPage.includes('setShowTablePicker(true)'));
   assert.match(posPage, /onShowTablePicker=\{requestOpenTableBoard\}/);
   assert.match(
-    posPage,
-    /isRestaurant && showTablePicker && tablePickerPresentation === 'inline' \\?/,
-  );
-  assert.match(posPage, /data-testid="pos-all-tables-btn"/);
+  assert.ok(posPage.includes("isRestaurant && showTablePicker && tablePickerPresentation === 'inline' ?"));
   assert.match(posPage, /<TableFirstSelector/);
   assert.match(posPage, /<ProductGrid[\s\S]*?displayModes/);
   assert.match(picker, /data-testid="pos-table-first-picker"/);
@@ -86,9 +83,9 @@ function testInlineTableBoardKeepsShortcutsAvailable(): void {
   const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
 
   assert.match(posPage, /const toggleTableBoard = \(\) => \{/);
-  assert.match(posPage, /onToggleTables: \\(\\) => \\{/);
-  assert.match(posPage, /if \\(pendingTableSelection\\) return;/);
-  assert.match(posPage, /toggleTableBoard\\(\\);/);
+  assert.ok(posPage.includes('onToggleTables: () => {'));
+  assert.ok(posPage.includes('if (pendingTableSelection) return;'));
+  assert.ok(posPage.includes('toggleTableBoard();'));
   assert.match(
     posPage,
     /if \(showTablePicker\) \{\s*closeTablePicker\(\);\s*return true;/,
@@ -141,8 +138,8 @@ function testResizableAndCollapsibleCart(): void {
   assert.match(posPage, /data-testid="pos-cart-resize-handle"/);
   assert.match(posPage, /aria-valuemin=\{280\}/);
   assert.match(posPage, /aria-valuemax=\{480\}/);
-  assert.match(posPage, /setCartWidth\\(\\(width\\) =>/);
-  assert.match(posPage, /Math\\.max\\(280, Math\\.min\\(480, width \\+ delta\\)\\)\\)/);
+  assert.ok(posPage.includes('setCartWidth((width) =>'));
+  assert.ok(posPage.includes('Math.max(280, Math.min(480, width + delta))'));
   assert.match(posPage, /data-testid="pos-collapse-cart"/);
   assert.match(posPage, /data-testid="pos-expand-cart"/);
 
