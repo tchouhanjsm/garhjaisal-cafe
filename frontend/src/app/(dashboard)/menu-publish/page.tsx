@@ -338,10 +338,9 @@ export default function MenuPublishPage() {
 
   const hasPotentialDuplicateMenuRecords = Boolean(
     preview &&
-      ((preview.summary.categories.created > 0 &&
-        preview.summary.categories.retained_on_windows > 0) ||
-        (preview.summary.products.created > 0 &&
-          preview.summary.products.retained_on_windows > 0)),
+    ((preview.summary.categories.created > 0 &&
+      preview.summary.categories.retained_on_windows > 0) ||
+      (preview.summary.products.created > 0 && preview.summary.products.retained_on_windows > 0)),
   );
 
   return (
@@ -373,15 +372,15 @@ export default function MenuPublishPage() {
         <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
           <p>
             <strong>GST preflight:</strong> For India, active taxable products must already use the
-            5% GST category with <strong>Inclusive</strong> tax behaviour. Taxable add-ons must
-            also be Inclusive and either inherit the parent category or use the same 5% category.
-            The screen checks this before connecting to Windows; publishing never invents or adds
-            a GST rate.
+            5% GST category with <strong>Inclusive</strong> tax behaviour. Taxable add-ons must also
+            be Inclusive and either inherit the parent category or use the same 5% category. The
+            screen checks this before connecting to Windows; publishing never invents or adds a GST
+            rate.
           </p>
           <p>
             <strong>First publication:</strong> Windows should have an empty catalogue or one
-            already cloned from this Mac with matching record IDs. Separately created copies of
-            the same menu can otherwise become duplicate entries.
+            already cloned from this Mac with matching record IDs. Separately created copies of the
+            same menu can otherwise become duplicate entries.
           </p>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
