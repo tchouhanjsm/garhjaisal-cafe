@@ -243,6 +243,9 @@ const DATABASE_MAINTENANCE_ROUTES = new Set([
   'GET /api/db/download',
   'POST /api/db-tools/initialize',
   'POST /api/db-tools/currency-reset',
+  // This handler acquires the maintenance lock itself. Exclude the request from
+  // the admission count at both the Server App and Main API middleware layers.
+  'POST /api/menu-publishing/apply',
 ]);
 
 function isDatabaseMaintenanceRoute(req: Request): boolean {

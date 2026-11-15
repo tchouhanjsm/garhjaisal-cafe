@@ -42,6 +42,8 @@ const EXPECTED_MAINTENANCE_HANDLERS = [
   'GET /api/db/download',
   'POST /api/db-tools/initialize',
   'POST /api/db-tools/currency-reset',
+  // Menu publication owns the maintenance lock while applying the catalog.
+  'POST /api/menu-publishing/apply',
 ];
 
 function readAllowlistedRoutes(): string[] {

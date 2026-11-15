@@ -1,10 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ChangeEvent,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Check,
+  CloudUpload,
   Download,
   Edit2,
   History,
@@ -99,6 +108,10 @@ type MenuStudioCsvPreview = {
 };
 
 const MAX_BULK_SELECTION = 250;
+const subscribeToPlatform = (_onStoreChange: () => void) => () => {};
+const getIsMacPlatform = () =>
+  typeof navigator !== 'undefined' && /Macintosh|Mac OS X|MacIntel/.test(navigator.userAgent);
+const getServerIsMacPlatform = () => false;
 
 const inputClass =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand';
@@ -124,6 +137,11 @@ export default function MenuStudioPage() {
   const router = useRouter();
   const tenant = useAuthStore((state) => state.currentTenant);
   const canManage = tenantCan(tenant, 'catalog.manage');
+  const isMacClient = useSyncExternalStore(
+    subscribeToPlatform,
+    getIsMacPlatform,
+    getServerIsMacPlatform,
+  );
   const formatCurrency = useFormatCurrency();
   const amountFormat = useAmountFormat();
 
@@ -604,6 +622,12 @@ export default function MenuStudioPage() {
             aria-label="Choose a Menu Studio CSV file"
             onChange={(event) => void handleCsvFileChange(event)}
           />
+          {isMacClient && (
+            <Button size="sm" variant="outline" onClick={() => router.push('/menu-publish')}>
+              <CloudUpload className="me-2 size-4" />
+              Publish to Windows
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
