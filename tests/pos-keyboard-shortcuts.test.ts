@@ -455,9 +455,13 @@ try {
   moduleApi._load = function (request: string, parent: unknown, isMain: boolean) {
     if (request in mocks) return mocks[request];
     const normalizedRequest = request.replace(/\\/g, '/');
-    if (normalizedRequest.endsWith('/frontend/src/store/cart.ts')) return mocks['@/store/cart'];
-    if (normalizedRequest.endsWith('/frontend/src/store/auth.ts')) return mocks['@/store/auth'];
-    if (normalizedRequest.endsWith('/frontend/src/store/pos-settings.ts')) {
+    if (/[/\\\\]frontend[/\\\\]src[/\\\\]store[/\\\\]cart(?:\\.ts)?$/.test(normalizedRequest)) {
+      return mocks['@/store/cart'];
+    }
+    if (/[/\\\\]frontend[/\\\\]src[/\\\\]store[/\\\\]auth(?:\\.ts)?$/.test(normalizedRequest)) {
+      return mocks['@/store/auth'];
+    }
+    if (/[/\\\\]frontend[/\\\\]src[/\\\\]store[/\\\\]pos-settings(?:\\.ts)?$/.test(normalizedRequest)) {
       return mocks['@/store/pos-settings'];
     }
     return originalLoad.call(this, request, parent, isMain);
