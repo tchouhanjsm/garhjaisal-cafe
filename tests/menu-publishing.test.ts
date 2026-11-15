@@ -97,9 +97,7 @@ async function main() {
   proxyApp.use(databaseMaintenanceMiddleware);
   proxyApp.post('/api/menu-publishing/apply', async (req: any, res: any) => {
     const reservation = req.databaseAdmissionReservation;
-    const handoffToken = reservation
-      ? createDatabaseMaintenanceHandoff(reservation)
-      : undefined;
+    const handoffToken = reservation ? createDatabaseMaintenanceHandoff(reservation) : undefined;
     try {
       assert.equal(
         reservation,
