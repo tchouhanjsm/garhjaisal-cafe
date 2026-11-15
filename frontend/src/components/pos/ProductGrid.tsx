@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { LayoutGrid, List, Search, SlidersHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Category, Product, ProductVariant } from '@/lib/types';
@@ -283,6 +283,62 @@ function getCategoryColorClasses(color: string | null | undefined) {
 
 type ProductViewMode = 'compact' | 'grid' | 'list';
 
+const productViewPreferenceListeners = new Map<string, Set<() => void>>();
+const inMemoryProductViewPreferences = new Map<string, ProductViewMode>();
+
+function readProductViewPreference(key: string): ProductViewMode {
+  const inMemoryPreference = inMemoryProductViewPreferences.get(key);
+  if (inMemoryPreference) return inMemoryPreference;
+  if (typeof window === 'undefined') return 'compact';
+
+  try {
+    const saved = window.localStorage.getItem(key);
+    if (saved === 'compact' || saved === 'grid' || saved === 'list') return saved;
+  } catch {
+    // Use the in-memory default when browser storage is unavailable.
+  }
+  return 'compact';
+}
+
+function subscribeToProductViewPreference(key: string, listener: () => void): () => void {
+  if (typeof window === 'undefined') return () => undefined;
+
+  let listeners = productViewPreferenceListeners.get(key);
+  if (!listeners) {
+    listeners = new Set();
+    productViewPreferenceListeners.set(key, listeners);
+  }
+  listeners.add(listener);
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key !== key && event.key !== null) return;
+    inMemoryProductViewPreferences.delete(key);
+    listener();
+  };
+  window.addEventListener('storage', handleStorage);
+
+  return () => {
+    window.removeEventListener('storage', handleStorage);
+    const currentListeners = productViewPreferenceListeners.get(key);
+    currentListeners?.delete(listener);
+    if (currentListeners?.size === 0) productViewPreferenceListeners.delete(key);
+  };
+}
+
+function saveProductViewPreference(key: string, mode: ProductViewMode): void {
+  inMemoryProductViewPreferences.set(key, mode);
+  try {
+    if (typeof window !== 'undefined') window.localStorage.setItem(key, mode);
+  } catch {
+    // A display preference is optional and must never block product selection.
+  }
+  productViewPreferenceListeners.get(key)?.forEach((listener) => listener());
+}
+
+function getDefaultProductViewPreference(): ProductViewMode {
+  return 'compact';
+}
+
 interface Props {
   categories: Category[];
   products: Product[];
@@ -336,9 +392,24 @@ export default function ProductGrid({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cart = useCartStore();
   const { user, currentTenant } = useAuthStore();
-  const [viewMode, setViewMode] = useState<ProductViewMode>('compact');
-  const [viewPreferenceLoaded, setViewPreferenceLoaded] = useState(false);
   const viewPreferenceKey = `flo.pos.catalog.view:${currentTenant?.id ?? 'default'}:${user?.id ?? 'local'}`;
+  const subscribeViewPreference = useCallback(
+    (listener: () => void) => subscribeToProductViewPreference(viewPreferenceKey, listener),
+    [viewPreferenceKey],
+  );
+  const getViewPreference = useCallback(
+    () => readProductViewPreference(viewPreferenceKey),
+    [viewPreferenceKey],
+  );
+  const viewMode = useSyncExternalStore(
+    subscribeViewPreference,
+    getViewPreference,
+    getDefaultProductViewPreference,
+  );
+  const setViewMode = useCallback(
+    (mode: ProductViewMode) => saveProductViewPreference(viewPreferenceKey, mode),
+    [viewPreferenceKey],
+  );
   const { showProductImages: showProductImagesSetting } = usePosSettingsStore();
   const showProductImages = showImages ?? showProductImagesSetting;
   const t = useTranslations('pos');
@@ -365,28 +436,6 @@ export default function ProductGrid({
   }, [cart.items]);
   const cartQuantities = cartQuantitiesOverride ?? cartStoreQuantities;
   const catalogMode: ProductViewMode = displayModes ? viewMode : 'grid';
-
-  useEffect(() => {
-    if (!displayModes) return;
-    let savedMode: ProductViewMode = 'compact';
-    try {
-      const saved = window.localStorage.getItem(viewPreferenceKey);
-      if (saved === 'compact' || saved === 'grid' || saved === 'list') savedMode = saved;
-    } catch {
-      // The in-memory default remains usable when browser storage is unavailable.
-    }
-    setViewMode(savedMode);
-    setViewPreferenceLoaded(true);
-  }, [displayModes, viewPreferenceKey]);
-
-  useEffect(() => {
-    if (!displayModes || !viewPreferenceLoaded) return;
-    try {
-      window.localStorage.setItem(viewPreferenceKey, viewMode);
-    } catch {
-      // A display preference is optional and must never block product selection.
-    }
-  }, [displayModes, viewPreferenceKey, viewMode, viewPreferenceLoaded]);
 
   const parsedSearch = useMemo(() => parseQuantitySearch(search), [search]);
   const activeQuery = parsedSearch ? parsedSearch.query : search;
