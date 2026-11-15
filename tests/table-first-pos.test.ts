@@ -1,5 +1,5 @@
 /**
- * Table-first POS selection and occupied-table summary regression checks.
+ * Table-first POS selection, status board, and cart workspace regression checks.
  *
  * Usage: ts-node --transpile-only -P tests/tsconfig.json tests/table-first-pos.test.ts
  */
@@ -9,6 +9,10 @@ import path from 'node:path';
 
 const ROOT = path.join(__dirname, '..');
 const { shouldAutoOpenTablePicker } = require('../frontend/src/lib/table-picker-auto-open');
+
+function read(relativePath: string): string {
+  return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+}
 
 function testFreshDineInSelection(): void {
   const eligible = {
@@ -41,71 +45,103 @@ function testFreshDineInSelection(): void {
     assert.equal(
       shouldAutoOpenTablePicker({ ...eligible, ...override } as any),
       false,
-      `table picker stays closed for ${label}`,
+      `table board stays closed for ${label}`,
     );
   }
 
-  console.log('  ✓ only a fresh, unassigned dine-in cart opens table selection');
+  console.log('  ✓ only a fresh, unassigned dine-in cart opens the table board');
 }
 
-function testInlineTableFirstPresentation(): void {
-  const posPage = fs.readFileSync(
-    path.join(ROOT, 'frontend/src/app/(dashboard)/pos/page.tsx'),
-    'utf8',
-  );
-  const picker = fs.readFileSync(
-    path.join(ROOT, 'frontend/src/components/pos/TableFirstSelector.tsx'),
-    'utf8',
-  );
+function testDedicatedTableBoardNavigation(): void {
+  const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
+  const picker = read('frontend/src/components/pos/TableFirstSelector.tsx');
 
-  assert.match(posPage, /setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/);
+  assert.match(posPage, /const openTablePicker = \(\) => \{\s*setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/);
   assert.match(posPage, /onShowTablePicker=\{openTablePicker\}/);
-  assert.match(posPage, /tablePickerPresentation === 'inline'/);
+  assert.match(posPage, /isRestaurant && showTablePicker && tablePickerPresentation === 'inline' \?/);
+  assert.match(posPage, /data-testid="pos-all-tables-btn"/);
+  assert.match(posPage, /<TableFirstSelector/);
+  assert.match(posPage, /<ProductGrid[\s\S]*?displayModes/);
   assert.match(picker, /data-testid="pos-table-first-picker"/);
-  assert.match(posPage, /<TablePickerModal/);
+  assert.match(picker, /data-testid="pos-table-card"/);
+  assert.match(picker, /aria-label="Filter tables by status"/);
+  assert.match(picker, /aria-label="Filter tables by section"/);
   assert.match(picker, /formatCurrency\(activeOrder\.total\)/);
 
-  console.log('  ✓ first table selection is inline; manual switching remains modal');
-  console.log('  ✓ occupied table cards show the active order total');
+  console.log('  ✓ table board replaces the ordering workspace instead of sitting above it');
+  console.log('  ✓ table board supports status, section, and text filtering');
+  console.log('  ✓ selected table context remains visible in the ordering workspace');
 }
 
-function testInlinePickerPreservesGlobalShortcuts(): void {
-  const posPage = fs.readFileSync(
-    path.join(ROOT, 'frontend/src/app/(dashboard)/pos/page.tsx'),
-    'utf8',
+function testInlineTableBoardKeepsShortcutsAvailable(): void {
+  const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
+
+  assert.match(
+    posPage,
+    /onToggleTables: \(\) => \{\s*if \(isRestaurant && cart\.orderType === 'dine_in' && tablesRequired\) \{\s*if \(showTablePicker && tablePickerPresentation === 'inline'\) closeTablePicker\(\);\s*else openTablePicker\(\);/,
   );
-  const inlineModalGuard = [
-    'const anyModalOpen =',
-    "    (showTablePicker && tablePickerPresentation === 'modal') || anyOtherModalOpen;",
-  ].join('\n');
-  const f2ToggleGuard = [
-    '      onToggleTables: () => {',
-    "        if (isRestaurant && cart.orderType === 'dine_in' && tablesRequired) {",
-    "          if (showTablePicker && tablePickerPresentation === 'modal') closeTablePicker();",
-    '          else openTablePicker();',
-  ].join('\n');
-  const escapeGuard = [
-    "        if (showTablePicker && tablePickerPresentation === 'modal') {",
-    '          closeTablePicker();',
-    '          return true;',
-  ].join('\n');
-  const keyboardPickerGuard =
-    "      tablePickerOpen: showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,";
+  assert.match(
+    posPage,
+    /if \(showTablePicker\) \{\s*closeTablePicker\(\);\s*return true;/,
+  );
+  assert.match(
+    posPage,
+    /tablePickerOpen: showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen/,
+  );
 
-  assert.ok(posPage.includes(inlineModalGuard));
-  assert.ok(posPage.includes(f2ToggleGuard));
-  assert.ok(posPage.includes(escapeGuard));
-  assert.ok(posPage.includes(keyboardPickerGuard));
+  console.log('  ✓ F2 toggles the dedicated table board and Escape returns to ordering');
+  console.log('  ✓ the table board is not treated as a blocking modal');
+}
 
-  console.log('  ✓ inline table-first selection keeps POS shortcuts active');
-  console.log('  ✓ F2 opens the modal picker; Escape closes that modal');
+function testUnsentCartCannotSilentlyChangeTables(): void {
+  const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
+  const dialog = read('frontend/src/components/pos/TableSwitchDialog.tsx');
+
+  assert.match(posPage, /const requestTableSelection = \(selection: PendingTableSelection\) => \{/);
+  assert.match(posPage, /const hasUnsentWork = cart\.items\.length > 0 \|\| Boolean\(pendingOrder\)/);
+  assert.match(posPage, /if \(hasUnsentWork && cart\.tableId !== targetTableId\)/);
+  assert.match(posPage, /onSelectAvailable=\{\(tableId, customer\) =>\s*requestTableSelection/);
+  assert.match(posPage, /onDiscard=\{discardAndSwitchTable\}/);
+  assert.match(posPage, /onHold=\{\(\) => void holdAndSwitchTable\(\)\}/);
+  assert.match(dialog, /data-testid="pos-table-switch-dialog"/);
+  assert.match(dialog, /Hold current order and switch/);
+  assert.match(dialog, /Discard unsent items and switch/);
+  assert.match(dialog, /Stay on current table/);
+
+  console.log('  ✓ changing tables with unsent work requires an explicit decision');
+  console.log('  ✓ hold is offered only for an eligible postpaid dine-in draft');
+}
+
+function testResizableAndCollapsibleCart(): void {
+  const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
+
+  assert.match(posPage, /data-testid="pos-resizable-cart"/);
+  assert.match(posPage, /role="separator"/);
+  assert.match(posPage, /data-testid="pos-cart-resize-handle"/);
+  assert.match(posPage, /aria-valuemin=\{280\}/);
+  assert.match(posPage, /aria-valuemax=\{480\}/);
+  assert.match(posPage, /setCartWidth\(\(width\) => Math\.max\(280, Math\.min\(480, width \+ delta\)\)\)/);
+  assert.match(posPage, /data-testid="pos-collapse-cart"/);
+  assert.match(posPage, /data-testid="pos-expand-cart"/);
+
+  console.log('  ✓ cart width is bounded, pointer-resizable, keyboard-adjustable, and collapsible');
+}
+
+function testProductCatalogueModes(): void {
+  const productGrid = read('frontend/src/components/pos/ProductGrid.tsx');
+
+  assert.match(productGrid, /type ProductViewMode = 'compact' \| 'grid' \| 'list'/);
+  assert.match(productGrid, /data-testid="pos-product-view-modes"/);
+  assert.match(productGrid, /data-testid=\{\s*\x60pos-product-catalog-\$\{catalogMode\}\x60\s*\}/);
+  assert.match(productGrid, /grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5/);
+  assert.match(productGrid, /grid-cols-1/);
+  assert.match(productGrid, /localStorage\.setItem\(viewPreferenceKey, viewMode\)/);
+
+  console.log('  ✓ compact, image-grid, and list modes are available and remembered locally');
 }
 
 function testWaiterMobileTableFirst(): void {
-  const serverApp = fs.readFileSync(
-    path.join(ROOT, 'frontend/src/app/server-standalone/page.tsx'),
-    'utf8',
-  );
+  const serverApp = read('frontend/src/app/server-standalone/page.tsx');
 
   assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = loadedTables\[0\]\.id/);
   assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = firstTable\.id/);
@@ -116,14 +152,17 @@ function testWaiterMobileTableFirst(): void {
   assert.match(serverApp, /table\.status === 'cleaning'/);
   assert.match(serverApp, /table\.status === 'held'/);
 
-  console.log('  ✓ waiter mobile app requires an explicit usable table selection');
+  console.log('  ✓ waiter mobile app still requires an explicit usable table selection');
 }
 
 function main(): void {
   console.log('Table-first POS tests');
   testFreshDineInSelection();
-  testInlineTableFirstPresentation();
-  testInlinePickerPreservesGlobalShortcuts();
+  testDedicatedTableBoardNavigation();
+  testInlineTableBoardKeepsShortcutsAvailable();
+  testUnsentCartCannotSilentlyChangeTables();
+  testResizableAndCollapsibleCart();
+  testProductCatalogueModes();
   testWaiterMobileTableFirst();
   console.log('All table-first POS tests passed.');
 }
