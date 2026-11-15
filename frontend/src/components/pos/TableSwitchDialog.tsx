@@ -8,6 +8,7 @@ interface Props {
   targetTableName: string;
   itemCount: number;
   hasExistingOrder: boolean;
+  hasUnsentDetails?: boolean;
   canHold: boolean;
   onCancel: () => void;
   onDiscard: () => void;
@@ -20,6 +21,7 @@ export default function TableSwitchDialog({
   targetTableName,
   itemCount,
   hasExistingOrder,
+  hasUnsentDetails = false,
   canHold,
   onCancel,
   onDiscard,
@@ -44,13 +46,17 @@ export default function TableSwitchDialog({
           </span>
           <div className="min-w-0">
             <h2 id="pos-table-switch-title" className="text-lg font-bold text-foreground">
-              Switch tables?
+              Leave current order?
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               {hasExistingOrder
-                ? `You are adding items to ${currentTableName || 'the current order'}.`
-                : `You have ${itemCount} unsent ${itemCount === 1 ? 'item' : 'items'}${currentTableName ? ` for ${currentTableName}` : ' in the cart'}.`}
-              {' '}Switching to {targetTableName} will not move those items automatically.
+                ? `You have ${itemCount} unsent ${itemCount === 1 ? 'addition' : 'additions'} for ${currentTableName || 'the current order'}.`
+                : itemCount > 0
+                  ? `You have ${itemCount} unsent ${itemCount === 1 ? 'item' : 'items'}${currentTableName ? ` for ${currentTableName}` : ' in the cart'}.`
+                  : hasUnsentDetails
+                    ? `You have unfinished order details${currentTableName ? ` for ${currentTableName}` : ''}.`
+                    : `You have unfinished work${currentTableName ? ` for ${currentTableName}` : ''}.`}
+              {' '}Continuing to {targetTableName} will not move this work automatically.
             </p>
             {hasExistingOrder && (
               <p className="mt-2 text-xs text-muted-foreground">
@@ -67,7 +73,7 @@ export default function TableSwitchDialog({
               onClick={onHold}
               className="min-h-11 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
             >
-              Hold current order and switch
+              Hold order and continue
             </button>
           )}
           <button
@@ -76,14 +82,18 @@ export default function TableSwitchDialog({
             onClick={onDiscard}
             className="min-h-11 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-red-700"
           >
-            {hasExistingOrder ? 'Discard unsent additions and switch' : 'Discard unsent items and switch'}
+            {hasExistingOrder
+              ? 'Discard unsent additions and continue'
+              : itemCount > 0
+                ? 'Discard unsent items and continue'
+                : 'Discard unfinished details and continue'}
           </button>
           <button
             type="button"
             onClick={onCancel}
             className="min-h-11 rounded-lg px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            Stay on current table
+            {currentTableName ? `Continue editing ${currentTableName}` : 'Continue editing'}
           </button>
         </div>
       </div>
