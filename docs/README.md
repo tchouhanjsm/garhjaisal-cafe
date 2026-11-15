@@ -68,6 +68,7 @@ Recurring procedures with an outcome.
 | [showcase-recording.md](guides/showcase-recording.md) | Capturing and transcoding automated visual feature showcase assets. |
 | [local-restaurant-profiles.md](guides/local-restaurant-profiles.md) | Running isolated development and restaurant data profiles, onboarding a local pilot, and preparing a Windows release. |
 | [testing-printers.md](guides/testing-printers.md) | Validating a physical printer against the print pipeline. |
+| [menu-publishing.md](guides/menu-publishing.md) | Publishing the prepared Mac catalog to the Windows production POS safely. |
 
 ## Maintainers
 

@@ -240,6 +240,13 @@ export function startServerApp(): Promise<void> {
       });
     });
 
+    const menuPublishingRateLimit = expressRateLimit({
+      windowMs: 60 * 1000,
+      limit: 8,
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
+
     const serverAppApiRateLimit = expressRateLimit({
       windowMs: 60 * 1000,
       limit: 600,
@@ -645,6 +652,19 @@ export function startServerApp(): Promise<void> {
     );
     app.get('/api/products', serverAppApiRateLimit, requireServerAppAuth, (req, res) =>
       forwardToMainApi(req, res, '/products'),
+    );
+
+    app.post(
+      '/api/menu-publishing/preview',
+      menuPublishingRateLimit,
+      requireServerAppAuth,
+      (req, res) => forwardToMainApi(req, res, '/menu-publishing/preview'),
+    );
+    app.post(
+      '/api/menu-publishing/apply',
+      menuPublishingRateLimit,
+      requireServerAppAuth,
+      (req, res) => forwardToMainApi(req, res, '/menu-publishing/apply'),
     );
     app.get('/api/products/:id/image', serverAppApiRateLimit, (req, res) => {
       if (!isServerAppEnabled()) return res.status(404).json({ error: 'Not found' });

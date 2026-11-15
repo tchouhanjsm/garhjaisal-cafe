@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Check,
+  CloudUpload,
   Download,
   Edit2,
   History,
@@ -604,6 +605,10 @@ export default function MenuStudioPage() {
             aria-label="Choose a Menu Studio CSV file"
             onChange={(event) => void handleCsvFileChange(event)}
           />
+          <Button size="sm" variant="outline" onClick={() => router.push('/menu-publish')}>
+            <CloudUpload className="me-2 size-4" />
+            Publish to Windows
+          </Button>
           <Button
             size="sm"
             variant="outline"
