@@ -53,10 +53,12 @@ function validateInclusiveFivePercentGst(
     );
   }
 
-  const fivePercentCategory = taxCategories.categories.find(
-    (category) => Number(category.rate_percent) === 5,
+  const fivePercentCategoryIds = new Set(
+    taxCategories.categories
+      .filter((category) => Number(category.rate_percent) === 5)
+      .map((category) => category.id),
   );
-  if (!fivePercentCategory) {
+  if (fivePercentCategoryIds.size === 0) {
     return (
       'The active India tax pack does not expose a 5% GST category. ' +
       'Review the tax-pack configuration before publishing.'
@@ -68,7 +70,7 @@ function validateInclusiveFivePercentGst(
     (row) =>
       isActiveCatalogRow(row) &&
       row.tax_behavior !== 'exempt' &&
-      (String(row.tax_category_id || '') !== fivePercentCategory.id ||
+      (!fivePercentCategoryIds.has(String(row.tax_category_id || '')) ||
         row.tax_behavior !== 'inclusive'),
   );
 
@@ -77,7 +79,7 @@ function validateInclusiveFivePercentGst(
     const inheritsParent =
       row.inherit_parent_tax_category === true || row.inherit_parent_tax_category === 1;
     const categoryMatches =
-      inheritsParent || String(row.tax_category_id || '') === fivePercentCategory.id;
+      inheritsParent || fivePercentCategoryIds.has(String(row.tax_category_id || ''));
     return (
       isActiveCatalogRow(row) &&
       row.tax_behavior !== 'exempt' &&
