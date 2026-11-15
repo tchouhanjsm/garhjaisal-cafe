@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import axios from 'axios';
 import { ArrowLeft, CheckCircle2, CloudUpload, Loader2, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -125,11 +125,6 @@ export default function MenuPublishPage() {
   const [message, setMessage] = useState('');
   const [published, setPublished] = useState(false);
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem('flo.menuPublisher.windowsUrl');
-    if (saved) setWindowsUrl(saved);
-  }, []);
-
   const handlePreview = async () => {
     setMessage('');
     setPreview(null);
@@ -159,7 +154,6 @@ export default function MenuPublishPage() {
       setPassword('');
       if (!token) throw new Error('Windows did not return an authentication token.');
 
-      window.localStorage.setItem('flo.menuPublisher.windowsUrl', baseUrl);
       const localExport = await api.get('/menu-publishing/export', { timeout: 60_000 });
       const menuBundle = localExport.data as MenuBundle;
       const previewResponse = await axios.post(

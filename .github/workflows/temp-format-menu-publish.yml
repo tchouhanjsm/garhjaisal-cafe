@@ -1,0 +1,41 @@
+name: Temporary menu publishing formatter
+
+on:
+  push:
+    branches:
+      - client/menu-publish-mac-to-windows-20261115
+    paths-ignore:
+      - '**/*.tsx'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: client/menu-publish-mac-to-windows-20261115
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install formatter dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Format Menu Studio and publisher pages
+        run: npx --no-install oxfmt --write -- "frontend/src/app/(dashboard)/menu-publish/page.tsx" "frontend/src/app/(dashboard)/menu-studio/page.tsx"
+
+      - name: Commit repository-formatted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "frontend/src/app/(dashboard)/menu-publish/page.tsx" "frontend/src/app/(dashboard)/menu-studio/page.tsx"
+          git commit -m "style: format menu publishing pages"
+          git push origin HEAD:refs/heads/client/menu-publish-mac-to-windows-20261115
