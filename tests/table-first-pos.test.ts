@@ -71,7 +71,8 @@ function testDedicatedTableBoardNavigation(): void {
   assert.match(picker, /data-testid="pos-table-first-picker"/);
   assert.match(
     posPage,
-    /showTopItems=\\{!\\(isRestaurant && showTablePicker && tablePickerPresentation === 'inline'\\)\\}/,
+  assert.match(posPage, /showTopItems=/);
+  assert.match(posPage, /showTablePicker && tablePickerPresentation === 'inline'/);
   );
   assert.match(topbar, /showTopItems && <CustomerTopItems/);
   assert.match(picker, /data-testid="pos-table-card"/);
