@@ -306,7 +306,12 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
       );
       await serverPage.reload();
       await expect(serverPage.locator('html')).toHaveAttribute('lang', 'te-IN');
-      await serverPage.getByRole('button', { name: new RegExp(serverTableName) }).click();
+      const serverTableCard = serverPage
+        .getByRole('button')
+        .filter({ has: serverPage.getByText(serverTableName, { exact: true }) })
+        .first();
+      await expect(serverTableCard).toBeVisible();
+      await serverTableCard.click();
       const grid = serverPage.getByTestId('pos-product-grid');
       await expect(grid.getByPlaceholder('మెనూ వెతుకు')).toBeVisible();
       await grid.getByText('హైదరాబాదీ బిర్యానీ').first().click();
