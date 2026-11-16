@@ -37,7 +37,8 @@ test.describe('POS shared table state refresh', () => {
       );
       await page.goto(`${BASE}/pos`);
       await initialTables;
-      await expect(page.getByTestId('cart-table-button')).toBeVisible();
+      const tableBoard = page.getByTestId('pos-table-first-picker');
+      await expect(tableBoard).toBeVisible();
 
       const tableNumber = `Focus${Date.now().toString().slice(-7)}`;
       const createdTableResponse = await request.post(`${BASE}/api/tables`, {
@@ -86,12 +87,8 @@ test.describe('POS shared table state refresh', () => {
       await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
       await Promise.all([refreshedTables, refreshedProducts]);
 
-      await page.getByTestId('cart-table-button').click();
-      const picker = page.getByRole('heading', { name: /select table/i });
-      await expect(picker).toBeVisible();
-
-      const tableCard = page
-        .locator('.fixed.inset-0.z-50 button')
+      const tableCard = tableBoard
+        .getByTestId('pos-table-card')
         .filter({ hasText: tableNumber })
         .first();
       await expect(tableCard).toContainText(/occupied/i);
@@ -216,7 +213,8 @@ test.describe('POS shared table state refresh', () => {
       ]);
       await page.goto(`${BASE}/pos`);
       await initialResponses;
-      await expect(page.getByTestId('cart-table-button')).toBeVisible();
+      const tableBoard = page.getByTestId('pos-table-first-picker');
+      await expect(tableBoard).toBeVisible();
 
       const tableNumber = `Held${Date.now().toString().slice(-7)}`;
       const createdTableResponse = await request.post(`${BASE}/api/tables`, {
@@ -266,18 +264,14 @@ test.describe('POS shared table state refresh', () => {
       await page.evaluate(() => window.dispatchEvent(new Event('focus')));
       await refreshedResponses;
 
-      await page.getByTestId('cart-table-button').click();
-      const picker = page.getByRole('heading', { name: /select table/i });
-      await expect(picker).toBeVisible();
-
-      const tableCard = page
-        .locator('.fixed.inset-0.z-50 button')
+      const tableCard = tableBoard
+        .getByTestId('pos-table-card')
         .filter({ hasText: tableNumber })
         .first();
       await expect(tableCard).toContainText(/held/i);
       await tableCard.click();
 
-      await expect(picker).toHaveCount(0);
+      await expect(tableBoard).toHaveCount(0);
       const cartItem = page.getByTestId('cart-item').filter({ hasText: product.name });
       await expect(cartItem).toBeVisible();
 
@@ -361,7 +355,8 @@ test.describe('POS shared table state refresh', () => {
       );
       await page.goto(`${BASE}/pos`);
       await initialTables;
-      await expect(page.getByTestId('cart-table-button')).toBeVisible();
+      const tableBoard = page.getByTestId('pos-table-first-picker');
+      await expect(tableBoard).toBeVisible();
 
       const createdOrderResponse = await request.post(`${BASE}/api/orders`, {
         headers,
@@ -389,12 +384,8 @@ test.describe('POS shared table state refresh', () => {
       const refreshResponse = await refreshRequest.response();
       expect(refreshResponse?.ok()).toBeTruthy();
 
-      await page.getByTestId('cart-table-button').click();
-      const picker = page.getByRole('heading', { name: /select table/i });
-      await expect(picker).toBeVisible();
-
-      const tableCard = page
-        .locator('.fixed.inset-0.z-50 button')
+      const tableCard = tableBoard
+        .getByTestId('pos-table-card')
         .filter({ hasText: tableNumber })
         .first();
       await expect(tableCard).toContainText(/occupied/i);
