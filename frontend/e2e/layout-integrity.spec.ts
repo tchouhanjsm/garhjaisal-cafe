@@ -443,6 +443,25 @@ const SYNTHETIC_CATEGORY_PREFIX = 'Scroll Layout Long Name Category';
 const SYNTHETIC_PRODUCT_PREFIX = 'Scroll Layout Item';
 const SYNTHETIC_NAME = /Scroll Layout Item \d{3}/;
 const SYNTHETIC_CATEGORY_COUNT = 6;
+
+async function retryRateLimitedFixtureWrite(
+  operation: () => Promise<import('@playwright/test').APIResponse>,
+  expectedStatus: number,
+  description: string,
+): Promise<import('@playwright/test').APIResponse> {
+  let response = await operation();
+  for (let attempt = 0; response.status() === 429 && attempt < 6; attempt += 1) {
+    const retryAfter = Number(response.headers()['retry-after']);
+    const delayMs =
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(60_000, retryAfter * 1_000)
+        : Math.min(30_000, 1_000 * 2 ** attempt);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    response = await operation();
+  }
+  expect(response.status(), `${description} (HTTP ${response.status()})`).toBe(expectedStatus);
+  return response;
+}
 const SYNTHETIC_PRODUCT_COUNT = 48;
 
 // The management screens list every row of the tab that is open, so their
@@ -488,23 +507,12 @@ async function seedSyntheticMenu(
   const ownedCategoryIds: string[] = [];
   const seededCategoryIds = [...reusedCategoryIds];
   for (let index = seededCategoryIds.length; index < categoryCount; index += 1) {
-    let response = await api.post(`${BASE}/api/categories`, {
-      headers,
-      data: { name: `${SYNTHETIC_CATEGORY_PREFIX} ${String(index + 1).padStart(2, '0')}` },
-    });
-    for (let retry = 0; response.status() === 429 && retry < 6; retry += 1) {
-      const retryAfter = Number(response.headers()['retry-after']);
-      const delayMs =
-        Number.isFinite(retryAfter) && retryAfter > 0
-          ? retryAfter * 1_000
-          : Math.min(30_000, 1_000 * 2 ** retry);
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-      response = await api.post(`${BASE}/api/categories`, {
-        headers,
-        data: { name: `${SYNTHETIC_CATEGORY_PREFIX} ${String(index + 1).padStart(2, '0')}` },
-      });
-    }
-    expect(response.status(), `synthetic category ${index + 1} is created`).toBe(201);
+    const categoryName = `${SYNTHETIC_CATEGORY_PREFIX} ${String(index + 1).padStart(2, '0')}`;
+    const response = await retryRateLimitedFixtureWrite(
+      () => api.post(`${BASE}/api/categories`, { headers, data: { name: categoryName } }),
+      201,
+      `synthetic category ${index + 1} is created`,
+    );
     const createdId = (await response.json()).category.id as string;
     ownedCategoryIds.push(createdId);
     seededCategoryIds.push(createdId);
@@ -546,12 +554,18 @@ async function seedSyntheticMenu(
 async function removeSyntheticMenu(api: APIRequestContext, menu: SyntheticMenu): Promise<void> {
   const headers = { Authorization: `Bearer ${getE2eToken()}` };
   for (const id of menu.ownedProductIds) {
-    const response = await api.delete(`${BASE}/api/products/${id}`, { headers });
-    expect(response.status(), 'synthetic product is removed').toBe(200);
+    await retryRateLimitedFixtureWrite(
+      () => api.delete(`${BASE}/api/products/${id}`, { headers }),
+      200,
+      'synthetic product is removed',
+    );
   }
   for (const id of menu.ownedCategoryIds) {
-    const response = await api.delete(`${BASE}/api/categories/${id}`, { headers });
-    expect(response.status(), 'synthetic category is removed').toBe(200);
+    await retryRateLimitedFixtureWrite(
+      () => api.delete(`${BASE}/api/categories/${id}`, { headers }),
+      200,
+      'synthetic category is removed',
+    );
   }
 }
 
@@ -1027,16 +1041,19 @@ async function seedSyntheticAddonGroups(api: APIRequestContext): Promise<string[
   ).length;
   const ownedIds: string[] = [];
   for (let index = reusedCount; index < SYNTHETIC_ADDON_GROUP_COUNT; index += 1) {
-    const created = await api.post(`${BASE}/api/addon-groups`, {
-      headers,
-      data: {
-        name: `${SYNTHETIC_ADDON_GROUP_PREFIX} ${String(index + 1).padStart(2, '0')}`,
-        min_selection: 0,
-        max_selection: 1,
-        addons: [{ name: 'Scroll Layout Add-on', price: 5 }],
-      },
-    });
-    expect(created.status(), `synthetic add-on group ${index + 1} is created`).toBe(201);
+    const created = await retryRateLimitedFixtureWrite(
+      () => api.post(`${BASE}/api/addon-groups`, {
+        headers,
+        data: {
+          name: `${SYNTHETIC_ADDON_GROUP_PREFIX} ${String(index + 1).padStart(2, '0')}`,
+          min_selection: 0,
+          max_selection: 1,
+          addons: [{ name: 'E2E Add-on', price: 5 }],
+        },
+      }),
+      201,
+      `synthetic add-on group ${index + 1} is created`,
+    );
     ownedIds.push((await created.json()).addon_group.id as string);
   }
   return ownedIds;
@@ -1045,8 +1062,11 @@ async function seedSyntheticAddonGroups(api: APIRequestContext): Promise<string[
 async function removeSyntheticAddonGroups(api: APIRequestContext, ids: string[]): Promise<void> {
   const headers = { Authorization: `Bearer ${getE2eToken()}` };
   for (const id of ids) {
-    const response = await api.delete(`${BASE}/api/addon-groups/${id}`, { headers });
-    expect(response.status(), 'synthetic add-on group is removed').toBe(200);
+    await retryRateLimitedFixtureWrite(
+      () => api.delete(`${BASE}/api/addon-groups/${id}`, { headers }),
+      200,
+      'synthetic add-on group is removed',
+    );
   }
 }
 
@@ -3674,30 +3694,16 @@ test.describe('POS collapse rows and cart table control', () => {
     const token = getE2eToken('e2e-manager', 'manager@flo.local', 'manager');
     const authHeaders = { Authorization: `Bearer ${token}` };
     const createdIds: string[] = [];
+    const tailCategoryRunId = Date.now().toString(36);
     test.setTimeout(120_000);
     try {
       for (let index = 0; index < 10; index += 1) {
-        const categoryName = `E2E Tail Row ${index} with a deliberately long category label`;
-        let response = await request.post(`${BASE}/api/categories`, {
-          headers: authHeaders,
-          data: { name: categoryName },
-        });
-        for (let retry = 0; response.status() === 429 && retry < 6; retry += 1) {
-          const retryAfter = Number(response.headers()['retry-after']);
-          const delayMs =
-            Number.isFinite(retryAfter) && retryAfter > 0
-              ? retryAfter * 1_000
-              : Math.min(30_000, 1_000 * 2 ** retry);
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-          response = await request.post(`${BASE}/api/categories`, {
-            headers: authHeaders,
-            data: { name: categoryName },
-          });
-        }
-        expect(
-          response.status(),
-          `tail fixture category ${index} created (HTTP ${response.status()})`,
-        ).toBe(201);
+        const categoryName = `E2E Tail ${tailCategoryRunId} ${String(index).padStart(2, '0')} Wide Label`;
+        const response = await retryRateLimitedFixtureWrite(
+          () => request.post(`${BASE}/api/categories`, { headers: authHeaders, data: { name: categoryName } }),
+          201,
+          `tail fixture category ${index} created`,
+        );
         createdIds.push((await response.json()).category.id as string);
       }
 
@@ -3717,7 +3723,7 @@ test.describe('POS collapse rows and cart table control', () => {
         const row = page.getByTestId('pos-category-row');
         await row.locator('button[aria-expanded="false"]').click();
         const selected = row.getByRole('button', {
-          name: 'E2E Tail Row 9 with a deliberately long category label',
+          name: `E2E Tail ${tailCategoryRunId} 09 Wide Label`,
         });
         await selected.click();
         await row.locator('button[aria-expanded="true"]').click();
@@ -3747,14 +3753,18 @@ test.describe('POS collapse rows and cart table control', () => {
         await toggle.click();
         await expect(
           row.getByRole('button', {
-            name: 'E2E Tail Row 0 with a deliberately long category label',
+            name: `E2E Tail ${tailCategoryRunId} 00 Wide Label`,
           }),
         ).toBeVisible();
       }
     } finally {
       await setLanguage(page, 'en');
       for (const categoryId of createdIds) {
-        await request.delete(`${BASE}/api/categories/${categoryId}`, { headers: authHeaders });
+        await retryRateLimitedFixtureWrite(
+          () => request.delete(`${BASE}/api/categories/${categoryId}`, { headers: authHeaders }),
+          200,
+          `tail fixture category ${categoryId} is removed`,
+        );
       }
     }
   });
