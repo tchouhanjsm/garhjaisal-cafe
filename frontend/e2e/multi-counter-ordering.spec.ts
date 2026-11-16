@@ -109,13 +109,11 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
       const businessSettings = await businessRes.json();
       previousBillingType = businessSettings.billing_type;
       previousTablesRequired = businessSettings.tables_required;
-      if (previousBillingType !== 'prepaid') {
-        const prepaidRes = await request.put(`${BASE}/api/settings/business`, {
-          headers: ownerHeaders,
-          data: { billing_type: 'prepaid', tables_required: previousTablesRequired },
-        });
-        expect(prepaidRes.ok(), 'set prepaid billing for multi-counter test').toBeTruthy();
-      }
+      const prepaidRes = await request.put(`${BASE}/api/settings/business`, {
+        headers: ownerHeaders,
+        data: { billing_type: 'prepaid', tables_required: false },
+      });
+      expect(prepaidRes.ok(), 'set prepaid billing and disable table-required startup').toBeTruthy();
 
       const settingRes = await request.put(`${BASE}/api/settings/multi_counter_enabled`, {
         headers: ownerHeaders,
@@ -465,7 +463,7 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
     await test.step('A lost send response cannot be submitted through normal checkout', async () => {
       const postpaidRes = await request.put(`${BASE}/api/settings/business`, {
         headers: ownerHeaders,
-        data: { billing_type: 'postpaid', tables_required: previousTablesRequired },
+        data: { billing_type: 'postpaid', tables_required: false },
       });
       expect(postpaidRes.ok(), 'use postpaid checkout for retry test').toBeTruthy();
 
@@ -519,7 +517,7 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
 
       const restoreBusinessRes = await request.put(`${BASE}/api/settings/business`, {
         headers: ownerHeaders,
-        data: { billing_type: 'prepaid', tables_required: previousTablesRequired },
+        data: { billing_type: 'prepaid', tables_required: false },
       });
       expect(restoreBusinessRes.ok(), 'restore prepaid billing after retry test').toBeTruthy();
     });

@@ -166,44 +166,39 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
     await expect(qtySpan).toHaveText('5');
   });
 
-  test('F2 toggles table picker, and Escape dismisses it', async ({ page }) => {
-    // Press F2 to open table picker
-    await page.keyboard.press('F2');
-    const tableModal = page
-      .locator('div.fixed.inset-0')
-      .filter({ hasText: /select table|tables/i });
-    await expect(tableModal).toBeVisible({ timeout: 5_000 });
+  test('F2 toggles the All Tables board, and Escape dismisses it', async ({ page }) => {
+    const tableBoard = page.getByTestId('pos-table-first-picker');
+    const cartShell = page.getByTestId('cart-shell');
+    await expect(tableBoard).toBeHidden();
 
-    // F2 toggles the active table picker closed
     await page.keyboard.press('F2');
-    await expect(tableModal).not.toBeVisible();
+    await expect(tableBoard).toBeVisible({ timeout: 5_000 });
+    await page.keyboard.press('F2');
+    await expect(tableBoard).toBeHidden();
 
-    // macOS Option+2 (key: '™', code: 'Digit2') toggles table picker open and closed
+    // macOS Option+2 toggles the same inline board.
     await page.evaluate(() => {
       window.dispatchEvent(
         new KeyboardEvent('keydown', { key: '™', code: 'Digit2', altKey: true, bubbles: true }),
       );
     });
-    await expect(tableModal).toBeVisible({ timeout: 5_000 });
+    await expect(tableBoard).toBeVisible({ timeout: 5_000 });
     await page.evaluate(() => {
       window.dispatchEvent(
         new KeyboardEvent('keydown', { key: '™', code: 'Digit2', altKey: true, bubbles: true }),
       );
     });
-    await expect(tableModal).not.toBeVisible();
+    await expect(tableBoard).toBeHidden();
 
-    // F2 does not open the table picker for takeaway orders
-    await page.getByRole('button', { name: 'Takeaway' }).click();
+    await cartShell.getByRole('button', { name: 'Takeaway', exact: true }).click();
     await page.keyboard.press('F2');
-    await expect(tableModal).not.toBeVisible();
+    await expect(tableBoard).toBeHidden();
 
-    await page.getByRole('button', { name: /Dine in/i }).click();
-    await page.keyboard.press('F2');
-    await expect(tableModal).toBeVisible({ timeout: 5_000 });
-
-    // Press Escape to close table picker
+    // Returning to dine-in without a selected table presents All Tables automatically.
+    await cartShell.getByRole('button', { name: /Dine in/i }).click();
+    await expect(tableBoard).toBeVisible({ timeout: 5_000 });
     await page.keyboard.press('Escape');
-    await expect(tableModal).not.toBeVisible();
+    await expect(tableBoard).toBeHidden();
   });
 
   test('F4 opens checkout modal, and Space tenders cash to complete order', async ({ page }) => {
@@ -754,6 +749,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
       productId = (await prodRes.json()).product.id as string;
 
       await page.reload();
+      await enterPosWorkspace(page, createdTableName ?? undefined);
       const addonCard = page
         .getByTestId('pos-product-card')
         .filter({ hasText: `Addon Latte ${suffix}` })

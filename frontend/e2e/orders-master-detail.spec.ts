@@ -8,6 +8,7 @@ import {
   setOrdersLayout,
 } from './helpers/test-auth';
 import { elementTop, expectPinned, innermostScrollableAncestor } from './helpers/layout';
+import { enterPosWorkspace } from './helpers/pos';
 
 /**
  * Orders master/detail split view (#639) — DEFAULT layout coverage.
@@ -717,22 +718,8 @@ test.describe('a held cart resumed from another order type keeps its charge sele
     await login(page);
     await page.goto(`${BASE}/pos`);
 
-    // Dine-in on the fixture table, with the fixture fees offered on the cart.
-    await page
-      .getByRole('button', { name: /Dine in/i })
-      .first()
-      .click();
-    await page
-      .getByRole('button', { name: /Select Table|Table: /i })
-      .first()
-      .click();
-    const picker = page.locator('.fixed.inset-0').last();
-    await expect(picker).toBeVisible();
-    await picker
-      .getByRole('button')
-      .filter({ hasText: new RegExp(table.number) })
-      .first()
-      .click();
+    // Dine-in on the fixture table, selected from the dedicated All Tables board.
+    await enterPosWorkspace(page, table.number);
 
     // E2E Coffee is a simple product, so the card tap lands it on the cart.
     await page.getByTestId('pos-product-card').filter({ hasText: 'E2E Coffee' }).first().click();

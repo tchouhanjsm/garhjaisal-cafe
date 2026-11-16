@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { E2E_BASE_URL as BASE } from './helpers/urls';
+import { enterPosWorkspace } from './helpers/pos';
 import {
   E2E_PASSWORD,
   getE2eToken,
@@ -139,15 +140,11 @@ test('adding an item to an occupied table only prints the newly appended item on
     await page.locator('button[type="submit"]').click();
     await page.waitForURL('**/pos/**', { timeout: 20000 });
     await page.waitForFunction(() => !!localStorage.getItem('token'));
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    // Enter the occupied order directly from the All Tables board.
+    await enterPosWorkspace(page, tableNumber);
 
-    // Add a second item to the cart, then send it to the already-occupied table.
-    // A simple catalog item needs no choices, so the tap is the whole add.
-    await page.getByTestId('pos-product-card').click();
-    await page.getByRole('button', { name: /Select Table|Table: / }).click();
-
-    await expect(page.getByRole('heading', { name: 'Select Table' })).toBeVisible();
-    await page.getByText(tableNumber, { exact: true }).click();
+    // Append one new item to the selected order.
+    await page.getByTestId('pos-product-card').first().click();
 
     await expect(page.getByRole('button', { name: /Add 1 item to order/i })).toBeVisible();
     const kotResponse = page.waitForResponse((response) =>
@@ -177,15 +174,10 @@ async function loginToPos(page: import('@playwright/test').Page, email = 'manage
   await page.locator('button[type="submit"]').click();
   await page.waitForURL('**/pos/**', { timeout: 20000 });
   await page.waitForFunction(() => !!localStorage.getItem('token'));
-  await expect(page.getByTestId('pos-product-grid')).toBeVisible();
 }
 
 async function openOccupiedTable(page: import('@playwright/test').Page, tableNumber: string) {
-  await page.getByRole('button', { name: /Select Table|Table: / }).click();
-  await expect(page.getByRole('heading', { name: 'Select Table' })).toBeVisible();
-  const tableCard = page.getByRole('button').filter({ hasText: tableNumber });
-  await expect(tableCard).toHaveCount(1);
-  await tableCard.click();
+  await enterPosWorkspace(page, tableNumber);
 }
 
 async function installBillPrintCapture(page: import('@playwright/test').Page) {

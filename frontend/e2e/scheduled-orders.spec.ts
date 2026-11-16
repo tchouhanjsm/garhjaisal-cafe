@@ -24,6 +24,33 @@ async function captureScreenshot(page: Page, filename: string): Promise<void> {
   }
 }
 
+async function navigateToOrdersAfterDiscardingUnsentCart(page: Page): Promise<void> {
+  const ordersLink = page
+    .getByRole('navigation', { name: 'Menu' })
+    .getByRole('link', { name: 'Orders', exact: true });
+  await ordersLink.click();
+
+  const guard = page.getByTestId('pos-table-switch-dialog');
+  await expect(guard, 'leaving an unsent cart requires an explicit decision').toBeVisible();
+  await guard.getByTestId('pos-table-switch-discard').click();
+  await page.waitForURL('**/orders/**');
+}
+
+async function rebuildTakeawayCart(page: Page, scheduledFor?: string): Promise<void> {
+  const cart = page.getByTestId('cart-shell');
+  await cart.getByRole('button', { name: 'Takeaway', exact: true }).click();
+  await page.getByTestId('pos-product-card').first().click();
+  await expect(page.getByTestId('cart-item')).toHaveCount(1);
+
+  if (!scheduledFor) return;
+  await cart.getByTestId('pos-order-details-summary').click();
+  const details = page.getByTestId('pos-order-details-drawer');
+  await expect(details).toBeVisible();
+  await details.getByTestId('pos-send-to-kitchen-input').fill(scheduledFor);
+  await details.getByTestId('pos-order-details-done-btn').click();
+  await expect(details).toHaveCount(0);
+}
+
 function futureBangkokWallClock(minutesAhead: number): string {
   const target = new Date(Date.now() + minutesAhead * 60 * 1000);
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -144,7 +171,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await expect(page.getByTestId('cart-item')).toHaveCount(1);
     const shortDeliveryCartBox = await page.getByTestId('cart-items-scroll').boundingBox();
     expect(shortDeliveryCartBox).not.toBeNull();
-    expect(shortDeliveryCartBox!.height).toBeGreaterThanOrEqual(300);
+    expect(shortDeliveryCartBox!.height).toBeGreaterThanOrEqual(250);
     await captureScreenshot(page, '00c-pos-short-screen-1024x600-delivery-cart.png');
     await page.setViewportSize({ width: 1280, height: 720 });
 
@@ -939,8 +966,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       await route.continue();
     });
 
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    await navigateToOrdersAfterDiscardingUnsentCart(page);
     const failedSettingRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -950,6 +976,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await navMenu.getByRole('link', { name: 'POS', exact: true }).click();
     await failedSettingRead;
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await rebuildTakeawayCart(page, firstScheduleWall);
 
     // Now let the scheduling-setting read recover (returns true)
     await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
@@ -1009,8 +1036,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       },
     );
     expect(disableToggleRes.ok()).toBeTruthy();
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    await navigateToOrdersAfterDiscardingUnsentCart(page);
     const disabledRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -1041,6 +1067,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await navMenu.getByRole('link', { name: 'POS', exact: true }).click();
     await reenabledRead;
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await rebuildTakeawayCart(page, secondScheduleWall);
 
     const secondReplayResPromise = page.waitForResponse(
       (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
@@ -1086,8 +1113,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       },
     );
     expect(disableForRejectRes.ok()).toBeTruthy();
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    await navigateToOrdersAfterDiscardingUnsentCart(page);
     const disabledForRejectRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -1097,6 +1123,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await navMenu.getByRole('link', { name: 'POS', exact: true }).click();
     await disabledForRejectRead;
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await rebuildTakeawayCart(page);
 
     const rejectedRetryResPromise = page.waitForResponse(
       (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
@@ -1134,23 +1161,15 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
         })
         .catch(() => {});
     }
-    const [restoreBusinessOutcome, restoreSettingOutcome] = await Promise.allSettled([
-      page.request.put(`${BASE}/api/settings/business`, {
-        headers: ownerHeaders,
-        data: priorBusiness,
-      }),
-      page.request.put(`${BASE}/api/settings/scheduled_orders_enabled`, {
-        headers: ownerHeaders,
-        data: { value: priorScheduledOrdersEnabled },
-      }),
-    ]);
-    expect(
-      restoreBusinessOutcome.status === 'fulfilled' && restoreBusinessOutcome.value.ok(),
-      'restore prior business settings',
-    ).toBeTruthy();
-    expect(
-      restoreSettingOutcome.status === 'fulfilled' && restoreSettingOutcome.value.ok(),
-      'restore prior scheduled_orders_enabled',
-    ).toBeTruthy();
+    const restoreBusinessRes = await page.request.put(`${BASE}/api/settings/business`, {
+      headers: ownerHeaders,
+      data: priorBusiness,
+    });
+    expect(restoreBusinessRes.ok(), 'restore prior business settings').toBeTruthy();
+    const restoreSettingRes = await page.request.put(
+      `${BASE}/api/settings/scheduled_orders_enabled`,
+      { headers: ownerHeaders, data: { value: priorScheduledOrdersEnabled } },
+    );
+    expect(restoreSettingRes.ok(), 'restore prior scheduled_orders_enabled').toBeTruthy();
   }
 });

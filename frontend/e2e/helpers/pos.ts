@@ -59,5 +59,6 @@ export async function enterPosWorkspace(page: Page, tableName?: string): Promise
     : 'an available table must be on the board';
   await expect(target, targetDescription).toBeVisible();
   await target.click();
+  await expect(board).toBeHidden({ timeout: 15_000 });
   await expect(productGrid).toBeVisible({ timeout: 15_000 });
 }

@@ -4486,6 +4486,7 @@ export default function POSPage() {
               <button
                 className="touch-target fixed bottom-5 end-5 z-40 w-14 h-14 bg-brand text-white rounded-full shadow-lg hover:bg-brand-hover active:bg-brand-hover transition-colors md:hidden"
                 aria-label={t('cart')}
+                data-testid="pos-mobile-cart-trigger"
               >
                 <ShoppingCart size={22} />
                 {itemCount > 0 && (
