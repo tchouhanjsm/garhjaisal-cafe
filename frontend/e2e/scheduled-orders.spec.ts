@@ -73,7 +73,10 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
       headers: ownerHeaders,
       data: { ...priorBusiness, tables_required: false },
     });
-    expect(businessSetupRes.ok(), 'disable table-required startup for takeaway/delivery coverage').toBeTruthy();
+    expect(
+      businessSetupRes.ok(),
+      'disable table-required startup for takeaway/delivery coverage',
+    ).toBeTruthy();
 
     const disableRes = await page.request.put(`${BASE}/api/settings/scheduled_orders_enabled`, {
       headers: ownerHeaders,
