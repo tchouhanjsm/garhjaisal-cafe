@@ -16,15 +16,13 @@ export async function enterPosWorkspace(page: Page, tableName?: string): Promise
   expect(settingsResponse.ok(), 'POS business settings must be readable').toBeTruthy();
 
   const business = (await settingsResponse.json()) as {
-    business_type?: string;
     tables_required?: boolean | string | number;
   };
   const tablesRequired =
-    business.business_type === 'restaurant' &&
-    (business.tables_required === true ||
-      business.tables_required === 1 ||
-      business.tables_required === 'true' ||
-      business.tables_required === '1');
+    business.tables_required === true ||
+    business.tables_required === 1 ||
+    business.tables_required === 'true' ||
+    business.tables_required === '1';
 
   const productGrid = page.getByTestId('pos-product-grid');
   if (!tablesRequired) {
