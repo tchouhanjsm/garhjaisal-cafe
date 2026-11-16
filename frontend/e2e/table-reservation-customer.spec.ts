@@ -282,7 +282,14 @@ test('table selection preserves explicit customers and replaces or clears inheri
     };
 
     const selectCustomerByPhone = async (phone: string, customerId: string) => {
+      // A reserved table inherits its reservation customer, replacing the search input.
+      // Clear that inherited customer before selecting a different explicit customer.
+      const inheritedCustomer = page.getByTestId('pos-customer-select-btn');
+      if (await inheritedCustomer.isVisible().catch(() => false)) {
+        await page.getByRole('button', { name: 'Remove' }).click();
+      }
       const customerSearchInput = page.getByTestId('pos-customer-search-input').first();
+      await expect(customerSearchInput).toBeVisible();
       const search = page.waitForResponse((response) => {
         const url = new URL(response.url());
         return (
