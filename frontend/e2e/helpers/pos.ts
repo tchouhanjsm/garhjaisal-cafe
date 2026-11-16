@@ -3,8 +3,8 @@ import { E2E_BASE_URL } from './urls';
 
 /**
  * Enters the POS ordering workspace using the active restaurant configuration.
- * When table service is required, it selects a known table from the dedicated
- * All Tables board before exposing product/catalogue assertions to the test.
+ * For table service, product interaction is allowed only after choosing a table
+ * from the inline All Tables board. Takeaway/delivery fixtures stay board-free.
  */
 export async function enterPosWorkspace(page: Page, tableName?: string): Promise<void> {
   const token = await page.evaluate(() => localStorage.getItem('token'));
@@ -36,29 +36,31 @@ export async function enterPosWorkspace(page: Page, tableName?: string): Promise
     .poll(
       async () =>
         (await board.isVisible().catch(() => false)) ||
-        (await allTablesButton.isVisible().catch(() => false)),
+        (await productGrid.isVisible().catch(() => false)),
       { timeout: 15_000 },
     )
     .toBe(true);
 
-  if (!(await board.isVisible())) {
+  if (await board.isVisible()) {
+    const cards = board.getByTestId('pos-table-card');
+    let target = tableName ? cards.filter({ hasText: tableName }).first() : cards.first();
     if (!tableName) {
-      await expect(productGrid).toBeVisible({ timeout: 15_000 });
-      return;
+      const available = cards.filter({ hasText: /available/i }).first();
+      if (await available.isVisible().catch(() => false)) target = available;
     }
-    await allTablesButton.click();
-    await expect(board).toBeVisible();
+    const targetDescription = tableName
+      ? `table ${tableName} must be on the All Tables board`
+      : 'a table must be on the All Tables board';
+    await expect(target, targetDescription).toBeVisible({ timeout: 15_000 });
+    await target.click();
+    await expect(board).toBeHidden({ timeout: 15_000 });
+    await expect(productGrid).toBeVisible({ timeout: 15_000 });
+    return;
   }
 
-  const cards = board.getByTestId('pos-table-card');
-  const target = tableName
-    ? cards.filter({ hasText: tableName }).first()
-    : cards.filter({ hasText: /available/i }).first();
-  const targetDescription = tableName
-    ? `table ${tableName} must be on the board`
-    : 'an available table must be on the board';
-  await expect(target, targetDescription).toBeVisible();
-  await target.click();
-  await expect(board).toBeHidden({ timeout: 15_000 });
   await expect(productGrid).toBeVisible({ timeout: 15_000 });
+  if (tableName) {
+    await expect(allTablesButton).toBeVisible({ timeout: 15_000 });
+    await expect(allTablesButton).toContainText('All Tables');
+  }
 }
