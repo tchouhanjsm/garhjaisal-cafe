@@ -113,7 +113,10 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
         headers: ownerHeaders,
         data: { billing_type: 'prepaid', tables_required: false },
       });
-      expect(prepaidRes.ok(), 'set prepaid billing and disable table-required startup').toBeTruthy();
+      expect(
+        prepaidRes.ok(),
+        'set prepaid billing and disable table-required startup',
+      ).toBeTruthy();
 
       const settingRes = await request.put(`${BASE}/api/settings/multi_counter_enabled`, {
         headers: ownerHeaders,
