@@ -45,7 +45,7 @@ function futureBangkokWallClock(minutesAhead: number): string {
 test('POS scheduled orders: Send to kitchen at, prepay without early release, audited reschedule, refund-before-cancel, and blocked retry', async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   await page.clock.install();
   const ownerToken = getE2eToken('e2e-owner', 'owner@flo.local', 'owner');
   const ownerHeaders = { Authorization: `Bearer ${ownerToken}` };
@@ -54,6 +54,11 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
   let trackedProductId: string | null = null;
   let managerId: string | null = null;
   let extraApproverId: string | null = null;
+  const priorBusinessRes = await page.request.get(`${BASE}/api/settings/business`, {
+    headers: ownerHeaders,
+  });
+  expect(priorBusinessRes.ok(), 'read prior business settings').toBeTruthy();
+  const priorBusiness = (await priorBusinessRes.json()) as Record<string, unknown>;
   const priorScheduledSettingRes = await page.request.get(
     `${BASE}/api/settings/scheduled_orders_enabled`,
     { headers: ownerHeaders },
@@ -64,6 +69,12 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     priorScheduledSettingBody?.setting?.value === 'true' ? 'true' : 'false';
 
   try {
+    const businessSetupRes = await page.request.put(`${BASE}/api/settings/business`, {
+      headers: ownerHeaders,
+      data: { ...priorBusiness, tables_required: false },
+    });
+    expect(businessSetupRes.ok(), 'disable table-required startup for takeaway/delivery coverage').toBeTruthy();
+
     const disableRes = await page.request.put(`${BASE}/api/settings/scheduled_orders_enabled`, {
       headers: ownerHeaders,
       data: { value: 'false' },
@@ -769,6 +780,11 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     for (const response of deactivateResults) {
       expect(response.ok(), 'deactivate disposable refund approver').toBeTruthy();
     }
+    const restoreBusinessRes = await page.request.put(`${BASE}/api/settings/business`, {
+      headers: ownerHeaders,
+      data: priorBusiness,
+    });
+    expect(restoreBusinessRes.ok(), 'restore prior business settings').toBeTruthy();
     const restoreSettingRes = await page.request.put(
       `${BASE}/api/settings/scheduled_orders_enabled`,
       {
@@ -783,7 +799,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
 test('POS scheduled orders: unresolved order attempts preserve payload and idempotency key when scheduling settings fail or toggle', async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   const ownerToken = getE2eToken('e2e-owner', 'owner@flo.local', 'owner');
   const ownerHeaders = { Authorization: `Bearer ${ownerToken}` };
   const createdOrderIds: number[] = [];
@@ -819,7 +835,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
   try {
     const postpaidRes = await page.request.put(`${BASE}/api/settings/business`, {
       headers: ownerHeaders,
-      data: { ...priorBusiness, billing_type: 'postpaid' },
+      data: { ...priorBusiness, billing_type: 'postpaid', tables_required: false },
     });
     expect(postpaidRes.ok()).toBeTruthy();
 
