@@ -311,7 +311,7 @@ test('table selection preserves explicit customers and replaces or clears inheri
     // Table-first flow: choose the reserved table before entering customer or product details.
     await selectTable(tableNames[0]);
     const customerSearchInput = page.getByTestId('pos-customer-search-input').first();
-    await expect(customerSearchInput).toBeVisible();
+    // Reserved tables surface the inherited customer chip instead of the search input.
     await expect(page.getByText(reservationCustomer.name, { exact: true })).toBeVisible();
 
     // An explicit customer overrides the table's inherited reservation customer.
