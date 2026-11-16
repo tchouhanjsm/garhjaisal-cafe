@@ -976,7 +976,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await navMenu.getByRole('link', { name: 'POS', exact: true }).click();
     await failedSettingRead;
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
-    await rebuildTakeawayCart(page, firstScheduleWall);
+    await rebuildTakeawayCart(page);
 
     // Now let the scheduling-setting read recover (returns true)
     await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
