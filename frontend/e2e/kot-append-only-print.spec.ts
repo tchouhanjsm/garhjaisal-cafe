@@ -48,7 +48,7 @@ test.afterEach(async ({ page }) => {
 test('adding an item to an occupied table only prints the newly appended item on KOT', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
 
   const setupToken = getE2eToken('e2e-manager', 'manager@flo.local', 'manager');
   const authHeaders = { Authorization: `Bearer ${setupToken}` };
@@ -60,6 +60,8 @@ test('adding an item to an occupied table only prints the newly appended item on
   const originalBusiness = await businessRes.json();
 
   const tableNumber = `E2E-KOT-${Date.now()}`;
+  let fixtureTableId: string | undefined;
+  let fixtureOrderId: number | undefined;
 
   try {
     const putRes = await page.request.put(`${BASE}/api/settings/business`, {
@@ -92,6 +94,7 @@ test('adding an item to an occupied table only prints the newly appended item on
     });
     expect(tableRes.ok()).toBeTruthy();
     const table = (await tableRes.json()).table;
+    fixtureTableId = String(table.id);
 
     // Seed the table's existing order the way a real dine-in order arrives:
     // one item already on the ticket before the cashier reopens this table.
@@ -106,6 +109,7 @@ test('adding an item to an occupied table only prints the newly appended item on
     });
     expect(orderRes.ok()).toBeTruthy();
     const order = (await orderRes.json()).order;
+    fixtureOrderId = Number(order.id);
     expect(order.items).toHaveLength(1);
     const originalItemId = order.items[0].id;
 
@@ -163,10 +167,33 @@ test('adding an item to an occupied table only prints the newly appended item on
     expect(kotRequestBody!.items).toHaveLength(1);
     expect(kotRequestBody!.items![0].id).not.toBe(originalItemId);
   } finally {
-    await page.request.put(`${BASE}/api/settings/business`, {
-      headers: authHeaders,
-      data: originalBusiness,
-    });
+    try {
+      if (fixtureOrderId) {
+        await page.request.patch(`${BASE}/api/orders/${fixtureOrderId}/status`, {
+          headers: authHeaders,
+          data: { status: 'cancelled', reason: 'E2E KOT fixture cleanup' },
+          timeout: 10_000,
+        }).catch(() => undefined);
+      }
+      if (fixtureTableId) {
+        await page.request.patch(`${BASE}/api/tables/${fixtureTableId}/status`, {
+          headers: authHeaders,
+          data: { status: 'available' },
+          timeout: 10_000,
+        }).catch(() => undefined);
+        await page.request.post(`${BASE}/api/tables/${fixtureTableId}/deactivate`, {
+          headers: authHeaders,
+          timeout: 10_000,
+        }).catch(() => undefined);
+      }
+    } finally {
+      const restoreResponse = await page.request.put(`${BASE}/api/settings/business`, {
+        headers: authHeaders,
+        data: originalBusiness,
+        timeout: 15_000,
+      });
+      expect(restoreResponse.ok(), 'original business settings are restored').toBeTruthy();
+    }
   }
 });
 
