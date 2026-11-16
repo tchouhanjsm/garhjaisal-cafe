@@ -94,7 +94,10 @@ test.beforeEach(async ({ page }) => {
       headers: managerHeaders,
       data: { ...business, tables_required: false },
     });
-    expect(updatedBusiness.ok(), 'payment tests use an explicit non-table POS fixture').toBeTruthy();
+    expect(
+      updatedBusiness.ok(),
+      'payment tests use an explicit non-table POS fixture',
+    ).toBeTruthy();
   }
 
   ordersLayoutBefore = await readOrdersLayout(page, BASE, ordersLayoutOwnerToken);
