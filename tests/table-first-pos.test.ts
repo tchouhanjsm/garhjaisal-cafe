@@ -79,6 +79,28 @@ function testDraftNavigationProtection(): void {
   const cartPanel = read('frontend/src/components/pos/CartPanel.tsx');
 
   assert.ok(posPage.includes('const hasUnsentCartWork = useCallback'));
+  const itemGuardIndex = posPage.indexOf('if (state.items.length > 0) return true;');
+  const existingOrderGuardIndex = posPage.indexOf('if (pendingOrder) return false;');
+  assert.ok(itemGuardIndex >= 0 && itemGuardIndex < existingOrderGuardIndex);
+  for (const fieldCheck of [
+    'state.customerId != null',
+    'state.customer != null',
+    'state.customerSource != null',
+    'state.guestCount > 1',
+    'state.orderNotes.trim()',
+    'state.roomNumber.trim()',
+    'state.deliveryAddress.trim()',
+    'state.deliveryNote.trim()',
+    'state.scheduledFor.trim()',
+    'state.expectedPaymentMethod.trim()',
+    'state.expectedPaymentMethodId != null',
+    'state.onlinePlatform.trim()',
+    'state.externalOrderId.trim()',
+    'state.waivedChargeIds.size > 0',
+    'state.optedInChargeIds.size > 0',
+  ]) {
+    assert.ok(posPage.includes(fieldCheck), `draft guard must protect ${fieldCheck}`);
+  }
   assert.ok(posPage.includes('if (pendingOrder) return false;'));
   assert.ok(posPage.includes('const requestTableSelection = (selection: TableSelection) => {'));
   assert.ok(posPage.includes('const requestOpenTableBoard = () => {'));
