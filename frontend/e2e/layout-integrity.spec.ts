@@ -494,9 +494,10 @@ async function seedSyntheticMenu(
     });
     for (let retry = 0; response.status() === 429 && retry < 6; retry += 1) {
       const retryAfter = Number(response.headers()['retry-after']);
-      const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
-        ? retryAfter * 1_000
-        : Math.min(30_000, 1_000 * 2 ** retry);
+      const delayMs =
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? retryAfter * 1_000
+          : Math.min(30_000, 1_000 * 2 ** retry);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
       response = await api.post(`${BASE}/api/categories`, {
         headers,
