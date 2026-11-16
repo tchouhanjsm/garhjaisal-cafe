@@ -737,6 +737,13 @@ test.describe('a held cart resumed from another order type keeps its charge sele
     // Park the cart on the held table, then start a fresh cart on another type.
     await page.getByRole('button', { name: 'Hold', exact: true }).click();
     await expect(page.getByText(`Order held for ${table.number}`)).toBeVisible({ timeout: 15_000 });
+
+    // Holding clears the active cart and returns table service to the All
+    // Tables board. Dismiss that board before choosing a non-table order type.
+    const tableBoard = page.getByTestId('pos-table-first-picker');
+    await expect(tableBoard).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.press('Escape');
+    await expect(tableBoard).toBeHidden();
     await page.getByRole('button', { name: 'Takeaway', exact: true }).click();
 
     // Resume from Orders over client-side navigation, so the in-memory

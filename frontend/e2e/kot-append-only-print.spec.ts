@@ -140,8 +140,11 @@ test('adding an item to an occupied table only prints the newly appended item on
     await page.locator('button[type="submit"]').click();
     await page.waitForURL('**/pos/**', { timeout: 20000 });
     await page.waitForFunction(() => !!localStorage.getItem('token'));
-    // Enter the occupied order directly from the All Tables board.
+    // The occupied table opens its existing-order summary. Enter the append
+    // workflow explicitly before touching the catalogue beneath that modal.
     await enterPosWorkspace(page, tableNumber);
+    await page.getByRole('button', { name: 'Add items', exact: true }).click();
+    await expect(page.getByTestId('pos-append-existing-order-btn')).toBeVisible();
 
     // Append one new item to the selected order.
     await page.getByTestId('pos-product-card').first().click();

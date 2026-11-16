@@ -430,6 +430,13 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
       const billsAfterData = await billsAfterRes.json();
       expect(billsAfterData.pagination.total).toBe(paidBillsBeforeCount + 1);
 
+      // A completed takeaway payment clears the cart and returns table service
+      // to the All Tables board. Close it before starting the next takeaway order.
+      const tableBoard = page.getByTestId('pos-table-first-picker');
+      await expect(tableBoard).toBeVisible({ timeout: 15_000 });
+      await page.keyboard.press('Escape');
+      await expect(tableBoard).toBeHidden();
+
       // Also verify fresh non-repeat Enter after keyup confirms once on a second order
       await page.getByRole('button', { name: 'Takeaway' }).click();
       await productCard.click();

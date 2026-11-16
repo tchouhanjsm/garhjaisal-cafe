@@ -197,6 +197,7 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
 
     await test.step('Scenario 2: Ordering counter builds takeaway order and sends to payment generating ticket and QR code', async () => {
       await page.goto(`${BASE}/pos`);
+      await enterPosWorkspace(page);
       await expect(page.getByTestId('pos-product-grid')).toBeVisible();
 
       // Counter selector in Topbar
@@ -207,18 +208,18 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
       await counterSelect.click();
       await page.getByTestId(`pos-counter-option-${orderingCounter.id}`).click();
 
-      // Add item to cart
-      await page.getByTestId('pos-product-card').first().click();
-      await expect(page.getByTestId('cart-item')).toHaveCount(1);
-
+      // Check modes before adding a product. The table-first POS correctly
+      // requires an explicit discard/hold decision when changing type with an
+      // unsent cart, so these mode-specific assertions start from an empty cart.
       const cartShell = page.getByTestId('cart-shell');
-
       for (const type of ['Delivery', 'Online']) {
         await cartShell.getByRole('button', { name: type, exact: true }).click();
         await expect(cartShell.getByTestId('pos-send-to-payment-btn')).toHaveCount(0);
         await expect(cartShell.getByRole('button', { name: 'Place Order' })).toBeVisible();
       }
       await cartShell.getByRole('button', { name: 'Takeaway', exact: true }).click();
+      await page.getByTestId('pos-product-card').first().click();
+      await expect(page.getByTestId('cart-item')).toHaveCount(1);
 
       // Primary checkout button should be "Send to payment"
       const sendToPaymentBtn = cartShell.getByTestId('pos-send-to-payment-btn');

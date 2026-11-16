@@ -709,6 +709,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     await page.setViewportSize({ width: 844, height: 390 });
     await loginAsManager(page);
     await page.goto(`${BASE}/pos`);
+    await enterPosWorkspace(page);
 
     const catalog = page.getByTestId('pos-catalog-scroll');
     await expect(catalog).toBeVisible();
@@ -826,6 +827,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     await page.setViewportSize({ width: 512, height: 384 });
     await loginAsManager(page);
     await page.goto(`${BASE}/pos`);
+    await enterPosWorkspace(page);
 
     await addSyntheticItemsToCart(page, 4);
 
@@ -881,6 +883,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     await page.waitForURL(/\/(pos|orders)/, { timeout: 20000 });
     await setLanguage(page, 'en');
     await page.goto(`${BASE}/pos`);
+    await enterPosWorkspace(page);
 
     await addSyntheticItemsToCart(page, 1);
 
@@ -3671,13 +3674,30 @@ test.describe('POS collapse rows and cart table control', () => {
     const token = getE2eToken('e2e-manager', 'manager@flo.local', 'manager');
     const authHeaders = { Authorization: `Bearer ${token}` };
     const createdIds: string[] = [];
+    test.setTimeout(120_000);
     try {
       for (let index = 0; index < 10; index += 1) {
-        const response = await request.post(`${BASE}/api/categories`, {
+        const categoryName = `E2E Tail Row ${index} with a deliberately long category label`;
+        let response = await request.post(`${BASE}/api/categories`, {
           headers: authHeaders,
-          data: { name: `E2E Tail Row ${index} with a deliberately long category label` },
+          data: { name: categoryName },
         });
-        expect(response.ok(), `tail fixture category ${index} created`).toBeTruthy();
+        for (let retry = 0; response.status() === 429 && retry < 6; retry += 1) {
+          const retryAfter = Number(response.headers()['retry-after']);
+          const delayMs =
+            Number.isFinite(retryAfter) && retryAfter > 0
+              ? retryAfter * 1_000
+              : Math.min(30_000, 1_000 * 2 ** retry);
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          response = await request.post(`${BASE}/api/categories`, {
+            headers: authHeaders,
+            data: { name: categoryName },
+          });
+        }
+        expect(
+          response.status(),
+          `tail fixture category ${index} created (HTTP ${response.status()})`,
+        ).toBe(201);
         createdIds.push((await response.json()).category.id as string);
       }
 

@@ -117,6 +117,7 @@ test('print menu offers receipt, paper, PDF, and QR destinations', async ({
   await page.waitForURL(/\/(pos|orders)/);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).not.toBeNull();
   await page.goto(`${BASE}/pos`);
+  await enterPosWorkspace(page);
   await expect(page.getByRole('button', { name: /E2E Coffee/ })).toBeVisible();
   await page.getByRole('button', { name: 'More actions' }).click();
   await page.getByRole('menuitem', { name: 'Print Menu', exact: true }).click();
