@@ -3682,7 +3682,11 @@ test.describe('POS collapse rows and cart table control', () => {
       );
     } finally {
       for (const categoryId of createdIds) {
-        await request.delete(`${BASE}/api/categories/${categoryId}`, { headers: authHeaders });
+        await retryRateLimitedFixtureWrite(
+          () => request.delete(`${BASE}/api/categories/${categoryId}`, { headers: authHeaders }),
+          200,
+          `synthetic category ${categoryId} is removed`,
+        );
       }
     }
   });
