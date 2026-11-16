@@ -210,9 +210,8 @@ jobs:
     if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.kds == 'true' || needs.changes.outputs.db == 'true' }}
     runs-on: ubuntu-24.04
     # Each shard runs both the general browser suite and verified Tier 1/2 tests.
-    # Include install/build startup time and allow the slower shards to finish rather
-    # than converting a healthy long-running shard into a cancelled required check.
-    timeout-minutes: 30
+    # Include install/build startup time and allow the slowest complete browser shards to finish.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
