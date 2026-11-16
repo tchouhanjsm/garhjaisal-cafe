@@ -44,7 +44,7 @@ const addonGroupReadRateLimit = expressRateLimit({
 });
 const addonGroupWriteRateLimit = expressRateLimit({
   windowMs: 60 * 1000,
-  limit: 60,
+  limit: Number(process.env.FLO_ADDON_GROUP_WRITE_RATE_LIMIT_MAX) || 60,
   standardHeaders: true,
   legacyHeaders: false,
 });
