@@ -4469,7 +4469,7 @@ export default function POSPage() {
                         title="Collapse cart"
                         className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       >
-                        <ChevronRight size={16} />
+                        <ChevronRight size={16} className="rtl-flip" />
                       </button>
                     </div>
                     <div className="min-h-0 flex-1">
