@@ -54,10 +54,10 @@ export async function enterPosWorkspace(page: Page, tableName?: string): Promise
   const target = tableName
     ? cards.filter({ hasText: tableName }).first()
     : cards.filter({ hasText: /available/i }).first();
-  await expect(
-    target,
-    tableName ? `table ${tableName} must be on the board` : 'an available table must be on the board',
-  ).toBeVisible();
+  const targetDescription = tableName
+    ? `table ${tableName} must be on the board`
+    : 'an available table must be on the board';
+  await expect(target, targetDescription).toBeVisible();
   await target.click();
   await expect(productGrid).toBeVisible({ timeout: 15_000 });
 }
