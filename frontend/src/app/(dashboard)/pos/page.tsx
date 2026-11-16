@@ -4405,7 +4405,7 @@ export default function POSPage() {
                   <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-white">
                     {itemCount}
                   </span>
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={16} className="rtl-flip" />
                 </button>
               ) : (
                 <div className="flex h-full min-w-0 w-full">
