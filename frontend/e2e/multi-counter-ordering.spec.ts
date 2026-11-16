@@ -3,6 +3,7 @@ import path from 'path';
 import { test, expect, type Page } from '@playwright/test';
 import { E2E_BASE_URL as BASE } from './helpers/urls';
 import { E2E_PASSWORD, getE2eToken, setLanguage } from './helpers/test-auth';
+import { enterPosWorkspace } from './helpers/pos';
 
 test.use({ timezoneId: 'UTC' });
 
