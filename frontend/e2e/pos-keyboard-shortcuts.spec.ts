@@ -2,6 +2,7 @@ import { test, expect, request as playwrightRequest } from '@playwright/test';
 import path from 'node:path';
 import fs from 'node:fs';
 import { E2E_PASSWORD, getE2eToken, setLanguage } from './helpers/test-auth';
+import { enterPosWorkspace } from './helpers/pos';
 import { E2E_BASE_URL as BASE } from './helpers/urls';
 
 const SCREENSHOTS_DIR =
@@ -13,6 +14,7 @@ const managerHeaders = {
 
 let originalBusiness: Record<string, unknown> = {};
 let createdTableId: string | null = null;
+let createdTableName: string | null = null;
 
 test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
   test.beforeAll(async () => {
@@ -29,10 +31,11 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
     }
 
     // Ensure at least one table exists for F2 picker
+    createdTableName = `E2E-KB-${Date.now()}`;
     const tableResponse = await req
       .post(`${BASE}/api/tables`, {
         headers: managerHeaders,
-        data: { number: 'E2E-KB-T1', capacity: 4 },
+        data: { number: createdTableName, capacity: 4 },
       })
       .catch(() => null);
     if (tableResponse?.ok()) {
@@ -68,7 +71,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
     await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 20_000 });
     await setLanguage(page, 'en');
     await page.goto(`${BASE}/pos`);
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await enterPosWorkspace(page, createdTableName ?? undefined);
   });
 
   test('? opens keyboard shortcuts modal cheat sheet, Escape closes it', async ({ page }) => {
@@ -249,7 +252,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
     await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 20_000 });
     await setLanguage(page, 'en');
     await page.goto(`${BASE}/pos`);
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await enterPosWorkspace(page, createdTableName ?? undefined);
 
     await page.getByRole('button', { name: 'Takeaway' }).click();
     await page.getByTestId('pos-product-card').first().click();
@@ -657,7 +660,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
       await route.fulfill({ json: { counters: [] } });
     });
     await page.reload();
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await enterPosWorkspace(page, createdTableName ?? undefined);
 
     await page.getByTestId('pos-payment-queue-btn').click();
     const drawer = page.getByTestId('payment-queue-drawer');
@@ -805,7 +808,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
 
     await page.goto(`${BASE}/order-history-demo`);
     await page.waitForURL('**/pos**', { timeout: 10_000 });
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await enterPosWorkspace(page, createdTableName ?? undefined);
     await page.waitForLoadState('networkidle');
     expect(new URL(page.url()).pathname).toMatch(/^\/pos\/?$/);
 
