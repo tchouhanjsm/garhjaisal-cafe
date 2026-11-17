@@ -135,28 +135,23 @@ test.describe('@ci-tier2 operations admin - orders appearance and hold', () => {
     ).toBeTruthy();
 
     await page.goto(`${E2E_BASE_URL}/pos`);
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
 
-    await page
-      .getByRole('button', { name: /Dine in/i })
-      .first()
-      .click();
-    await page.waitForTimeout(600);
+    // Table-required POS now opens on the All Tables board. Dine in is the
+    // default order type, so select the fixture table directly instead of
+    // trying to use the cart controls hidden behind the board.
+    const tableBoard = page.getByTestId('pos-table-first-picker');
+    await expect(tableBoard).toBeVisible({ timeout: 20_000 });
+    const targetTable = tableBoard
+      .getByTestId('pos-table-card')
+      .filter({ hasText: number });
+    await expect(targetTable).toHaveCount(1);
+    await expect(targetTable).toBeVisible();
+    await targetTable.click();
+    await expect(tableBoard).toBeHidden();
 
-    const selectTable = page.getByRole('button', { name: /Select Table|Table: /i }).first();
-    await expect(selectTable, 'table service must offer the table picker').toBeVisible({
-      timeout: 15_000,
-    });
-    await selectTable.click();
-
-    const picker = page.locator('.fixed.inset-0').last();
-    await expect(picker).toBeVisible();
-    await picker
-      .getByRole('button')
-      .filter({ hasText: new RegExp(number) })
-      .first()
-      .click();
-    await page.waitForTimeout(800);
+    const selectedTable = page.getByTestId('pos-all-tables-btn');
+    await expect(selectedTable).toBeVisible();
+    await expect(selectedTable).toContainText(number);
 
     await addToCart(page, 'E2E Coffee', 2);
 

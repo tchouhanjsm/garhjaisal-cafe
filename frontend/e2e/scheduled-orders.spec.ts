@@ -188,7 +188,15 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await captureScreenshot(page, '00c-pos-short-screen-1024x600-delivery-cart.png');
     await page.setViewportSize({ width: 1280, height: 720 });
 
+    // The delivery cart was only a layout fixture. Switching order types must
+    // explicitly resolve the POS draft guard before the next scheduled order.
     await cartShell.getByRole('button', { name: 'Takeaway', exact: true }).click();
+    const orderTypeDraftGuard = page.getByTestId('pos-table-switch-dialog');
+    await expect(orderTypeDraftGuard).toBeVisible();
+    await expect(orderTypeDraftGuard).toContainText('1 unsent item');
+    await orderTypeDraftGuard.getByTestId('pos-table-switch-discard').click();
+    await expect(orderTypeDraftGuard).toHaveCount(0);
+    await expect(page.getByTestId('cart-item')).toHaveCount(0);
     await expect(cartShell.getByTestId('pos-schedule-section')).toBeVisible();
     await expect(cartShell.getByText('Send to kitchen at')).toBeVisible();
 
@@ -990,7 +998,6 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await navMenu.getByRole('link', { name: 'POS', exact: true }).click();
     await failedSettingRead;
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
-    await rebuildTakeawayCart(page);
 
     // Now let the scheduling-setting read recover (returns true)
     await navigateToOrdersWithDraftGuard(page);
@@ -1004,6 +1011,11 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await recoveredSettingRead;
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
     await expect(page.getByTestId('pos-scheduled-orders-btn')).toBeVisible();
+
+    // The guard on the earlier POS exit deliberately discarded the draft. Rebuild
+    // the identical cart and schedule so its fingerprint matches the durable
+    // unresolved attempt and the original idempotency key is replayed.
+    await rebuildTakeawayCart(page, firstScheduleWall);
 
     const firstReplayResPromise = page.waitForResponse(
       (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
