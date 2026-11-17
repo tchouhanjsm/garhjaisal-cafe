@@ -147,7 +147,7 @@ test('adding an item to an occupied table only prints the newly appended item on
     // The occupied table opens its existing-order summary. Enter the append
     // workflow explicitly before touching the catalogue beneath that modal.
     await enterPosWorkspace(page, tableNumber);
-    await page.getByRole('button', { name: 'Add items', exact: true }).click();
+    await page.getByRole('button', { name: /^Add Items$/i }).click();
     await expect(page.getByTestId('pos-append-existing-order-btn')).toBeVisible();
 
     // Append one new item to the selected order.
