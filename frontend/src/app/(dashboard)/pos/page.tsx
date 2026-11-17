@@ -9,7 +9,7 @@ import { useHeldOrdersStore } from '@/store/held-orders';
 import { usePosSettingsStore } from '@/store/pos-settings';
 import { useSidebar } from '@/components/ui/sidebar';
 import toast from 'react-hot-toast';
-import { ArrowLeft, ChevronLeft, ChevronRight, GripVertical, ShoppingCart, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, GripVertical, ShoppingCart, X } from 'lucide-react';
 import type {
   Addon,
   Category,
@@ -4456,24 +4456,16 @@ export default function POSPage() {
                   >
                     <GripVertical size={16} />
                   </div>
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
-                      <span className="text-xs font-semibold text-muted-foreground">
-                        Order cart
-                      </span>
-                      <button
-                        type="button"
-                        data-testid="pos-collapse-cart"
-                        onClick={() => setCartCollapsed(true)}
-                        aria-label="Collapse cart"
-                        title="Collapse cart"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      >
-                        <ChevronRight size={16} className="rtl-flip" />
-                      </button>
-                    </div>
+                  <div
+                    className="flex min-w-0 flex-1 flex-col"
+                    role="region"
+                    aria-label="Order cart"
+                  >
                     <div className="min-h-0 flex-1">
-                      <CartPanel {...cartPanelProps} />
+                      <CartPanel
+                        {...cartPanelProps}
+                        onCollapse={() => setCartCollapsed(true)}
+                      />
                     </div>
                   </div>
                 </div>
