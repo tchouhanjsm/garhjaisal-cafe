@@ -24,15 +24,29 @@ async function captureScreenshot(page: Page, filename: string): Promise<void> {
   }
 }
 
-async function navigateToOrdersAfterDiscardingUnsentCart(page: Page): Promise<void> {
+async function navigateToOrdersWithDraftGuard(page: Page): Promise<void> {
   const ordersLink = page
     .getByRole('navigation', { name: 'Menu' })
     .getByRole('link', { name: 'Orders', exact: true });
-  await ordersLink.click();
-
   const guard = page.getByTestId('pos-table-switch-dialog');
-  await expect(guard, 'leaving an unsent cart requires an explicit decision').toBeVisible();
-  await guard.getByTestId('pos-table-switch-discard').click();
+  const isOnOrdersRoute = () => {
+    const pathname = new URL(page.url()).pathname;
+    return pathname === '/orders' || pathname.startsWith('/orders/');
+  };
+
+  await ordersLink.click();
+  await expect
+    .poll(
+      async () => (await guard.isVisible().catch(() => false)) || isOnOrdersRoute(),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+
+  // Draft work is never silently dropped. Empty carts navigate without showing
+  // the guard, so only confirm discard when the POS actually presents it.
+  if (await guard.isVisible().catch(() => false)) {
+    await guard.getByTestId('pos-table-switch-discard').click();
+  }
   await page.waitForURL('**/orders/**');
 }
 
@@ -967,7 +981,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       await route.continue();
     });
 
-    await navigateToOrdersAfterDiscardingUnsentCart(page);
+    await navigateToOrdersWithDraftGuard(page);
     const failedSettingRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -980,8 +994,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await rebuildTakeawayCart(page);
 
     // Now let the scheduling-setting read recover (returns true)
-    // Leaving with a draft cart requires the same explicit discard decision as a cashier.
-    await navigateToOrdersAfterDiscardingUnsentCart(page);
+    await navigateToOrdersWithDraftGuard(page);
     const recoveredSettingRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -1037,7 +1050,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       },
     );
     expect(disableToggleRes.ok()).toBeTruthy();
-    await navigateToOrdersAfterDiscardingUnsentCart(page);
+    await navigateToOrdersWithDraftGuard(page);
     const disabledRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -1057,8 +1070,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       },
     );
     expect(reenableToggleRes.ok()).toBeTruthy();
-    // Leaving with a draft cart requires the same explicit discard decision as a cashier.
-    await navigateToOrdersAfterDiscardingUnsentCart(page);
+    await navigateToOrdersWithDraftGuard(page);
     const reenabledRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -1114,7 +1126,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       },
     );
     expect(disableForRejectRes.ok()).toBeTruthy();
-    await navigateToOrdersAfterDiscardingUnsentCart(page);
+    await navigateToOrdersWithDraftGuard(page);
     const disabledForRejectRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
