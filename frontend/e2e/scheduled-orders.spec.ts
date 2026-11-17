@@ -235,17 +235,12 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await captureScreenshot(page, '01-pos-send-to-kitchen-at.png');
     await expect(page.getByTestId('cart-item')).toHaveCount(1);
     const placeScheduledOrderButton = cartShell.getByRole('button', { name: 'Place Order' });
-    await expect(
-      placeScheduledOrderButton,
-      'valid scheduled order is eligible for checkout',
-    ).toBeEnabled();
+    await expect(placeScheduledOrderButton).toBeEnabled();
 
     // 2. Place prepaid scheduled takeaway order -> pay without early release!
     const createOrderPromise = page.waitForResponse(
-      (res) => {
-        const url = new URL(res.url());
-        return res.request().method() === 'POST' && url.pathname === '/api/orders';
-      },
+      (res) =>
+        res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
       { timeout: 30_000 },
     );
 
@@ -254,13 +249,9 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await page.getByRole('button', { name: 'Cash', exact: true }).click();
     await expect(page.getByRole('button', { name: /Confirm Payment/ })).toBeEnabled();
     const paymentPromise = page.waitForResponse(
-      (res) => {
-        const url = new URL(res.url());
-        return (
-          res.request().method() === 'POST' &&
-          /^\/api\/bills\/[^/]+\/payments$/.test(url.pathname)
-        );
-      },
+      (res) =>
+        res.request().method() === 'POST' &&
+        /^\/api\/bills\/[^/]+\/payments$/.test(new URL(res.url()).pathname),
       { timeout: 30_000 },
     );
     await page.getByRole('button', { name: /Confirm Payment/ }).click();
