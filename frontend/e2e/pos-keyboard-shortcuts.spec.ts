@@ -11,6 +11,9 @@ const SCREENSHOTS_DIR =
 const managerHeaders = {
   Authorization: `Bearer ${getE2eToken('e2e-manager', 'manager@flo.local', 'manager')}`,
 };
+const fixtureHeaders = {
+  Authorization: `Bearer ${getE2eToken()}`,
+};
 
 let originalBusiness: Record<string, unknown> = {};
 let createdTableId: string | null = null;
@@ -20,45 +23,53 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
   test.beforeAll(async () => {
     fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-    const req = await playwrightRequest.newContext();
-    const res = await req.get(`${BASE}/api/settings/business`, { headers: managerHeaders });
-    if (res.ok()) {
+    const req = await playwrightRequest.newContext({ timeout: 15_000 });
+    try {
+      const res = await req.get(`${BASE}/api/settings/business`, { headers: fixtureHeaders });
+      expect(res.ok(), 'read business settings before keyboard fixtures').toBeTruthy();
       originalBusiness = await res.json();
-      await req.put(`${BASE}/api/settings/business`, {
-        headers: managerHeaders,
-        data: { ...originalBusiness, tables_required: true, billing_type: 'prepaid' },
-      });
-    }
 
-    // Ensure at least one table exists for F2 picker
-    createdTableName = `E2E-KB-${Date.now()}`;
-    const tableResponse = await req
-      .post(`${BASE}/api/tables`, {
-        headers: managerHeaders,
+      const businessUpdate = await req.put(`${BASE}/api/settings/business`, {
+        headers: fixtureHeaders,
+        data: { tables_required: true, billing_type: 'prepaid' },
+      });
+      expect(businessUpdate.ok(), 'enable table-first POS for keyboard fixtures').toBeTruthy();
+
+      createdTableName = `E2E-KB-${Date.now()}`;
+      const tableResponse = await req.post(`${BASE}/api/tables`, {
+        headers: fixtureHeaders,
         data: { number: createdTableName, capacity: 4 },
-      })
-      .catch(() => null);
-    if (tableResponse?.ok()) {
+      });
+      expect(tableResponse.status(), 'create the keyboard table fixture').toBe(201);
       const { table } = await tableResponse.json();
-      createdTableId = table.id;
+      createdTableId = String(table.id);
+    } finally {
+      await req.dispose();
     }
-    await req.dispose();
   });
 
   test.afterAll(async () => {
-    if (Object.keys(originalBusiness).length > 0 || createdTableId) {
-      const req = await playwrightRequest.newContext();
-      if (Object.keys(originalBusiness).length > 0) {
-        await req.put(`${BASE}/api/settings/business`, {
-          headers: managerHeaders,
-          data: originalBusiness,
-        });
-      }
+    if (Object.keys(originalBusiness).length === 0 && !createdTableId) return;
+    const req = await playwrightRequest.newContext({ timeout: 15_000 });
+    try {
       if (createdTableId) {
-        await req.post(`${BASE}/api/tables/${createdTableId}/deactivate`, {
-          headers: managerHeaders,
-        });
+        const deactivateResponse = await req.post(
+          `${BASE}/api/tables/${createdTableId}/deactivate`,
+          { headers: fixtureHeaders },
+        );
+        expect(deactivateResponse.ok(), 'deactivate the keyboard table fixture').toBeTruthy();
       }
+      if (Object.keys(originalBusiness).length > 0) {
+        const restoreResponse = await req.put(`${BASE}/api/settings/business`, {
+          headers: fixtureHeaders,
+          data: {
+            tables_required: originalBusiness.tables_required,
+            billing_type: originalBusiness.billing_type,
+          },
+        });
+        expect(restoreResponse.ok(), 'restore keyboard fixture business settings').toBeTruthy();
+      }
+    } finally {
       await req.dispose();
     }
   });
