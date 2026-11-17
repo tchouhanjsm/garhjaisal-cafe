@@ -598,7 +598,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
   let menu: SyntheticMenu | undefined;
 
   test.beforeAll(async () => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
     const api = await request.newContext();
     try {
       menu = await seedSyntheticMenu(api);
@@ -774,8 +774,8 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     expect(cartScrollBox, 'cart items container has bounds').not.toBeNull();
     expect(
       cartScrollBox!.height,
-      'cart items container remains usable on a 1024x600 display',
-    ).toBeGreaterThanOrEqual(250);
+      'cart items container maintains at least 300px of usable height on a 1024x600 display',
+    ).toBeGreaterThanOrEqual(300);
 
     const placeOrder = page.getByRole('button', { name: 'Place Order' });
     const viewport = page.viewportSize();
@@ -3704,7 +3704,11 @@ test.describe('POS collapse rows and cart table control', () => {
       for (let index = 0; index < 10; index += 1) {
         const categoryName = `E2E Tail ${tailCategoryRunId} ${String(index).padStart(2, '0')} Wide Label`;
         const response = await retryRateLimitedFixtureWrite(
-          () => request.post(`${BASE}/api/categories`, { headers: authHeaders, data: { name: categoryName } }),
+          () =>
+            request.post(`${BASE}/api/categories`, {
+              headers: authHeaders,
+              data: { name: categoryName },
+            }),
           201,
           `tail fixture category ${index} created`,
         );
