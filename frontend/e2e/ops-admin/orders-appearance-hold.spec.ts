@@ -141,9 +141,7 @@ test.describe('@ci-tier2 operations admin - orders appearance and hold', () => {
     // trying to use the cart controls hidden behind the board.
     const tableBoard = page.getByTestId('pos-table-first-picker');
     await expect(tableBoard).toBeVisible({ timeout: 20_000 });
-    const targetTable = tableBoard
-      .getByTestId('pos-table-card')
-      .filter({ hasText: number });
+    const targetTable = tableBoard.getByTestId('pos-table-card').filter({ hasText: number });
     await expect(targetTable).toHaveCount(1);
     await expect(targetTable).toBeVisible();
     await targetTable.click();
