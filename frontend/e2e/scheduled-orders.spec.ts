@@ -29,17 +29,16 @@ async function navigateToOrdersWithDraftGuard(page: Page): Promise<void> {
     .getByRole('navigation', { name: 'Menu' })
     .getByRole('link', { name: 'Orders', exact: true });
   const guard = page.getByTestId('pos-table-switch-dialog');
-  const isOnOrdersRoute = () => {
-    const pathname = new URL(page.url()).pathname;
-    return pathname === '/orders' || pathname.startsWith('/orders/');
-  };
+  const isOrdersPath = (pathname: string) =>
+    pathname === '/orders' || pathname.startsWith('/orders/');
+  const isOnOrdersRoute = () => isOrdersPath(new URL(page.url()).pathname);
 
   await ordersLink.click();
   await expect
-    .poll(
-      async () => (await guard.isVisible().catch(() => false)) || isOnOrdersRoute(),
-      { timeout: 15_000 },
-    )
+    .poll(async () => {
+      const guardVisible = await guard.isVisible().catch(() => false);
+      return guardVisible || isOnOrdersRoute();
+    })
     .toBe(true);
 
   // Draft work is never silently dropped. Empty carts navigate without showing
@@ -47,7 +46,7 @@ async function navigateToOrdersWithDraftGuard(page: Page): Promise<void> {
   if (await guard.isVisible().catch(() => false)) {
     await guard.getByTestId('pos-table-switch-discard').click();
   }
-  await page.waitForURL('**/orders/**');
+  await page.waitForURL((url) => isOrdersPath(url.pathname), { timeout: 15_000 });
 }
 
 async function rebuildTakeawayCart(page: Page, scheduledFor?: string): Promise<void> {
