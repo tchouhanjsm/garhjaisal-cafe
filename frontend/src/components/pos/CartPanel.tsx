@@ -61,6 +61,7 @@ interface Props {
   storeTimezone?: string;
   onCancelExistingOrderMode?: () => void;
   onRequestOrderTypeChange?: (type: CartOrderType) => void;
+  onCollapse?: () => void;
 }
 
 const orderTypeIcons = {
@@ -189,6 +190,7 @@ export default function CartPanel({
   storeTimezone,
   onCancelExistingOrderMode,
   onRequestOrderTypeChange,
+  onCollapse,
 }: Props) {
   const cart = useCartStore();
   const heldOrders = useHeldOrdersStore();
@@ -386,40 +388,54 @@ export default function CartPanel({
             </div>
           )}
 
-        <div className="flex gap-0.5 h-7 p-0.5 rounded-lg bg-muted">
-          {(['dine_in', 'takeaway', 'delivery', 'online'] as const)
-            .filter((type) => isRestaurant || type !== 'dine_in')
-            .map((type) => {
-              const Icon = orderTypeIcons[type];
-              const showIcon = type !== 'dine_in' && type !== 'online';
-              const label =
-                type === 'dine_in'
-                  ? t('orderTypeDineIn')
-                  : type === 'takeaway'
-                    ? t('orderTypeTakeaway')
-                    : type === 'delivery'
-                      ? t('orderTypeDelivery')
-                      : t('orderTypeOnline');
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  disabled={Boolean(existingOrder && existingOrder.type !== type)}
-                  onClick={() => {
-                    if (onRequestOrderTypeChange) onRequestOrderTypeChange(type);
-                    else cart.setOrderType(type);
-                  }}
-                  className={`touch-target h-6 min-h-6 flex-1 gap-1 px-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showIcon ? '' : 'whitespace-nowrap'} ${
-                    cart.orderType === type
-                      ? 'bg-card text-brand shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {showIcon && <Icon size={13} />}
-                  {label}
-                </button>
-              );
-            })}
+        <div className="flex items-center gap-1">
+          <div className="flex min-w-0 flex-1 gap-0.5 h-7 p-0.5 rounded-lg bg-muted">
+            {(['dine_in', 'takeaway', 'delivery', 'online'] as const)
+              .filter((type) => isRestaurant || type !== 'dine_in')
+              .map((type) => {
+                const Icon = orderTypeIcons[type];
+                const showIcon = !onCollapse && type !== 'dine_in' && type !== 'online';
+                const label =
+                  type === 'dine_in'
+                    ? t('orderTypeDineIn')
+                    : type === 'takeaway'
+                      ? t('orderTypeTakeaway')
+                      : type === 'delivery'
+                        ? t('orderTypeDelivery')
+                        : t('orderTypeOnline');
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    disabled={Boolean(existingOrder && existingOrder.type !== type)}
+                    onClick={() => {
+                      if (onRequestOrderTypeChange) onRequestOrderTypeChange(type);
+                      else cart.setOrderType(type);
+                    }}
+                    className={`touch-target h-6 min-h-6 min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden px-1 rounded-md text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                      cart.orderType === type
+                        ? 'bg-card text-brand shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {showIcon && <Icon size={13} className="shrink-0" />}
+                    <span className="truncate">{label}</span>
+                  </button>
+                );
+              })}
+          </div>
+          {onCollapse && (
+            <button
+              type="button"
+              data-testid="pos-collapse-cart"
+              aria-label="Collapse cart"
+              title="Collapse cart"
+              onClick={onCollapse}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ChevronRight size={16} className="rtl-flip" />
+            </button>
+          )}
         </div>
 
         {!existingOrder && cart.orderType === 'dine_in' && (
