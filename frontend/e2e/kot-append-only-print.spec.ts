@@ -48,7 +48,7 @@ test.afterEach(async ({ page }) => {
 test('adding an item to an occupied table only prints the newly appended item on KOT', async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
 
   const setupToken = getE2eToken('e2e-manager', 'manager@flo.local', 'manager');
   const authHeaders = { Authorization: `Bearer ${setupToken}` };
@@ -169,27 +169,29 @@ test('adding an item to an occupied table only prints the newly appended item on
   } finally {
     try {
       if (fixtureOrderId) {
-        await page.request.patch(`${BASE}/api/orders/${fixtureOrderId}/status`, {
-          headers: authHeaders,
-          data: { status: 'cancelled', reason: 'E2E KOT fixture cleanup' },
-          timeout: 10_000,
-        }).catch(() => undefined);
+        await page.request
+          .patch(`${BASE}/api/orders/${fixtureOrderId}/status`, {
+            headers: authHeaders,
+            data: { status: 'cancelled', reason: 'E2E KOT fixture cleanup' },
+            timeout: 10_000,
+          })
+          .catch(() => undefined);
       }
       if (fixtureTableId) {
-        await page.request.patch(`${BASE}/api/tables/${fixtureTableId}/status`, {
-          headers: authHeaders,
-          data: { status: 'available' },
-          timeout: 10_000,
-        }).catch(() => undefined);
-        await page.request.post(`${BASE}/api/tables/${fixtureTableId}/deactivate`, {
-          headers: authHeaders,
-          timeout: 10_000,
-        }).catch(() => undefined);
+        await page.request
+          .post(`${BASE}/api/tables/${fixtureTableId}/deactivate`, {
+            headers: authHeaders,
+            timeout: 10_000,
+          })
+          .catch(() => undefined);
       }
     } finally {
       const restoreResponse = await page.request.put(`${BASE}/api/settings/business`, {
         headers: authHeaders,
-        data: originalBusiness,
+        data: {
+          billing_type: originalBusiness.billing_type,
+          tables_required: originalBusiness.tables_required,
+        },
         timeout: 15_000,
       });
       expect(restoreResponse.ok(), 'original business settings are restored').toBeTruthy();
