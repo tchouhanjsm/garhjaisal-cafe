@@ -8,6 +8,7 @@ import {
   setOrdersLayout,
 } from './helpers/test-auth';
 import { elementTop, expectPinned, innermostScrollableAncestor } from './helpers/layout';
+import { enterPosWorkspace } from './helpers/pos';
 
 /**
  * Orders master/detail split view (#639) — DEFAULT layout coverage.
@@ -717,22 +718,8 @@ test.describe('a held cart resumed from another order type keeps its charge sele
     await login(page);
     await page.goto(`${BASE}/pos`);
 
-    // Dine-in on the fixture table, with the fixture fees offered on the cart.
-    await page
-      .getByRole('button', { name: /Dine in/i })
-      .first()
-      .click();
-    await page
-      .getByRole('button', { name: /Select Table|Table: /i })
-      .first()
-      .click();
-    const picker = page.locator('.fixed.inset-0').last();
-    await expect(picker).toBeVisible();
-    await picker
-      .getByRole('button')
-      .filter({ hasText: new RegExp(table.number) })
-      .first()
-      .click();
+    // Dine-in on the fixture table, selected from the dedicated All Tables board.
+    await enterPosWorkspace(page, table.number);
 
     // E2E Coffee is a simple product, so the card tap lands it on the cart.
     await page.getByTestId('pos-product-card').filter({ hasText: 'E2E Coffee' }).first().click();
@@ -750,6 +737,13 @@ test.describe('a held cart resumed from another order type keeps its charge sele
     // Park the cart on the held table, then start a fresh cart on another type.
     await page.getByRole('button', { name: 'Hold', exact: true }).click();
     await expect(page.getByText(`Order held for ${table.number}`)).toBeVisible({ timeout: 15_000 });
+
+    // Holding clears the active cart and returns table service to the All
+    // Tables board. Dismiss that board before choosing a non-table order type.
+    const tableBoard = page.getByTestId('pos-table-first-picker');
+    await expect(tableBoard).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.press('Escape');
+    await expect(tableBoard).toBeHidden();
     await page.getByRole('button', { name: 'Takeaway', exact: true }).click();
 
     // Resume from Orders over client-side navigation, so the in-memory

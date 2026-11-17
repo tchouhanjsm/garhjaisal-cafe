@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { LayoutGrid, List, Search, SlidersHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Category, Product, ProductVariant } from '@/lib/types';
 import { useCartStore } from '@/store/cart';
+import { useAuthStore } from '@/store/auth';
 import { usePosSettingsStore } from '@/store/pos-settings';
-import { nameToColor } from '@/lib/image-utils';
 import TagBadge from './DietaryBadge';
 import { productNeedsCustomizer } from '@/lib/product-variants';
 import api from '@/lib/api';
@@ -281,6 +281,64 @@ function getCategoryColorClasses(color: string | null | undefined) {
   return CATEGORY_COLORS[color.toLowerCase()] || null;
 }
 
+type ProductViewMode = 'compact' | 'grid' | 'list';
+
+const productViewPreferenceListeners = new Map<string, Set<() => void>>();
+const inMemoryProductViewPreferences = new Map<string, ProductViewMode>();
+
+function readProductViewPreference(key: string): ProductViewMode {
+  const inMemoryPreference = inMemoryProductViewPreferences.get(key);
+  if (inMemoryPreference) return inMemoryPreference;
+  if (typeof window === 'undefined') return 'compact';
+
+  try {
+    const saved = window.localStorage.getItem(key);
+    if (saved === 'compact' || saved === 'grid' || saved === 'list') return saved;
+  } catch {
+    // Use the in-memory default when browser storage is unavailable.
+  }
+  return 'compact';
+}
+
+function subscribeToProductViewPreference(key: string, listener: () => void): () => void {
+  if (typeof window === 'undefined') return () => undefined;
+
+  let listeners = productViewPreferenceListeners.get(key);
+  if (!listeners) {
+    listeners = new Set();
+    productViewPreferenceListeners.set(key, listeners);
+  }
+  listeners.add(listener);
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key !== key && event.key !== null) return;
+    inMemoryProductViewPreferences.delete(key);
+    listener();
+  };
+  window.addEventListener('storage', handleStorage);
+
+  return () => {
+    window.removeEventListener('storage', handleStorage);
+    const currentListeners = productViewPreferenceListeners.get(key);
+    currentListeners?.delete(listener);
+    if (currentListeners?.size === 0) productViewPreferenceListeners.delete(key);
+  };
+}
+
+function saveProductViewPreference(key: string, mode: ProductViewMode): void {
+  inMemoryProductViewPreferences.set(key, mode);
+  try {
+    if (typeof window !== 'undefined') window.localStorage.setItem(key, mode);
+  } catch {
+    // A display preference is optional and must never block product selection.
+  }
+  productViewPreferenceListeners.get(key)?.forEach((listener) => listener());
+}
+
+function getDefaultProductViewPreference(): ProductViewMode {
+  return 'compact';
+}
+
 interface Props {
   categories: Category[];
   products: Product[];
@@ -303,6 +361,8 @@ interface Props {
   disabled?: boolean;
   /** Cashier-POS opt-in: measured collapsed category row with a toggle. */
   collapseCategories?: boolean;
+  /** Enables the cashier-only compact, image-grid, and list catalogue modes. */
+  displayModes?: boolean;
   categorySort?: PosCategorySort;
   itemSort?: PosItemSort;
 }
@@ -325,11 +385,31 @@ export default function ProductGrid({
   searchPlaceholder,
   disabled = false,
   collapseCategories = false,
+  displayModes = false,
   categorySort = 'saved',
   itemSort = 'saved',
 }: Props) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cart = useCartStore();
+  const { user, currentTenant } = useAuthStore();
+  const viewPreferenceKey = `flo.pos.catalog.view:${currentTenant?.id ?? 'default'}:${user?.id ?? 'local'}`;
+  const subscribeViewPreference = useCallback(
+    (listener: () => void) => subscribeToProductViewPreference(viewPreferenceKey, listener),
+    [viewPreferenceKey],
+  );
+  const getViewPreference = useCallback(
+    () => readProductViewPreference(viewPreferenceKey),
+    [viewPreferenceKey],
+  );
+  const viewMode = useSyncExternalStore(
+    subscribeViewPreference,
+    getViewPreference,
+    getDefaultProductViewPreference,
+  );
+  const setViewMode = useCallback(
+    (mode: ProductViewMode) => saveProductViewPreference(viewPreferenceKey, mode),
+    [viewPreferenceKey],
+  );
   const { showProductImages: showProductImagesSetting } = usePosSettingsStore();
   const showProductImages = showImages ?? showProductImagesSetting;
   const t = useTranslations('pos');
@@ -355,6 +435,7 @@ export default function ProductGrid({
     return quantities;
   }, [cart.items]);
   const cartQuantities = cartQuantitiesOverride ?? cartStoreQuantities;
+  const catalogMode: ProductViewMode = displayModes ? viewMode : 'grid';
 
   const parsedSearch = useMemo(() => parseQuantitySearch(search), [search]);
   const activeQuery = parsedSearch ? parsedSearch.query : search;
@@ -398,7 +479,18 @@ export default function ProductGrid({
     const matchCat =
       filterCategoryId === null ||
       (p.category_id != null && String(p.category_id) === filterCategoryId);
-    const matchSearch = !activeQuery || p.name.toLowerCase().includes(activeQuery.toLowerCase());
+    const query = activeQuery.trim().toLocaleLowerCase();
+    const searchableValues = [
+      p.name,
+      p.sku,
+      p.barcode,
+      ...(p.variants ?? []).flatMap((variant) => [variant.name, variant.sku, variant.barcode]),
+    ];
+    const matchSearch =
+      !query ||
+      searchableValues.some(
+        (value) => typeof value === 'string' && value.toLocaleLowerCase().includes(query),
+      );
     return matchCat && matchSearch;
   });
 
@@ -408,68 +500,101 @@ export default function ProductGrid({
       className="flex-1 flex flex-col min-w-0 h-full overflow-hidden"
     >
       <div className="shrink-0 mb-3">
-        <div className="relative mb-2">
-          <Search
-            size={16}
-            className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-          />
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (
-                e.nativeEvent?.isComposing ||
-                (e as { isComposing?: boolean }).isComposing ||
-                e.keyCode === 229
-              ) {
-                return;
-              }
-              if (e.key !== 'Enter' || disabled) return;
-              // Typed or pasted barcode, or multiplier search (e.g. 3*latte)
-              const trimmed = search.trim();
-              if (!trimmed) return;
-              const rawMatch = resolveScannedProduct(trimmed, products);
-              const parsedQty = rawMatch ? null : parseQuantitySearch(trimmed);
-              const targetCode = parsedQty ? parsedQty.query : trimmed;
-              if (!targetCode) return;
-              const quantityToAdd = parsedQty ? parsedQty.quantity : 1;
-              const match = rawMatch ?? resolveScannedProduct(targetCode, products);
-              if (match) {
-                if (match.scaleBarcode) {
-                  const matchedQuantity = match.quantity * quantityToAdd;
-                  if (!validateSelectionQuantity(match.product, matchedQuantity)) return;
-                  onScaledProduct(match.product, matchedQuantity);
-                } else if (match.variant) {
-                  if (!validateSelectionQuantity(match.product, quantityToAdd)) return;
-                  onScannedVariant(match.product, match.variant, quantityToAdd);
-                } else {
-                  if (!validateSelectionQuantity(match.product, quantityToAdd)) return;
-                  onProductClick(match.product, quantityToAdd);
+        <div className="mb-2 flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              size={16}
+              className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (
+                  e.nativeEvent?.isComposing ||
+                  (e as { isComposing?: boolean }).isComposing ||
+                  e.keyCode === 229
+                ) {
+                  return;
                 }
-                setSearch('');
-                return;
-              }
+                if (e.key !== 'Enter' || disabled) return;
+                const trimmed = search.trim();
+                if (!trimmed) return;
+                const rawMatch = resolveScannedProduct(trimmed, products);
+                const parsedQty = rawMatch ? null : parseQuantitySearch(trimmed);
+                const targetCode = parsedQty ? parsedQty.query : trimmed;
+                if (!targetCode) return;
+                const quantityToAdd = parsedQty ? parsedQty.quantity : 1;
+                const match = rawMatch ?? resolveScannedProduct(targetCode, products);
+                if (match) {
+                  if (match.scaleBarcode) {
+                    const matchedQuantity = match.quantity * quantityToAdd;
+                    if (!validateSelectionQuantity(match.product, matchedQuantity)) return;
+                    onScaledProduct(match.product, matchedQuantity);
+                  } else if (match.variant) {
+                    if (!validateSelectionQuantity(match.product, quantityToAdd)) return;
+                    onScannedVariant(match.product, match.variant, quantityToAdd);
+                  } else {
+                    if (!validateSelectionQuantity(match.product, quantityToAdd)) return;
+                    onProductClick(match.product, quantityToAdd);
+                  }
+                  setSearch('');
+                  return;
+                }
 
-              const matchedProduct =
-                filtered.find((p) => p.name.toLowerCase() === targetCode.toLowerCase()) ||
-                (filtered.length === 1 ? filtered[0] : null);
+                const matchedProduct =
+                  filtered.find((p) => p.name.toLowerCase() === targetCode.toLowerCase()) ||
+                  (filtered.length === 1 ? filtered[0] : null);
 
-              if (matchedProduct) {
-                if (!validateSelectionQuantity(matchedProduct, quantityToAdd)) return;
-                onProductClick(matchedProduct, quantityToAdd);
-                setSearch('');
-              }
-            }}
-            placeholder={searchPlaceholder ?? `${t('searchProducts')} [/]`}
-            data-testid="pos-product-search"
-            className="w-full ps-9 pe-8 py-2 bg-card border border-border rounded-xl focus:border-brand outline-none transition-colors text-sm"
-          />
-          {!search && (
-            <kbd className="hidden sm:inline-flex absolute end-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded border border-border bg-muted text-[10px] font-mono text-muted-foreground pointer-events-none">
-              /
-            </kbd>
+                if (matchedProduct) {
+                  if (!validateSelectionQuantity(matchedProduct, quantityToAdd)) return;
+                  onProductClick(matchedProduct, quantityToAdd);
+                  setSearch('');
+                }
+              }}
+              placeholder={searchPlaceholder ?? `${t('searchProducts')} [/]`}
+              data-testid="pos-product-search"
+              className="w-full rounded-xl border border-border bg-card py-2 ps-9 pe-8 text-sm outline-none transition-colors focus:border-brand"
+            />
+            {!search && (
+              <kbd className="pointer-events-none absolute end-3 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-flex">
+                /
+              </kbd>
+            )}
+          </div>
+          {displayModes && (
+            <div
+              className="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-border bg-muted/50 p-0.5"
+              role="group"
+              aria-label="Product display mode"
+              data-testid="pos-product-view-modes"
+            >
+              {(
+                [
+                  { id: 'compact', label: 'Compact', Icon: SlidersHorizontal },
+                  { id: 'grid', label: 'Images', Icon: LayoutGrid },
+                  { id: 'list', label: 'List', Icon: List },
+                ] as const
+              ).map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={catalogMode === id}
+                  title={label}
+                  onClick={() => setViewMode(id)}
+                  className={`inline-flex h-8 w-9 items-center justify-center rounded-md transition-colors ${
+                    catalogMode === id
+                      ? 'bg-card text-brand shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon size={16} />
+                </button>
+              ))}
+            </div>
           )}
         </div>
         <CategoryRow
@@ -516,7 +641,8 @@ export default function ProductGrid({
         className="flex-1 min-h-0 overflow-y-auto pb-20 md:pb-0"
       >
         <div
-          className={`grid gap-3 ${gridClassName ?? (sidebarOpen ? 'grid-cols-4' : 'grid-cols-5')}`}
+          className={`grid gap-2.5 ${gridClassName ?? (catalogMode === 'list' ? 'grid-cols-1' : catalogMode === 'compact' ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : sidebarOpen ? 'grid-cols-4' : 'grid-cols-5')}`}
+          data-testid={`pos-product-catalog-${catalogMode}`}
         >
           {filtered.map((product) => {
             const inCartQty = cartQuantities.get(product.id) || 0;
@@ -533,7 +659,13 @@ export default function ProductGrid({
                   if (!validateSelectionQuantity(product, quantity)) return;
                   onProductClick(product, quantity);
                 }}
-                className="min-h-36 bg-card rounded-xl p-2.5 border border-border hover:border-brand/40 active:border-brand active:bg-muted/40 hover:shadow-md transition-all text-start relative cursor-pointer overflow-hidden touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`relative flex cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-start transition-all hover:border-brand/40 hover:shadow-sm active:border-brand active:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation ${
+                  catalogMode === 'grid'
+                    ? 'min-h-36 flex-col p-2.5'
+                    : catalogMode === 'compact'
+                      ? 'min-h-[84px] items-center gap-2.5 p-2'
+                      : 'min-h-16 items-center gap-3 px-2.5 py-2'
+                }`}
               >
                 {!!product.track_inventory && (
                   <>
@@ -554,14 +686,29 @@ export default function ProductGrid({
                   </span>
                 )}
 
-                {showProductImages && (
-                  <div className="w-full aspect-square rounded-lg mb-3 relative overflow-hidden">
+                {catalogMode !== 'grid' && (
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
+                    <span className="text-sm font-bold text-muted-foreground">
+                      {product.name.substring(0, 2).toUpperCase()}
+                    </span>
+                    {showProductImages && product.has_image && (
+                      <img
+                        src={`${api.defaults.baseURL}/products/${product.id}/image?t=${product.updated_at ? parseDbTimestamp(product.updated_at).getTime() : 0}`}
+                        alt=""
+                        className="absolute inset-0 h-full w-full rounded-lg object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {showProductImages && catalogMode === 'grid' && (
+                  <div className="relative mb-2.5 aspect-square w-full overflow-hidden rounded-lg">
                     {/* Always-visible background tile — no flash when image loads */}
-                    <div
-                      className="absolute inset-0 flex items-center justify-center"
-                      style={{ backgroundColor: nameToColor(product.name) }}
-                    >
-                      <span className="text-2xl font-bold text-white/80">
+                    <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                      <span className="text-2xl font-bold text-muted-foreground">
                         {product.name.substring(0, 2).toUpperCase()}
                       </span>
                     </div>
@@ -586,24 +733,32 @@ export default function ProductGrid({
                   </div>
                 )}
 
-                <h3 className="font-medium text-foreground text-sm line-clamp-2 leading-snug">
-                  {product.name}
-                </h3>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-brand font-bold">{fmt(Number(product.price))}</p>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {!showProductImages && product.tags && product.tags.length > 0 && (
-                      <TagBadge tag={product.tags[0]} />
-                    )}
-                    {productNeedsCustomizer(product) && (
-                      <span
-                        className="touch-target -me-2 -my-2 rounded-lg text-muted-foreground"
-                        title={t('customisable')}
-                        aria-label={t('customisable')}
-                      >
-                        <SlidersHorizontal size={16} />
-                      </span>
-                    )}
+                <div className={catalogMode === 'grid' ? 'min-w-0 w-full' : 'min-w-0 flex-1'}>
+                  <h3
+                    className={`font-medium leading-snug text-foreground ${
+                      catalogMode === 'grid'
+                        ? 'line-clamp-2 text-sm'
+                        : 'line-clamp-2 text-xs sm:text-sm'
+                    }`}
+                  >
+                    {product.name}
+                  </h3>
+                  <div className="mt-1 flex items-center justify-between gap-1">
+                    <p className="font-bold text-brand">{fmt(Number(product.price))}</p>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {(catalogMode !== 'grid' || !showProductImages) &&
+                        product.tags &&
+                        product.tags.length > 0 && <TagBadge tag={product.tags[0]} />}
+                      {productNeedsCustomizer(product) && (
+                        <span
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground"
+                          title={t('customisable')}
+                          aria-label={t('customisable')}
+                        >
+                          <SlidersHorizontal size={14} />
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </button>

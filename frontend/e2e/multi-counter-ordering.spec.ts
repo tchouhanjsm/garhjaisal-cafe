@@ -3,6 +3,7 @@ import path from 'path';
 import { test, expect, type Page } from '@playwright/test';
 import { E2E_BASE_URL as BASE } from './helpers/urls';
 import { E2E_PASSWORD, getE2eToken, setLanguage } from './helpers/test-auth';
+import { enterPosWorkspace } from './helpers/pos';
 
 test.use({ timezoneId: 'UTC' });
 
@@ -109,13 +110,14 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
       const businessSettings = await businessRes.json();
       previousBillingType = businessSettings.billing_type;
       previousTablesRequired = businessSettings.tables_required;
-      if (previousBillingType !== 'prepaid') {
-        const prepaidRes = await request.put(`${BASE}/api/settings/business`, {
-          headers: ownerHeaders,
-          data: { billing_type: 'prepaid', tables_required: previousTablesRequired },
-        });
-        expect(prepaidRes.ok(), 'set prepaid billing for multi-counter test').toBeTruthy();
-      }
+      const prepaidRes = await request.put(`${BASE}/api/settings/business`, {
+        headers: ownerHeaders,
+        data: { billing_type: 'prepaid', tables_required: false },
+      });
+      expect(
+        prepaidRes.ok(),
+        'set prepaid billing and disable table-required startup',
+      ).toBeTruthy();
 
       const settingRes = await request.put(`${BASE}/api/settings/multi_counter_enabled`, {
         headers: ownerHeaders,
@@ -196,6 +198,7 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
 
     await test.step('Scenario 2: Ordering counter builds takeaway order and sends to payment generating ticket and QR code', async () => {
       await page.goto(`${BASE}/pos`);
+      await enterPosWorkspace(page);
       await expect(page.getByTestId('pos-product-grid')).toBeVisible();
 
       // Counter selector in Topbar
@@ -206,18 +209,18 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
       await counterSelect.click();
       await page.getByTestId(`pos-counter-option-${orderingCounter.id}`).click();
 
-      // Add item to cart
-      await page.getByTestId('pos-product-card').first().click();
-      await expect(page.getByTestId('cart-item')).toHaveCount(1);
-
+      // Check modes before adding a product. The table-first POS correctly
+      // requires an explicit discard/hold decision when changing type with an
+      // unsent cart, so these mode-specific assertions start from an empty cart.
       const cartShell = page.getByTestId('cart-shell');
-
       for (const type of ['Delivery', 'Online']) {
         await cartShell.getByRole('button', { name: type, exact: true }).click();
         await expect(cartShell.getByTestId('pos-send-to-payment-btn')).toHaveCount(0);
         await expect(cartShell.getByRole('button', { name: 'Place Order' })).toBeVisible();
       }
       await cartShell.getByRole('button', { name: 'Takeaway', exact: true }).click();
+      await page.getByTestId('pos-product-card').first().click();
+      await expect(page.getByTestId('cart-item')).toHaveCount(1);
 
       // Primary checkout button should be "Send to payment"
       const sendToPaymentBtn = cartShell.getByTestId('pos-send-to-payment-btn');
@@ -465,7 +468,7 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
     await test.step('A lost send response cannot be submitted through normal checkout', async () => {
       const postpaidRes = await request.put(`${BASE}/api/settings/business`, {
         headers: ownerHeaders,
-        data: { billing_type: 'postpaid', tables_required: previousTablesRequired },
+        data: { billing_type: 'postpaid', tables_required: false },
       });
       expect(postpaidRes.ok(), 'use postpaid checkout for retry test').toBeTruthy();
 
@@ -519,7 +522,7 @@ test('Multi-counter ordering flow: Owner config, create & pay, queue, table occu
 
       const restoreBusinessRes = await request.put(`${BASE}/api/settings/business`, {
         headers: ownerHeaders,
-        data: { billing_type: 'prepaid', tables_required: previousTablesRequired },
+        data: { billing_type: 'prepaid', tables_required: false },
       });
       expect(restoreBusinessRes.ok(), 'restore prepaid billing after retry test').toBeTruthy();
     });

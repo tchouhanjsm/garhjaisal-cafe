@@ -8,7 +8,7 @@ import { serializeOperationFailure } from '../lib/operation-failure';
 const router = Router();
 const categoryWriteRateLimit = expressRateLimit({
   windowMs: 60 * 1000,
-  limit: 60,
+  limit: Number(process.env.FLO_CATEGORIES_WRITE_RATE_LIMIT_MAX) || 60,
   standardHeaders: true,
   legacyHeaders: false,
 });

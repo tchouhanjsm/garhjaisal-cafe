@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { E2E_BASE_URL } from './helpers/urls';
+import { enterPosWorkspace } from './helpers/pos';
 import { createTrackedProduct, deleteProduct, login, ownerAuth } from './ops-admin/helpers';
 
 type CatalogProduct = {
@@ -29,6 +30,7 @@ test.describe('Menu Studio to live POS catalog', () => {
     productId = created.id;
 
     await page.goto(`${E2E_BASE_URL}/pos`);
+    await enterPosWorkspace(page);
     const originalCard = page
       .getByTestId('pos-product-card')
       .filter({ hasText: originalName })

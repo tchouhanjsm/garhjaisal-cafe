@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { E2E_BASE_URL as BASE } from './helpers/urls';
 import { E2E_PASSWORD, getE2eToken, setLanguage } from './helpers/test-auth';
+import { enterPosWorkspace } from './helpers/pos';
 
 /**
  * Regression coverage for issue #788: a renderer whose localStorage rejects
@@ -161,7 +162,7 @@ async function loginAndOpenPos(page: Page): Promise<void> {
   await page.waitForFunction(() => !!localStorage.getItem('token'));
   await setLanguage(page, 'en');
   await page.goto(`${BASE}/pos`);
-  await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+  await enterPosWorkspace(page);
 }
 
 async function addProductToCart(page: Page): Promise<void> {
@@ -194,7 +195,11 @@ async function setBillingType(
   billingType: 'prepaid' | 'postpaid',
 ): Promise<Record<string, unknown>> {
   const originalBusiness = await getBusinessSettings(page.request);
-  await updateBusinessSettings(page.request, { ...originalBusiness, billing_type: billingType });
+  await updateBusinessSettings(page.request, {
+    ...originalBusiness,
+    billing_type: billingType,
+    tables_required: false,
+  });
   return originalBusiness;
 }
 

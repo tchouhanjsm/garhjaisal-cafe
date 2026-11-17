@@ -125,12 +125,14 @@ test('reserved customer is searchable, shown after reload, and linked to the din
     await expect(reloadedTableCard).toContainText(customerPhone);
 
     await page.goto(`${BASE}/pos`);
+    const tableBoard = page.getByTestId('pos-table-first-picker');
+    await expect(tableBoard).toBeVisible();
+    await tableBoard.getByTestId('pos-table-card').filter({ hasText: tableName }).click();
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await expect(page.getByText(customerName, { exact: true })).toBeVisible();
+
     // E2E Coffee is a simple product, so the card tap lands it on the cart.
     await page.getByTestId('pos-product-card').filter({ hasText: 'E2E Coffee' }).first().click();
-    await page.getByRole('button', { name: /Select Table|Table: / }).click();
-    await expect(page.getByRole('heading', { name: 'Select Table' })).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(tableName) }).click();
 
     const orderResponse = page.waitForResponse((response) => {
       return (
@@ -263,8 +265,31 @@ test('table selection preserves explicit customers and replaces or clears inheri
     });
     await setLanguage(page, 'en');
 
-    const customerSearchInput = page.getByTestId('pos-customer-search-input').first();
+    const selectTable = async (name: string, currentTableName?: string) => {
+      if (currentTableName) {
+        await page.getByTestId('pos-all-tables-btn').click();
+        const switchDialog = page.getByTestId('pos-table-switch-dialog');
+        if (await switchDialog.isVisible()) {
+          await switchDialog.getByTestId('pos-table-switch-discard').click();
+        }
+      }
+
+      const board = page.getByTestId('pos-table-first-picker');
+      await expect(board).toBeVisible();
+      const tableCard = board.getByTestId('pos-table-card').filter({ hasText: name }).first();
+      await expect(tableCard).toBeVisible();
+      await tableCard.click();
+    };
+
     const selectCustomerByPhone = async (phone: string, customerId: string) => {
+      // A reserved table inherits its reservation customer, replacing the search input.
+      // Clear that inherited customer before selecting a different explicit customer.
+      const inheritedCustomer = page.getByTestId('pos-customer-select-btn');
+      if (await inheritedCustomer.isVisible().catch(() => false)) {
+        await page.getByRole('button', { name: 'Remove' }).click();
+      }
+      const customerSearchInput = page.getByTestId('pos-customer-search-input').first();
+      await expect(customerSearchInput).toBeVisible();
       const search = page.waitForResponse((response) => {
         const url = new URL(response.url());
         return (
@@ -282,37 +307,26 @@ test('table selection preserves explicit customers and replaces or clears inheri
         .first()
         .click();
     };
+
+    // Table-first flow: choose the reserved table before entering customer or product details.
+    await selectTable(tableNames[0]);
+    const customerSearchInput = page.getByTestId('pos-customer-search-input').first();
+    // Reserved tables surface the inherited customer chip instead of the search input.
+    await expect(page.getByText(reservationCustomer.name, { exact: true })).toBeVisible();
+
+    // An explicit customer overrides the table's inherited reservation customer.
     await selectCustomerByPhone(explicitCustomer.phone, customers[2].id);
     await expect(page.getByText(explicitCustomer.name, { exact: true })).toBeVisible();
 
-    const selectTable = async (name: string, currentTableName?: string) => {
-      if (currentTableName) {
-        await page.getByRole('button', { name: `Table: ${currentTableName}`, exact: true }).click();
-      } else {
-        await page.getByRole('button', { name: /Select Table|Table: / }).click();
-      }
-      const picker = page
-        .locator('div.fixed.inset-0')
-        .filter({
-          has: page.getByRole('heading', { name: 'Select Table' }),
-        })
-        .last();
-      await picker.getByRole('button', { name: new RegExp(name) }).click();
-    };
-
-    await selectTable(tableNames[0]);
-    await expect(page.getByText(explicitCustomer.name, { exact: true })).toBeVisible();
-
+    // Removing the explicit customer and re-entering the table restores its reservation customer.
     await page.getByRole('button', { name: 'Remove' }).click();
     await selectTable(tableNames[0], tableNames[0]);
     await expect(page.getByText(reservationCustomer.name, { exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Remove' }).click();
-    await selectCustomerByPhone(reservationCustomer.phone, customers[0].id);
+    // Leaving an empty cart with a selected customer requires an explicit discard decision.
     await selectTable(tableNames[1], tableNames[0]);
-    await expect(page.getByText(reservationCustomer.name, { exact: true })).toBeVisible();
+    await expect(page.getByText(replacementCustomer.name, { exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Remove' }).click();
     await selectTable(tableNames[0], tableNames[1]);
     await expect(page.getByText(reservationCustomer.name, { exact: true })).toBeVisible();
 

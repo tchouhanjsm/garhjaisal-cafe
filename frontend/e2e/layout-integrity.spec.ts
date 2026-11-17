@@ -2,6 +2,7 @@ import { request, test, expect, type APIRequestContext, type Page } from '@playw
 import { E2E_BASE_URL as BASE, E2E_KDS_BASE_URL } from './helpers/urls';
 import { E2E_PASSWORD, getE2eToken, setLanguage } from './helpers/test-auth';
 import { elementTop, expectPinned, scrollToEnd } from './helpers/layout';
+import { enterPosWorkspace } from './helpers/pos';
 
 test('POS product grid has no horizontal clipping and touchable product cards', async ({
   page,
@@ -10,6 +11,8 @@ test('POS product grid has no horizontal clipping and touchable product cards', 
   await page.locator('#email').fill('manager@flo.local');
   await page.locator('#password').fill('E2ePass123!');
   await page.locator('button[type="submit"]').click();
+  await page.waitForURL(/\/pos/, { timeout: 20_000 });
+  await enterPosWorkspace(page);
 
   // The LAN/browser build must not render Electron-only title-bar markup.
   expect(await page.evaluate(() => Boolean(window.electronAPI))).toBe(false);
@@ -40,10 +43,9 @@ test('POS hides the floating mobile cart button on tablet and desktop viewports 
   await page.setViewportSize({ width: 1024, height: 768 });
   await loginAsManager(page);
   await page.goto(`${BASE}/pos`);
+  await enterPosWorkspace(page);
 
-  await expect(page.getByTestId('pos-product-grid')).toBeVisible();
-
-  const mobileCartButton = page.getByRole('button', { name: 'Cart' });
+  const mobileCartButton = page.getByTestId('pos-mobile-cart-trigger');
   await expect(mobileCartButton, 'floating cart button hidden at 1024x768').toBeHidden();
 
   await page.setViewportSize({ width: 768, height: 1024 });
@@ -441,7 +443,26 @@ const SYNTHETIC_CATEGORY_PREFIX = 'Scroll Layout Long Name Category';
 const SYNTHETIC_PRODUCT_PREFIX = 'Scroll Layout Item';
 const SYNTHETIC_NAME = /Scroll Layout Item \d{3}/;
 const SYNTHETIC_CATEGORY_COUNT = 6;
-const SYNTHETIC_PRODUCT_COUNT = 24;
+
+async function retryRateLimitedFixtureWrite(
+  operation: () => Promise<import('@playwright/test').APIResponse>,
+  expectedStatus: number,
+  description: string,
+): Promise<import('@playwright/test').APIResponse> {
+  let response = await operation();
+  for (let attempt = 0; response.status() === 429 && attempt < 6; attempt += 1) {
+    const retryAfter = Number(response.headers()['retry-after']);
+    const delayMs =
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(60_000, retryAfter * 1_000)
+        : Math.min(30_000, 1_000 * 2 ** attempt);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    response = await operation();
+  }
+  expect(response.status(), `${description} (HTTP ${response.status()})`).toBe(expectedStatus);
+  return response;
+}
+const SYNTHETIC_PRODUCT_COUNT = 48;
 
 // The management screens list every row of the tab that is open, so their
 // fixtures need enough rows to overflow a desktop list window: categories,
@@ -486,11 +507,16 @@ async function seedSyntheticMenu(
   const ownedCategoryIds: string[] = [];
   const seededCategoryIds = [...reusedCategoryIds];
   for (let index = seededCategoryIds.length; index < categoryCount; index += 1) {
-    const response = await api.post(`${BASE}/api/categories`, {
-      headers,
-      data: { name: `${SYNTHETIC_CATEGORY_PREFIX} ${String(index + 1).padStart(2, '0')}` },
-    });
-    expect(response.status(), `synthetic category ${index + 1} is created`).toBe(201);
+    const categoryName = `${SYNTHETIC_CATEGORY_PREFIX} ${String(index + 1).padStart(2, '0')}`;
+    const response = await retryRateLimitedFixtureWrite(
+      () =>
+        api.post(`${BASE}/api/categories`, {
+          headers,
+          data: { name: categoryName },
+        }),
+      201,
+      `synthetic category ${index + 1} is created`,
+    );
     const createdId = (await response.json()).category.id as string;
     ownedCategoryIds.push(createdId);
     seededCategoryIds.push(createdId);
@@ -532,12 +558,18 @@ async function seedSyntheticMenu(
 async function removeSyntheticMenu(api: APIRequestContext, menu: SyntheticMenu): Promise<void> {
   const headers = { Authorization: `Bearer ${getE2eToken()}` };
   for (const id of menu.ownedProductIds) {
-    const response = await api.delete(`${BASE}/api/products/${id}`, { headers });
-    expect(response.status(), 'synthetic product is removed').toBe(200);
+    await retryRateLimitedFixtureWrite(
+      () => api.delete(`${BASE}/api/products/${id}`, { headers }),
+      200,
+      'synthetic product is removed',
+    );
   }
   for (const id of menu.ownedCategoryIds) {
-    const response = await api.delete(`${BASE}/api/categories/${id}`, { headers });
-    expect(response.status(), 'synthetic category is removed').toBe(200);
+    await retryRateLimitedFixtureWrite(
+      () => api.delete(`${BASE}/api/categories/${id}`, { headers }),
+      200,
+      'synthetic category is removed',
+    );
   }
 }
 
@@ -570,6 +602,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
   let menu: SyntheticMenu | undefined;
 
   test.beforeAll(async () => {
+    test.setTimeout(180_000);
     const api = await request.newContext();
     try {
       menu = await seedSyntheticMenu(api);
@@ -594,6 +627,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     await page.setViewportSize({ width: 1440, height: 900 });
     await loginAsManager(page);
     await page.goto(`${BASE}/pos`);
+    await enterPosWorkspace(page);
 
     const catalog = page.getByTestId('pos-catalog-scroll');
     await expect(catalog).toBeVisible();
@@ -653,6 +687,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     await page.setViewportSize({ width: 1440, height: 900 });
     await loginAsManager(page);
     await page.goto(`${BASE}/pos`);
+    await enterPosWorkspace(page);
 
     const names = await addSyntheticItemsToCart(page, 10);
     const items = page.getByTestId('cart-items-scroll');
@@ -692,6 +727,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     await page.setViewportSize({ width: 844, height: 390 });
     await loginAsManager(page);
     await page.goto(`${BASE}/pos`);
+    await enterPosWorkspace(page);
 
     const catalog = page.getByTestId('pos-catalog-scroll');
     await expect(catalog).toBeVisible();
@@ -734,6 +770,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     await page.setViewportSize({ width: 1024, height: 600 });
     await loginAsManager(page);
     await page.goto(`${BASE}/pos`);
+    await enterPosWorkspace(page);
 
     const names = await addSyntheticItemsToCart(page, 4);
     const cartScroll = page.getByTestId('cart-items-scroll');
@@ -741,7 +778,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     expect(cartScrollBox, 'cart items container has bounds').not.toBeNull();
     expect(
       cartScrollBox!.height,
-      'cart items container maintains usable height on 1024x600 display',
+      'cart items container maintains at least 300px of usable height on a 1024x600 display',
     ).toBeGreaterThanOrEqual(300);
 
     const placeOrder = page.getByRole('button', { name: 'Place Order' });
@@ -775,7 +812,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     expect(deliveryCartScrollBox, 'delivery cart items container has bounds').not.toBeNull();
     expect(
       deliveryCartScrollBox!.height,
-      'cart items container maintains usable height with compact Delivery header on 1024x600 display',
+      'delivery cart items container maintains at least 300px of usable height on a 1024x600 display',
     ).toBeGreaterThanOrEqual(300);
 
     await cartShell.evaluate((element) => {
@@ -808,6 +845,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     await page.setViewportSize({ width: 512, height: 384 });
     await loginAsManager(page);
     await page.goto(`${BASE}/pos`);
+    await enterPosWorkspace(page);
 
     await addSyntheticItemsToCart(page, 4);
 
@@ -863,6 +901,7 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     await page.waitForURL(/\/(pos|orders)/, { timeout: 20000 });
     await setLanguage(page, 'en');
     await page.goto(`${BASE}/pos`);
+    await enterPosWorkspace(page);
 
     await addSyntheticItemsToCart(page, 1);
 
@@ -1006,16 +1045,20 @@ async function seedSyntheticAddonGroups(api: APIRequestContext): Promise<string[
   ).length;
   const ownedIds: string[] = [];
   for (let index = reusedCount; index < SYNTHETIC_ADDON_GROUP_COUNT; index += 1) {
-    const created = await api.post(`${BASE}/api/addon-groups`, {
-      headers,
-      data: {
-        name: `${SYNTHETIC_ADDON_GROUP_PREFIX} ${String(index + 1).padStart(2, '0')}`,
-        min_selection: 0,
-        max_selection: 1,
-        addons: [{ name: 'Scroll Layout Add-on', price: 5 }],
-      },
-    });
-    expect(created.status(), `synthetic add-on group ${index + 1} is created`).toBe(201);
+    const created = await retryRateLimitedFixtureWrite(
+      () =>
+        api.post(`${BASE}/api/addon-groups`, {
+          headers,
+          data: {
+            name: `${SYNTHETIC_ADDON_GROUP_PREFIX} ${String(index + 1).padStart(2, '0')}`,
+            min_selection: 0,
+            max_selection: 1,
+            addons: [{ name: 'E2E Add-on', price: 5 }],
+          },
+        }),
+      201,
+      `synthetic add-on group ${index + 1} is created`,
+    );
     ownedIds.push((await created.json()).addon_group.id as string);
   }
   return ownedIds;
@@ -1024,8 +1067,11 @@ async function seedSyntheticAddonGroups(api: APIRequestContext): Promise<string[
 async function removeSyntheticAddonGroups(api: APIRequestContext, ids: string[]): Promise<void> {
   const headers = { Authorization: `Bearer ${getE2eToken()}` };
   for (const id of ids) {
-    const response = await api.delete(`${BASE}/api/addon-groups/${id}`, { headers });
-    expect(response.status(), 'synthetic add-on group is removed').toBe(200);
+    await retryRateLimitedFixtureWrite(
+      () => api.delete(`${BASE}/api/addon-groups/${id}`, { headers }),
+      200,
+      'synthetic add-on group is removed',
+    );
   }
 }
 
@@ -3569,13 +3615,13 @@ test('staff modals close on Escape, ignore non-Escape keys, restore trigger focu
  * Measured collapse rows and cart table placement (#1152).
  *
  * Categories and favorites collapse to one measured row with a toggle instead
- * of horizontal scrolling, and the dine-in table control lives in the cart next
- * to the Pax stepper rather than in the topbar.
+ * of horizontal scrolling. The selected-table workspace exposes an All Tables
+ * action that returns the cashier to the dedicated table status board.
  */
 async function openPosAsManager(page: Page): Promise<void> {
   await setLanguage(page, 'en');
   await page.goto(`${BASE}/pos`);
-  await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+  await enterPosWorkspace(page);
 }
 
 test.describe('POS collapse rows and cart table control', () => {
@@ -3641,7 +3687,14 @@ test.describe('POS collapse rows and cart table control', () => {
       );
     } finally {
       for (const categoryId of createdIds) {
-        await request.delete(`${BASE}/api/categories/${categoryId}`, { headers: authHeaders });
+        await retryRateLimitedFixtureWrite(
+          () =>
+            request.delete(`${BASE}/api/categories/${categoryId}`, {
+              headers: authHeaders,
+            }),
+          200,
+          `synthetic category ${categoryId} is removed`,
+        );
       }
     }
   });
@@ -3653,13 +3706,25 @@ test.describe('POS collapse rows and cart table control', () => {
     const token = getE2eToken('e2e-manager', 'manager@flo.local', 'manager');
     const authHeaders = { Authorization: `Bearer ${token}` };
     const createdIds: string[] = [];
+    const tailCategoryRunId = Date.now().toString(36);
+    test.setTimeout(180_000);
     try {
       for (let index = 0; index < 10; index += 1) {
-        const response = await request.post(`${BASE}/api/categories`, {
-          headers: authHeaders,
-          data: { name: `E2E Tail Row ${index} with a deliberately long category label` },
-        });
-        expect(response.ok(), `tail fixture category ${index} created`).toBeTruthy();
+        const categoryName = [
+          'E2E Tail',
+          tailCategoryRunId,
+          String(index).padStart(2, '0'),
+          'Wide Label',
+        ].join(' ');
+        const response = await retryRateLimitedFixtureWrite(
+          () =>
+            request.post(`${BASE}/api/categories`, {
+              headers: authHeaders,
+              data: { name: categoryName },
+            }),
+          201,
+          `tail fixture category ${index} created`,
+        );
         createdIds.push((await response.json()).category.id as string);
       }
 
@@ -3679,7 +3744,7 @@ test.describe('POS collapse rows and cart table control', () => {
         const row = page.getByTestId('pos-category-row');
         await row.locator('button[aria-expanded="false"]').click();
         const selected = row.getByRole('button', {
-          name: 'E2E Tail Row 9 with a deliberately long category label',
+          name: `E2E Tail ${tailCategoryRunId} 09 Wide Label`,
         });
         await selected.click();
         await row.locator('button[aria-expanded="true"]').click();
@@ -3709,14 +3774,18 @@ test.describe('POS collapse rows and cart table control', () => {
         await toggle.click();
         await expect(
           row.getByRole('button', {
-            name: 'E2E Tail Row 0 with a deliberately long category label',
+            name: `E2E Tail ${tailCategoryRunId} 00 Wide Label`,
           }),
         ).toBeVisible();
       }
     } finally {
       await setLanguage(page, 'en');
       for (const categoryId of createdIds) {
-        await request.delete(`${BASE}/api/categories/${categoryId}`, { headers: authHeaders });
+        await retryRateLimitedFixtureWrite(
+          () => request.delete(`${BASE}/api/categories/${categoryId}`, { headers: authHeaders }),
+          200,
+          `tail fixture category ${categoryId} is removed`,
+        );
       }
     }
   });
@@ -3737,10 +3806,11 @@ test.describe('POS collapse rows and cart table control', () => {
 
       await page.setViewportSize({ width: 1366, height: 768 });
       await loginAsManager(page);
+      await enterPosWorkspace(page);
       await expect(page.getByTestId('cart-shell')).toBeVisible();
-
-      await page.getByRole('button', { name: 'Dine in' }).first().click();
-      await expect(page.getByTestId('cart-table-button')).toBeVisible();
+      await expect(page.getByTestId('pos-all-tables-btn')).toBeVisible();
+      await page.getByTestId('pos-all-tables-btn').click();
+      await expect(page.getByTestId('pos-table-first-picker')).toBeVisible();
     } finally {
       await page.request.put(`${BASE}/api/settings/business`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -3765,13 +3835,14 @@ test.describe('POS collapse rows and cart table control', () => {
 
       await page.setViewportSize({ width: 390, height: 844 });
       await loginAsManager(page);
+      await enterPosWorkspace(page);
       // The order-type controls live in the cart itself, so the drawer opens first.
-      await page.getByRole('button', { name: 'Cart' }).click();
+      await page.getByTestId('pos-mobile-cart-trigger').click();
       const drawerCart = page.getByTestId('cart-shell').last();
       await expect(drawerCart).toBeVisible();
       await drawerCart.getByRole('button', { name: 'Dine in' }).first().click();
       await page.keyboard.press('Escape');
-      await expect(page.getByTestId('cart-table-button')).toBeVisible();
+      await expect(page.getByTestId('pos-all-tables-btn')).toBeVisible();
     } finally {
       await page.request.put(`${BASE}/api/settings/business`, {
         headers: { Authorization: `Bearer ${token}` },

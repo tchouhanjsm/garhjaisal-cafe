@@ -1,5 +1,5 @@
 /**
- * Table-first POS selection and occupied-table summary regression checks.
+ * Table-first POS selection, status board, and cart workspace regression checks.
  *
  * Usage: ts-node --transpile-only -P tests/tsconfig.json tests/table-first-pos.test.ts
  */
@@ -9,6 +9,10 @@ import path from 'node:path';
 
 const ROOT = path.join(__dirname, '..');
 const { shouldAutoOpenTablePicker } = require('../frontend/src/lib/table-picker-auto-open');
+
+function read(relativePath: string): string {
+  return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+}
 
 function testFreshDineInSelection(): void {
   const eligible = {
@@ -48,64 +52,122 @@ function testFreshDineInSelection(): void {
   console.log('  ✓ only a fresh, unassigned dine-in cart opens table selection');
 }
 
-function testInlineTableFirstPresentation(): void {
-  const posPage = fs.readFileSync(
-    path.join(ROOT, 'frontend/src/app/(dashboard)/pos/page.tsx'),
-    'utf8',
-  );
-  const picker = fs.readFileSync(
-    path.join(ROOT, 'frontend/src/components/pos/TableFirstSelector.tsx'),
-    'utf8',
-  );
+function testDedicatedTableBoard(): void {
+  const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
+  const picker = read('frontend/src/components/pos/TableFirstSelector.tsx');
+  const topbar = read('frontend/src/components/pos/PosTopbar.tsx');
 
-  assert.match(posPage, /setTablePickerPresentation\('inline'\);\s*setShowTablePicker\(true\);/);
-  assert.match(posPage, /onShowTablePicker=\{openTablePicker\}/);
-  assert.match(posPage, /tablePickerPresentation === 'inline'/);
-  assert.match(picker, /data-testid="pos-table-first-picker"/);
-  assert.match(posPage, /<TablePickerModal/);
-  assert.match(picker, /formatCurrency\(activeOrder\.total\)/);
+  assert.ok(posPage.includes("setTablePickerPresentation('inline')"));
+  assert.ok(posPage.includes("tablePickerPresentation === 'inline' ?"));
+  assert.ok(posPage.includes('<TableFirstSelector'));
+  assert.ok(posPage.includes('<ProductGrid'));
+  assert.ok(posPage.includes('onShowTablePicker={requestOpenTableBoard}'));
+  assert.ok(posPage.includes('showTopItems={!(isRestaurant && showTablePicker'));
+  assert.ok(topbar.includes('showTopItems && <CustomerTopItems'));
+  assert.ok(picker.includes('data-testid="pos-table-first-picker"'));
+  assert.ok(picker.includes('data-testid="pos-table-card"'));
+  assert.ok(picker.includes('aria-label="Filter tables by status"'));
+  assert.ok(picker.includes('aria-label="Filter tables by section"'));
 
-  console.log('  ✓ first table selection is inline; manual switching remains modal');
-  console.log('  ✓ occupied table cards show the active order total');
+  console.log('  ✓ All Tables is separate from the ordering workspace');
+  console.log('  ✓ table board filters and ordering context remain available');
 }
 
-function testInlinePickerPreservesGlobalShortcuts(): void {
-  const posPage = fs.readFileSync(
-    path.join(ROOT, 'frontend/src/app/(dashboard)/pos/page.tsx'),
-    'utf8',
-  );
-  const inlineModalGuard = [
-    'const anyModalOpen =',
-    "    (showTablePicker && tablePickerPresentation === 'modal') || anyOtherModalOpen;",
-  ].join('\n');
-  const f2ToggleGuard = [
-    '      onToggleTables: () => {',
-    "        if (isRestaurant && cart.orderType === 'dine_in' && tablesRequired) {",
-    "          if (showTablePicker && tablePickerPresentation === 'modal') closeTablePicker();",
-    '          else openTablePicker();',
-  ].join('\n');
-  const escapeGuard = [
-    "        if (showTablePicker && tablePickerPresentation === 'modal') {",
-    '          closeTablePicker();',
-    '          return true;',
-  ].join('\n');
-  const keyboardPickerGuard =
-    "      tablePickerOpen: showTablePicker && tablePickerPresentation === 'modal' && !anyOtherModalOpen,";
+function testDraftNavigationProtection(): void {
+  const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
+  const dialog = read('frontend/src/components/pos/TableSwitchDialog.tsx');
+  const cartPanel = read('frontend/src/components/pos/CartPanel.tsx');
 
-  assert.ok(posPage.includes(inlineModalGuard));
-  assert.ok(posPage.includes(f2ToggleGuard));
-  assert.ok(posPage.includes(escapeGuard));
-  assert.ok(posPage.includes(keyboardPickerGuard));
+  assert.ok(posPage.includes('const hasUnsentCartWork = useCallback'));
+  const itemGuardIndex = posPage.indexOf('if (state.items.length > 0) return true;');
+  const existingOrderGuardIndex = posPage.indexOf('if (pendingOrder) return false;');
+  assert.ok(itemGuardIndex >= 0 && itemGuardIndex < existingOrderGuardIndex);
+  for (const fieldCheck of [
+    'state.customerId != null',
+    'state.customer != null',
+    'state.customerSource != null',
+    'state.guestCount > 1',
+    'state.orderNotes.trim()',
+    'state.roomNumber.trim()',
+    'state.deliveryAddress.trim()',
+    'state.deliveryNote.trim()',
+    'state.scheduledFor.trim()',
+    'state.expectedPaymentMethod.trim()',
+    'state.expectedPaymentMethodId != null',
+    'state.onlinePlatform.trim()',
+    'state.externalOrderId.trim()',
+    'state.waivedChargeIds.size > 0',
+    'state.optedInChargeIds.size > 0',
+  ]) {
+    assert.ok(posPage.includes(fieldCheck), `draft guard must protect ${fieldCheck}`);
+  }
+  assert.ok(posPage.includes('if (pendingOrder) return false;'));
+  assert.ok(posPage.includes('const requestTableSelection = (selection: TableSelection) => {'));
+  assert.ok(posPage.includes('const requestOpenTableBoard = () => {'));
+  assert.ok(posPage.includes('if (hasUnsentCartWork()) {'));
+  assert.ok(posPage.includes("setPendingTableSelection({ kind: 'tables' })"));
+  assert.ok(posPage.includes("kind: 'order-type'"));
+  assert.ok(posPage.includes("kind: 'route'"));
+  assert.ok(posPage.includes("addEventListener('beforeunload'"));
+  assert.ok(posPage.includes("addEventListener('click', interceptInternalNavigation, true)"));
+  assert.ok(posPage.includes('onShowTablePicker={requestOpenTableBoard}'));
+  assert.ok(posPage.includes('onRequestOrderTypeChange: requestOrderTypeChange'));
+  assert.ok(posPage.includes('onDiscard={discardAndContinue}'));
+  assert.ok(posPage.includes('onHold={() => void holdAndContinue()}'));
+  assert.ok(posPage.includes('await refreshTables().catch(() => undefined)'));
+  assert.ok(posPage.includes('state.expectedPaymentMethodId != null'));
+  assert.ok(dialog.includes('data-testid="pos-table-switch-dialog"'));
+  assert.ok(dialog.includes('Hold order and continue'));
+  assert.ok(dialog.includes('Discard unsent items and continue'));
+  assert.ok(dialog.includes('Continue editing'));
+  assert.ok(cartPanel.includes('onRequestOrderTypeChange?:'));
+  assert.ok(cartPanel.includes('onRequestOrderTypeChange(type)'));
 
-  console.log('  ✓ inline table-first selection keeps POS shortcuts active');
-  console.log('  ✓ F2 opens the modal picker; Escape closes that modal');
+  console.log('  ✓ table, order-type, and route changes protect cart drafts');
+  console.log('  ✓ submitted orders are not treated as unsent drafts');
+}
+
+function testCatalogueModesAndSearch(): void {
+  const productGrid = read('frontend/src/components/pos/ProductGrid.tsx');
+
+  assert.ok(productGrid.includes("type ProductViewMode = 'compact' | 'grid' | 'list'"));
+  assert.ok(productGrid.includes('data-testid="pos-product-view-modes"'));
+  assert.ok(productGrid.includes('grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'));
+  assert.ok(productGrid.includes('grid-cols-1'));
+  assert.ok(productGrid.includes('getDefaultProductViewPreference'));
+  assert.ok(productGrid.includes('useSyncExternalStore('));
+  assert.ok(productGrid.includes('localStorage.setItem(key, mode)'));
+  assert.ok(productGrid.includes('p.sku'));
+  assert.ok(productGrid.includes('p.barcode'));
+  assert.ok(productGrid.includes('variant.sku'));
+  assert.ok(productGrid.includes('variant.barcode'));
+  assert.ok(productGrid.includes('min-h-[84px]'));
+  assert.ok(productGrid.includes('bg-muted text-muted-foreground'));
+
+  console.log('  ✓ compact, image-grid, and list modes persist locally');
+  console.log('  ✓ name, SKU, barcode, and variant identifiers are searchable');
+}
+
+function testResizableCart(): void {
+  const posPage = read('frontend/src/app/(dashboard)/pos/page.tsx');
+  const cartPanel = read('frontend/src/components/pos/CartPanel.tsx');
+
+  assert.ok(posPage.includes('data-testid="pos-resizable-cart"'));
+  assert.ok(posPage.includes('role="separator"'));
+  assert.ok(posPage.includes('aria-valuemin={280}'));
+  assert.ok(posPage.includes('aria-valuemax={480}'));
+  assert.ok(posPage.includes('data-testid="pos-cart-resize-handle"'));
+  assert.ok(posPage.includes('onCollapse={() => setCartCollapsed(true)}'));
+  assert.ok(cartPanel.includes('data-testid="pos-collapse-cart"'));
+  assert.ok(posPage.includes('data-testid="pos-expand-cart"'));
+  assert.ok(cartPanel.includes('data-testid="cart-items-scroll"'));
+  assert.ok(cartPanel.includes('pos-cart-items flex-1 min-h-0 overflow-y-auto'));
+
+  console.log('  ✓ cart is accessible, resizable, collapsible, and independently scrollable');
 }
 
 function testWaiterMobileTableFirst(): void {
-  const serverApp = fs.readFileSync(
-    path.join(ROOT, 'frontend/src/app/server-standalone/page.tsx'),
-    'utf8',
-  );
+  const serverApp = read('frontend/src/app/server-standalone/page.tsx');
 
   assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = loadedTables\[0\]\.id/);
   assert.doesNotMatch(serverApp, /selectedTableIdRef\.current = firstTable\.id/);
@@ -116,14 +178,16 @@ function testWaiterMobileTableFirst(): void {
   assert.match(serverApp, /table\.status === 'cleaning'/);
   assert.match(serverApp, /table\.status === 'held'/);
 
-  console.log('  ✓ waiter mobile app requires an explicit usable table selection');
+  console.log('  ✓ waiter mobile app still requires an explicit usable table selection');
 }
 
 function main(): void {
   console.log('Table-first POS tests');
   testFreshDineInSelection();
-  testInlineTableFirstPresentation();
-  testInlinePickerPreservesGlobalShortcuts();
+  testDedicatedTableBoard();
+  testDraftNavigationProtection();
+  testCatalogueModesAndSearch();
+  testResizableCart();
   testWaiterMobileTableFirst();
   console.log('All table-first POS tests passed.');
 }

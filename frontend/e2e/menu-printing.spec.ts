@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { E2E_BASE_URL as BASE } from './helpers/urls';
 import { E2E_PASSWORD, getE2eToken } from './helpers/test-auth';
+import { enterPosWorkspace } from './helpers/pos';
 
 const evidence = process.env.FLO_E2E_EVIDENCE_DIR;
 
@@ -46,6 +47,7 @@ test('menu modal suspends barcode scans and browser fallback includes selected d
   await page.waitForURL(/\/(pos|orders)/);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).not.toBeNull();
   await page.goto(`${BASE}/pos`);
+  await enterPosWorkspace(page);
   await expect(page.getByRole('button', { name: /E2E Coffee/ })).toBeVisible();
   await page.evaluate(() => {
     for (const key of '9780123456789') window.dispatchEvent(new KeyboardEvent('keydown', { key }));
@@ -115,6 +117,7 @@ test('print menu offers receipt, paper, PDF, and QR destinations', async ({
   await page.waitForURL(/\/(pos|orders)/);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).not.toBeNull();
   await page.goto(`${BASE}/pos`);
+  await enterPosWorkspace(page);
   await expect(page.getByRole('button', { name: /E2E Coffee/ })).toBeVisible();
   await page.getByRole('button', { name: 'More actions' }).click();
   await page.getByRole('menuitem', { name: 'Print Menu', exact: true }).click();

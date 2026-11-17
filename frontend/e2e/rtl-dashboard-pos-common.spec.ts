@@ -54,7 +54,7 @@ async function captureScreenshot(page: Page, filename: string): Promise<void> {
   }
 }
 
-import { E2E_PASSWORD, setLanguage } from './helpers/test-auth';
+import { E2E_PASSWORD, getE2eToken, setLanguage } from './helpers/test-auth';
 
 async function login(page: Page, email: string): Promise<void> {
   await page.goto(`${BASE}/auth/login`);
@@ -99,6 +99,20 @@ async function assertSidebarSide(page: Page, expected: 'left' | 'right'): Promis
 test('Dashboard, POS, and orders screens render LTR in English and RTL in Persian with an LTR customer search, mirrored arrows, and no overflow', async ({
   page,
 }) => {
+  const ownerHeaders = { Authorization: `Bearer ${getE2eToken()}` };
+  const businessResponse = await page.request.get(`${BASE}/api/settings/business`, {
+    headers: ownerHeaders,
+  });
+  expect(businessResponse.ok()).toBeTruthy();
+  const originalBusiness = (await businessResponse.json()) as Record<string, unknown>;
+  const originalTablesRequired =
+    originalBusiness.tables_required === true || originalBusiness.tables_required === 'true';
+  const nonTableSetup = await page.request.put(`${BASE}/api/settings/business`, {
+    headers: ownerHeaders,
+    data: { ...originalBusiness, tables_required: false },
+  });
+  expect(nonTableSetup.ok()).toBeTruthy();
+
   // This single test walks ~15 screens plus the DirectionalToaster crash
   // regression below (which needs a real ~4.5s wait for react-hot-toast's
   // removal timer), well past Playwright's 30s default.
@@ -357,6 +371,18 @@ test('Dashboard, POS, and orders screens render LTR in English and RTL in Persia
       `DirectionalToaster must not crash with a DOM insertBefore/NotFoundError when a toast survives a live direction flip, got: ${JSON.stringify(crashErrors)}`,
     ).toEqual([]);
   } finally {
+    // Restore only the setting this test changed, preserving other fixture state.
+    const currentBusinessResponse = await page.request.get(`${BASE}/api/settings/business`, {
+      headers: ownerHeaders,
+    });
+    if (currentBusinessResponse.ok()) {
+      const currentBusiness = await currentBusinessResponse.json();
+      const restoredBusiness = await page.request.put(`${BASE}/api/settings/business`, {
+        headers: ownerHeaders,
+        data: { ...currentBusiness, tables_required: originalTablesRequired },
+      });
+      expect(restoredBusiness.ok()).toBeTruthy();
+    }
     // Restore English so the shared server does not leak Persian into other specs.
     await setLanguage(page, 'en');
   }

@@ -216,6 +216,9 @@ Module._load = function (reqName: string, parent: unknown, isMain: boolean) {
     };
   }
   if (reqName === 'react') return reactHooks;
+  if (reqName === 'next/navigation') {
+    return { useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {} }) };
+  }
   if (reqName === 'react-hot-toast')
     return { __esModule: true, default: toastStub, toast: toastStub };
   if (reqName === 'lucide-react') return new Proxy({}, { get: () => () => null });

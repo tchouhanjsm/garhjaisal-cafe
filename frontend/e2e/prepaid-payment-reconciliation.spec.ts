@@ -80,16 +80,40 @@ async function readBusiness(request: APIRequestContext): Promise<Record<string, 
 // spec pins the classic cards grid before driving OrderCard affordances. The
 // evidence for why lives in frontend/e2e/orders-master-detail.spec.ts.
 let ordersLayoutBefore: E2EOrdersLayout = 'split';
+let tablesRequiredBeforeEach = false;
 // This spec drives restricted roles, so pin and restore with the E2E owner
 // token instead of whatever token the page happens to hold.
 const ordersLayoutOwnerToken = getE2eToken();
 
 test.beforeEach(async ({ page }) => {
+  const business = await readBusiness(page.request);
+  tablesRequiredBeforeEach =
+    business.tables_required === true || business.tables_required === 'true';
+  if (tablesRequiredBeforeEach) {
+    const updatedBusiness = await page.request.put(`${BASE}/api/settings/business`, {
+      headers: managerHeaders,
+      data: { ...business, tables_required: false },
+    });
+    expect(
+      updatedBusiness.ok(),
+      'payment tests use an explicit non-table POS fixture',
+    ).toBeTruthy();
+  }
+
   ordersLayoutBefore = await readOrdersLayout(page, BASE, ordersLayoutOwnerToken);
   await setOrdersLayout(page, 'cards', BASE, ordersLayoutOwnerToken);
 });
 
 test.afterEach(async ({ page }) => {
+  if (tablesRequiredBeforeEach) {
+    const currentBusiness = await readBusiness(page.request);
+    const restoredBusiness = await page.request.put(`${BASE}/api/settings/business`, {
+      headers: managerHeaders,
+      data: { ...currentBusiness, tables_required: true },
+    });
+    expect(restoredBusiness.ok(), 'restore the prior table-required setting').toBeTruthy();
+  }
+
   await setOrdersLayout(page, ordersLayoutBefore, BASE, ordersLayoutOwnerToken);
 });
 

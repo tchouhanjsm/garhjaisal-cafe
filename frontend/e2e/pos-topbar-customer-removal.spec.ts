@@ -14,7 +14,7 @@ function overlaps(
   );
 }
 
-test('POS table picker stays clickable after removing a customer at 1280px', async ({ page }) => {
+test('All Tables return stays clickable after removing a customer at 1280px', async ({ page }) => {
   test.setTimeout(60_000);
   await page.setViewportSize({ width: 1280, height: 800 });
 
@@ -58,16 +58,10 @@ test('POS table picker stays clickable after removing a customer at 1280px', asy
     await page.waitForURL('**/pos/**', { timeout: 20_000 });
     await setLanguage(page, 'en');
     await page.goto(`${BASE}/pos`);
+    const tableBoard = page.getByTestId('pos-table-first-picker');
+    await expect(tableBoard).toBeVisible();
+    await tableBoard.getByTestId('pos-table-card').filter({ hasText: tableName }).click();
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
-
-    await page.getByRole('button', { name: /Select Table|Table: / }).click();
-    const tablePicker = page
-      .locator('div.fixed.inset-0')
-      .filter({
-        has: page.getByRole('heading', { name: 'Select Table', exact: true }),
-      })
-      .last();
-    await tablePicker.getByRole('button', { name: new RegExp(tableName) }).click();
 
     const customerInput = page.getByTestId('pos-customer-search-input').first();
     const searchResponse = page.waitForResponse((response) => {
@@ -84,17 +78,17 @@ test('POS table picker stays clickable after removing a customer at 1280px', asy
     await expect(page.getByText(customerName, { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Remove', exact: true }).click();
-    const tableButton = page.getByRole('button', { name: `Table: ${tableName}`, exact: true });
-    await expect(tableButton).toBeVisible();
+    const allTablesButton = page.getByTestId('pos-all-tables-btn');
+    await expect(allTablesButton).toBeVisible();
 
     const customerInputBox = await customerInput.boundingBox();
-    const tableBox = await tableButton.boundingBox();
+    const tableBox = await allTablesButton.boundingBox();
     expect(customerInputBox).not.toBeNull();
     expect(tableBox).not.toBeNull();
     expect(overlaps(customerInputBox!, tableBox!)).toBe(false);
 
-    await tableButton.click();
-    await expect(page.getByRole('heading', { name: 'Select Table', exact: true })).toBeVisible();
+    await allTablesButton.click();
+    await expect(tableBoard).toBeVisible();
   } finally {
     if (tableId) {
       await page.request.post(`${BASE}/api/tables/${tableId}/deactivate`, { headers: authHeaders });

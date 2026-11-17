@@ -65,19 +65,39 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
     const createdCategoryIds: string[] = [];
     const createdProductIds: string[] = [];
     const createdOrderIds: number[] = [];
+    const createdTableIds: string[] = [];
     let customerDisplayTokenId: string | number | null = null;
 
     const initialBizSettingsRes = await request.get(`${E2E_BASE_URL}/api/settings/business`, {
       headers,
     });
     expect(initialBizSettingsRes.ok()).toBeTruthy();
-    const initialBizSettings = (await initialBizSettingsRes.json()) as { language?: string };
+    const initialBizSettings = (await initialBizSettingsRes.json()) as {
+      language?: string;
+      [key: string]: unknown;
+    };
     const initialLanguage =
       typeof initialBizSettings.language === 'string' && initialBizSettings.language
         ? initialBizSettings.language
         : 'en';
 
     try {
+      const tableSettingsRes = await request.put(`${E2E_BASE_URL}/api/settings/business`, {
+        headers,
+        data: { ...initialBizSettings, tables_required: true },
+      });
+      expect(tableSettingsRes.ok()).toBeTruthy();
+
+      // A dedicated available table makes the new table-first POS entry deterministic.
+      const tableName = `E2E-TE-${Date.now()}`;
+      const tableRes = await request.post(`${E2E_BASE_URL}/api/tables`, {
+        headers,
+        data: { number: tableName, capacity: 4 },
+      });
+      expect(tableRes.ok()).toBeTruthy();
+      const createdTable = (await tableRes.json()).table as { id: string; number: string };
+      createdTableIds.push(createdTable.id);
+
       // Seed Telugu sample catalog items on the live API to verify POS, Server App, and KDS rendering
       const catMainRes = await request.post(`${E2E_BASE_URL}/api/categories`, {
         headers,
@@ -136,6 +156,10 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
 
       await setLanguage(page, 'te');
       await page.goto(`${E2E_BASE_URL}/pos`);
+      const tableBoard = page.getByTestId('pos-table-first-picker');
+      await expect(tableBoard).toBeVisible();
+      await tableBoard.getByTestId('pos-table-card').filter({ hasText: tableName }).click();
+      await expect(page.getByTestId('pos-product-grid')).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('lang', 'te-IN');
       await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
 
@@ -146,6 +170,11 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
       await expect(page.getByText('పునుగులు').first()).toBeVisible();
       await page.getByText('హైదరాబాదీ బిర్యానీ').first().click();
       await page.getByText('పునుగులు').first().click();
+      // Later navigations intentionally discard this test-only draft via the browser guard.
+      page.on('dialog', async (dialog) => {
+        if (dialog.type() === 'beforeunload') await dialog.accept();
+        else await dialog.dismiss();
+      });
 
       await page.screenshot({
         path: path.join(EVIDENCE_DIR, '02-pos-telugu-seed-catalog.png'),
@@ -260,7 +289,7 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
         table = ((await tableRes.json()) as { table: { id: string | number; number: string } })
           .table;
       }
-      const tableName = table.number;
+      const serverTableName = table.number;
 
       const serverContext = await browser.newContext();
       const serverPage = await serverContext.newPage();
@@ -277,7 +306,12 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
       );
       await serverPage.reload();
       await expect(serverPage.locator('html')).toHaveAttribute('lang', 'te-IN');
-      await serverPage.getByRole('button', { name: new RegExp(tableName) }).click();
+      const serverTableCard = serverPage
+        .getByRole('button')
+        .filter({ has: serverPage.getByText(serverTableName, { exact: true }) })
+        .first();
+      await expect(serverTableCard).toBeVisible();
+      await serverTableCard.click();
       const grid = serverPage.getByTestId('pos-product-grid');
       await expect(grid.getByPlaceholder('మెనూ వెతుకు')).toBeVisible();
       await grid.getByText('హైదరాబాదీ బిర్యానీ').first().click();
@@ -532,6 +566,18 @@ test.describe('Live Telugu (te / te-IN) E2E verification across FloCafe surfaces
       });
       expect(restoreLangRes.ok()).toBeTruthy();
       await setLanguage(page, initialLanguage as 'en').catch(() => {});
+      const restoreBusinessRes = await request.put(`${E2E_BASE_URL}/api/settings/business`, {
+        headers,
+        data: initialBizSettings,
+      });
+      expect(restoreBusinessRes.ok()).toBeTruthy();
+      for (const tableId of createdTableIds) {
+        const deactivateTableRes = await request.post(
+          `${E2E_BASE_URL}/api/tables/${tableId}/deactivate`,
+          { headers },
+        );
+        expect(deactivateTableRes.ok()).toBeTruthy();
+      }
       if (createdOrderIds.length > 0) {
         const setPinRes = await request.put(`${E2E_BASE_URL}/api/staff/e2e-manager`, {
           headers,

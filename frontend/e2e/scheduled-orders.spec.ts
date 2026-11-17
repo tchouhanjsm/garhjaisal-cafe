@@ -24,6 +24,46 @@ async function captureScreenshot(page: Page, filename: string): Promise<void> {
   }
 }
 
+async function navigateToOrdersWithDraftGuard(page: Page): Promise<void> {
+  const ordersLink = page
+    .getByRole('navigation', { name: 'Menu' })
+    .getByRole('link', { name: 'Orders', exact: true });
+  const guard = page.getByTestId('pos-table-switch-dialog');
+  const isOrdersPath = (pathname: string) =>
+    pathname === '/orders' || pathname.startsWith('/orders/');
+  const isOnOrdersRoute = () => isOrdersPath(new URL(page.url()).pathname);
+
+  await ordersLink.click();
+  await expect
+    .poll(async () => {
+      const guardVisible = await guard.isVisible().catch(() => false);
+      return guardVisible || isOnOrdersRoute();
+    })
+    .toBe(true);
+
+  // Draft work is never silently dropped. Empty carts navigate without showing
+  // the guard, so only confirm discard when the POS actually presents it.
+  if (await guard.isVisible().catch(() => false)) {
+    await guard.getByTestId('pos-table-switch-discard').click();
+  }
+  await page.waitForURL((url) => isOrdersPath(url.pathname), { timeout: 15_000 });
+}
+
+async function rebuildTakeawayCart(page: Page, scheduledFor?: string): Promise<void> {
+  const cart = page.getByTestId('cart-shell');
+  await cart.getByRole('button', { name: 'Takeaway', exact: true }).click();
+  await page.getByTestId('pos-product-card').first().click();
+  await expect(page.getByTestId('cart-item')).toHaveCount(1);
+
+  if (!scheduledFor) return;
+  await cart.getByTestId('pos-order-details-summary').click();
+  const details = page.getByTestId('pos-order-details-drawer');
+  await expect(details).toBeVisible();
+  await details.getByTestId('pos-send-to-kitchen-input').fill(scheduledFor);
+  await details.getByTestId('pos-order-details-done-btn').click();
+  await expect(details).toHaveCount(0);
+}
+
 function futureBangkokWallClock(minutesAhead: number): string {
   const target = new Date(Date.now() + minutesAhead * 60 * 1000);
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -45,7 +85,7 @@ function futureBangkokWallClock(minutesAhead: number): string {
 test('POS scheduled orders: Send to kitchen at, prepay without early release, audited reschedule, refund-before-cancel, and blocked retry', async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
   await page.clock.install();
   const ownerToken = getE2eToken('e2e-owner', 'owner@flo.local', 'owner');
   const ownerHeaders = { Authorization: `Bearer ${ownerToken}` };
@@ -54,6 +94,11 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
   let trackedProductId: string | null = null;
   let managerId: string | null = null;
   let extraApproverId: string | null = null;
+  const priorBusinessRes = await page.request.get(`${BASE}/api/settings/business`, {
+    headers: ownerHeaders,
+  });
+  expect(priorBusinessRes.ok(), 'read prior business settings').toBeTruthy();
+  const priorBusiness = (await priorBusinessRes.json()) as Record<string, unknown>;
   const priorScheduledSettingRes = await page.request.get(
     `${BASE}/api/settings/scheduled_orders_enabled`,
     { headers: ownerHeaders },
@@ -64,6 +109,15 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     priorScheduledSettingBody?.setting?.value === 'true' ? 'true' : 'false';
 
   try {
+    const businessSetupRes = await page.request.put(`${BASE}/api/settings/business`, {
+      headers: ownerHeaders,
+      data: { ...priorBusiness, tables_required: false },
+    });
+    expect(
+      businessSetupRes.ok(),
+      'disable table-required startup for takeaway/delivery coverage',
+    ).toBeTruthy();
+
     const disableRes = await page.request.put(`${BASE}/api/settings/scheduled_orders_enabled`, {
       headers: ownerHeaders,
       data: { value: 'false' },
@@ -134,9 +188,23 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await captureScreenshot(page, '00c-pos-short-screen-1024x600-delivery-cart.png');
     await page.setViewportSize({ width: 1280, height: 720 });
 
+    // The delivery cart was only a layout fixture. Switching order types must
+    // explicitly resolve the POS draft guard before the next scheduled order.
     await cartShell.getByRole('button', { name: 'Takeaway', exact: true }).click();
+    const orderTypeDraftGuard = page.getByTestId('pos-table-switch-dialog');
+    await expect(orderTypeDraftGuard).toBeVisible();
+    await expect(orderTypeDraftGuard).toContainText('1 unsent item');
+    await orderTypeDraftGuard.getByTestId('pos-table-switch-discard').click();
+    await expect(orderTypeDraftGuard).toHaveCount(0);
+    await expect(page.getByTestId('cart-item')).toHaveCount(0);
     await expect(cartShell.getByTestId('pos-schedule-section')).toBeVisible();
     await expect(cartShell.getByText('Send to kitchen at')).toBeVisible();
+
+    // Discarding the Delivery draft leaves a clean Takeaway cart. Build a new
+    // order explicitly; never attempt checkout with the discarded cart's items.
+    await page.getByTestId('pos-product-card').first().click();
+    await expect(page.getByTestId('cart-item')).toHaveCount(1);
+    await expect(cartShell.getByRole('button', { name: 'Place Order' })).toBeEnabled();
 
     // Past time triggers inline error and disables Place Order
     await cartShell.getByTestId('pos-order-details-summary').click();
@@ -165,23 +233,26 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await detailsDrawer.getByTestId('pos-order-details-done-btn').click();
     await expect(detailsDrawer).toHaveCount(0);
     await captureScreenshot(page, '01-pos-send-to-kitchen-at.png');
+    await expect(page.getByTestId('cart-item')).toHaveCount(1);
+    const placeScheduledOrderButton = cartShell.getByRole('button', { name: 'Place Order' });
+    await expect(placeScheduledOrderButton).toBeEnabled();
 
     // 2. Place prepaid scheduled takeaway order -> pay without early release!
-    const createOrderPromise = page.waitForResponse((res) => {
-      const url = new URL(res.url());
-      return res.request().method() === 'POST' && url.pathname === '/api/orders';
-    });
-    const paymentPromise = page.waitForResponse((res) => {
-      const url = new URL(res.url());
-      return (
-        res.request().method() === 'POST' && /^\/api\/bills\/[^/]+\/payments$/.test(url.pathname)
-      );
-    });
+    const createOrderPromise = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
+      { timeout: 30_000 },
+    );
 
-    await cartShell.getByRole('button', { name: 'Place Order' }).click();
+    await placeScheduledOrderButton.click({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: /Confirm Payment/ })).toBeVisible();
     await page.getByRole('button', { name: 'Cash', exact: true }).click();
     await expect(page.getByRole('button', { name: /Confirm Payment/ })).toBeEnabled();
+    const paymentPromise = page.waitForResponse(
+      (res) =>
+        res.request().method() === 'POST' &&
+        /^\/api\/bills\/[^/]+\/payments$/.test(new URL(res.url()).pathname),
+      { timeout: 30_000 },
+    );
     await page.getByRole('button', { name: /Confirm Payment/ }).click();
 
     const createOrderRes = await createOrderPromise;
@@ -769,6 +840,12 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     for (const response of deactivateResults) {
       expect(response.ok(), 'deactivate disposable refund approver').toBeTruthy();
     }
+    const restoreBusinessRes = await page.request.put(`${BASE}/api/settings/business`, {
+      headers: ownerHeaders,
+      data: { tables_required: priorBusiness.tables_required },
+      timeout: 15_000,
+    });
+    expect(restoreBusinessRes.ok(), 'restore prior table-required setting').toBeTruthy();
     const restoreSettingRes = await page.request.put(
       `${BASE}/api/settings/scheduled_orders_enabled`,
       {
@@ -783,7 +860,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
 test('POS scheduled orders: unresolved order attempts preserve payload and idempotency key when scheduling settings fail or toggle', async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
   const ownerToken = getE2eToken('e2e-owner', 'owner@flo.local', 'owner');
   const ownerHeaders = { Authorization: `Bearer ${ownerToken}` };
   const createdOrderIds: number[] = [];
@@ -819,7 +896,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
   try {
     const postpaidRes = await page.request.put(`${BASE}/api/settings/business`, {
       headers: ownerHeaders,
-      data: { ...priorBusiness, billing_type: 'postpaid' },
+      data: { ...priorBusiness, billing_type: 'postpaid', tables_required: false },
     });
     expect(postpaidRes.ok()).toBeTruthy();
 
@@ -920,8 +997,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       await route.continue();
     });
 
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    await navigateToOrdersWithDraftGuard(page);
     const failedSettingRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -933,8 +1009,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
 
     // Now let the scheduling-setting read recover (returns true)
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    await navigateToOrdersWithDraftGuard(page);
     const recoveredSettingRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -945,6 +1020,11 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await recoveredSettingRead;
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
     await expect(page.getByTestId('pos-scheduled-orders-btn')).toBeVisible();
+
+    // The guard on the earlier POS exit deliberately discarded the draft. Rebuild
+    // the identical cart and schedule so its fingerprint matches the durable
+    // unresolved attempt and the original idempotency key is replayed.
+    await rebuildTakeawayCart(page, firstScheduleWall);
 
     const firstReplayResPromise = page.waitForResponse(
       (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
@@ -990,8 +1070,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       },
     );
     expect(disableToggleRes.ok()).toBeTruthy();
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    await navigateToOrdersWithDraftGuard(page);
     const disabledRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -1011,8 +1090,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       },
     );
     expect(reenableToggleRes.ok()).toBeTruthy();
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    await navigateToOrdersWithDraftGuard(page);
     const reenabledRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -1022,6 +1100,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await navMenu.getByRole('link', { name: 'POS', exact: true }).click();
     await reenabledRead;
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await rebuildTakeawayCart(page, secondScheduleWall);
 
     const secondReplayResPromise = page.waitForResponse(
       (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
@@ -1067,8 +1146,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       },
     );
     expect(disableForRejectRes.ok()).toBeTruthy();
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    await navigateToOrdersWithDraftGuard(page);
     const disabledForRejectRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -1078,6 +1156,7 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await navMenu.getByRole('link', { name: 'POS', exact: true }).click();
     await disabledForRejectRead;
     await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await rebuildTakeawayCart(page);
 
     const rejectedRetryResPromise = page.waitForResponse(
       (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
@@ -1115,23 +1194,19 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
         })
         .catch(() => {});
     }
-    const [restoreBusinessOutcome, restoreSettingOutcome] = await Promise.allSettled([
-      page.request.put(`${BASE}/api/settings/business`, {
-        headers: ownerHeaders,
-        data: priorBusiness,
-      }),
-      page.request.put(`${BASE}/api/settings/scheduled_orders_enabled`, {
-        headers: ownerHeaders,
-        data: { value: priorScheduledOrdersEnabled },
-      }),
-    ]);
-    expect(
-      restoreBusinessOutcome.status === 'fulfilled' && restoreBusinessOutcome.value.ok(),
-      'restore prior business settings',
-    ).toBeTruthy();
-    expect(
-      restoreSettingOutcome.status === 'fulfilled' && restoreSettingOutcome.value.ok(),
-      'restore prior scheduled_orders_enabled',
-    ).toBeTruthy();
+    const restoreBusinessRes = await page.request.put(`${BASE}/api/settings/business`, {
+      headers: ownerHeaders,
+      data: {
+        billing_type: priorBusiness.billing_type,
+        tables_required: priorBusiness.tables_required,
+      },
+      timeout: 15_000,
+    });
+    expect(restoreBusinessRes.ok(), 'restore prior order type and table settings').toBeTruthy();
+    const restoreSettingRes = await page.request.put(
+      `${BASE}/api/settings/scheduled_orders_enabled`,
+      { headers: ownerHeaders, data: { value: priorScheduledOrdersEnabled }, timeout: 15_000 },
+    );
+    expect(restoreSettingRes.ok(), 'restore prior scheduled_orders_enabled').toBeTruthy();
   }
 });

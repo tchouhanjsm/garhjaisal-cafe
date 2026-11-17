@@ -2,6 +2,7 @@ import { test, expect, request as playwrightRequest } from '@playwright/test';
 import path from 'node:path';
 import fs from 'node:fs';
 import { E2E_PASSWORD, getE2eToken, setLanguage } from './helpers/test-auth';
+import { enterPosWorkspace } from './helpers/pos';
 import { E2E_BASE_URL as BASE } from './helpers/urls';
 
 const SCREENSHOTS_DIR =
@@ -10,52 +11,65 @@ const SCREENSHOTS_DIR =
 const managerHeaders = {
   Authorization: `Bearer ${getE2eToken('e2e-manager', 'manager@flo.local', 'manager')}`,
 };
+const fixtureHeaders = {
+  Authorization: `Bearer ${getE2eToken()}`,
+};
 
 let originalBusiness: Record<string, unknown> = {};
 let createdTableId: string | null = null;
+let createdTableName: string | null = null;
 
 test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
   test.beforeAll(async () => {
     fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-    const req = await playwrightRequest.newContext();
-    const res = await req.get(`${BASE}/api/settings/business`, { headers: managerHeaders });
-    if (res.ok()) {
+    const req = await playwrightRequest.newContext({ timeout: 15_000 });
+    try {
+      const res = await req.get(`${BASE}/api/settings/business`, { headers: fixtureHeaders });
+      expect(res.ok(), 'read business settings before keyboard fixtures').toBeTruthy();
       originalBusiness = await res.json();
-      await req.put(`${BASE}/api/settings/business`, {
-        headers: managerHeaders,
-        data: { ...originalBusiness, tables_required: true, billing_type: 'prepaid' },
-      });
-    }
 
-    // Ensure at least one table exists for F2 picker
-    const tableResponse = await req
-      .post(`${BASE}/api/tables`, {
-        headers: managerHeaders,
-        data: { number: 'E2E-KB-T1', capacity: 4 },
-      })
-      .catch(() => null);
-    if (tableResponse?.ok()) {
+      const businessUpdate = await req.put(`${BASE}/api/settings/business`, {
+        headers: fixtureHeaders,
+        data: { tables_required: true, billing_type: 'prepaid' },
+      });
+      expect(businessUpdate.ok(), 'enable table-first POS for keyboard fixtures').toBeTruthy();
+
+      createdTableName = `E2E-KB-${Date.now()}`;
+      const tableResponse = await req.post(`${BASE}/api/tables`, {
+        headers: fixtureHeaders,
+        data: { number: createdTableName, capacity: 4 },
+      });
+      expect(tableResponse.status(), 'create the keyboard table fixture').toBe(201);
       const { table } = await tableResponse.json();
-      createdTableId = table.id;
+      createdTableId = String(table.id);
+    } finally {
+      await req.dispose();
     }
-    await req.dispose();
   });
 
   test.afterAll(async () => {
-    if (Object.keys(originalBusiness).length > 0 || createdTableId) {
-      const req = await playwrightRequest.newContext();
-      if (Object.keys(originalBusiness).length > 0) {
-        await req.put(`${BASE}/api/settings/business`, {
-          headers: managerHeaders,
-          data: originalBusiness,
-        });
-      }
+    if (Object.keys(originalBusiness).length === 0 && !createdTableId) return;
+    const req = await playwrightRequest.newContext({ timeout: 15_000 });
+    try {
       if (createdTableId) {
-        await req.post(`${BASE}/api/tables/${createdTableId}/deactivate`, {
-          headers: managerHeaders,
-        });
+        const deactivateResponse = await req.post(
+          `${BASE}/api/tables/${createdTableId}/deactivate`,
+          { headers: fixtureHeaders },
+        );
+        expect(deactivateResponse.ok(), 'deactivate the keyboard table fixture').toBeTruthy();
       }
+      if (Object.keys(originalBusiness).length > 0) {
+        const restoreResponse = await req.put(`${BASE}/api/settings/business`, {
+          headers: fixtureHeaders,
+          data: {
+            tables_required: originalBusiness.tables_required,
+            billing_type: originalBusiness.billing_type,
+          },
+        });
+        expect(restoreResponse.ok(), 'restore keyboard fixture business settings').toBeTruthy();
+      }
+    } finally {
       await req.dispose();
     }
   });
@@ -68,7 +82,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
     await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 20_000 });
     await setLanguage(page, 'en');
     await page.goto(`${BASE}/pos`);
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await enterPosWorkspace(page, createdTableName ?? undefined);
   });
 
   test('? opens keyboard shortcuts modal cheat sheet, Escape closes it', async ({ page }) => {
@@ -163,44 +177,39 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
     await expect(qtySpan).toHaveText('5');
   });
 
-  test('F2 toggles table picker, and Escape dismisses it', async ({ page }) => {
-    // Press F2 to open table picker
-    await page.keyboard.press('F2');
-    const tableModal = page
-      .locator('div.fixed.inset-0')
-      .filter({ hasText: /select table|tables/i });
-    await expect(tableModal).toBeVisible({ timeout: 5_000 });
+  test('F2 toggles the All Tables board, and Escape dismisses it', async ({ page }) => {
+    const tableBoard = page.getByTestId('pos-table-first-picker');
+    const cartShell = page.getByTestId('cart-shell');
+    await expect(tableBoard).toBeHidden();
 
-    // F2 toggles the active table picker closed
     await page.keyboard.press('F2');
-    await expect(tableModal).not.toBeVisible();
+    await expect(tableBoard).toBeVisible({ timeout: 5_000 });
+    await page.keyboard.press('F2');
+    await expect(tableBoard).toBeHidden();
 
-    // macOS Option+2 (key: '™', code: 'Digit2') toggles table picker open and closed
+    // macOS Option+2 toggles the same inline board.
     await page.evaluate(() => {
       window.dispatchEvent(
         new KeyboardEvent('keydown', { key: '™', code: 'Digit2', altKey: true, bubbles: true }),
       );
     });
-    await expect(tableModal).toBeVisible({ timeout: 5_000 });
+    await expect(tableBoard).toBeVisible({ timeout: 5_000 });
     await page.evaluate(() => {
       window.dispatchEvent(
         new KeyboardEvent('keydown', { key: '™', code: 'Digit2', altKey: true, bubbles: true }),
       );
     });
-    await expect(tableModal).not.toBeVisible();
+    await expect(tableBoard).toBeHidden();
 
-    // F2 does not open the table picker for takeaway orders
-    await page.getByRole('button', { name: 'Takeaway' }).click();
+    await cartShell.getByRole('button', { name: 'Takeaway', exact: true }).click();
     await page.keyboard.press('F2');
-    await expect(tableModal).not.toBeVisible();
+    await expect(tableBoard).toBeHidden();
 
-    await page.getByRole('button', { name: /Dine in/i }).click();
-    await page.keyboard.press('F2');
-    await expect(tableModal).toBeVisible({ timeout: 5_000 });
-
-    // Press Escape to close table picker
+    // Returning to dine-in without a selected table presents All Tables automatically.
+    await cartShell.getByRole('button', { name: /Dine in/i }).click();
+    await expect(tableBoard).toBeVisible({ timeout: 5_000 });
     await page.keyboard.press('Escape');
-    await expect(tableModal).not.toBeVisible();
+    await expect(tableBoard).toBeHidden();
   });
 
   test('F4 opens checkout modal, and Space tenders cash to complete order', async ({ page }) => {
@@ -249,7 +258,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
     await page.waitForURL((url) => !url.pathname.includes('/auth/login'), { timeout: 20_000 });
     await setLanguage(page, 'en');
     await page.goto(`${BASE}/pos`);
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await enterPosWorkspace(page, createdTableName ?? undefined);
 
     await page.getByRole('button', { name: 'Takeaway' }).click();
     await page.getByTestId('pos-product-card').first().click();
@@ -431,6 +440,13 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
       });
       const billsAfterData = await billsAfterRes.json();
       expect(billsAfterData.pagination.total).toBe(paidBillsBeforeCount + 1);
+
+      // A completed takeaway payment clears the cart and returns table service
+      // to the All Tables board. Close it before starting the next takeaway order.
+      const tableBoard = page.getByTestId('pos-table-first-picker');
+      await expect(tableBoard).toBeVisible({ timeout: 15_000 });
+      await page.keyboard.press('Escape');
+      await expect(tableBoard).toBeHidden();
 
       // Also verify fresh non-repeat Enter after keyup confirms once on a second order
       await page.getByRole('button', { name: 'Takeaway' }).click();
@@ -657,7 +673,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
       await route.fulfill({ json: { counters: [] } });
     });
     await page.reload();
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await enterPosWorkspace(page, createdTableName ?? undefined);
 
     await page.getByTestId('pos-payment-queue-btn').click();
     const drawer = page.getByTestId('payment-queue-drawer');
@@ -751,6 +767,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
       productId = (await prodRes.json()).product.id as string;
 
       await page.reload();
+      await enterPosWorkspace(page, createdTableName ?? undefined);
       const addonCard = page
         .getByTestId('pos-product-card')
         .filter({ hasText: `Addon Latte ${suffix}` })
@@ -805,7 +822,7 @@ test.describe('POS Keyboard Shortcuts & Rapid Cashier Ergonomics', () => {
 
     await page.goto(`${BASE}/order-history-demo`);
     await page.waitForURL('**/pos**', { timeout: 10_000 });
-    await expect(page.getByTestId('pos-product-grid')).toBeVisible();
+    await enterPosWorkspace(page, createdTableName ?? undefined);
     await page.waitForLoadState('networkidle');
     expect(new URL(page.url()).pathname).toMatch(/^\/pos\/?$/);
 

@@ -34,7 +34,7 @@ async function captureScreenshot(
 test.describe('Table Move UI Live Validation', () => {
   test.setTimeout(90_000);
 
-  test('executes end-to-end table move flows across floorplan, tables list, and POS checkout modal', async ({
+  test('executes end-to-end table move flows across floorplan, tables list, and table-first POS checkout', async ({
     page,
     request,
   }, testInfo) => {
@@ -301,17 +301,15 @@ test.describe('Table Move UI Live Validation', () => {
       await page.goto(`${BASE}/pos`);
       await page.waitForLoadState('networkidle');
 
-      // In POS top bar, click the Select Table button
-      const posTableBtn = page.getByRole('button', { name: /Select Table|Table/i }).first();
-      await expect(posTableBtn).toBeVisible({ timeout: 10_000 });
-      await posTableBtn.click();
+      // The POS now opens directly on the dedicated All Tables board.
+      const tableBoard = page.getByTestId('pos-table-first-picker');
+      await expect(tableBoard).toBeVisible({ timeout: 10_000 });
 
-      // The TablePickerModal should display tables
-      const tablePickerModal = page.locator('div:has-text("Select Table")').last();
-      await expect(tablePickerModal).toBeVisible();
-
-      // Click occupied table T1 in table picker
-      const occupiedT1InPos = page.locator(`button:has-text("${t1Num}")`).first();
+      // Open occupied T1 from the board to reach its checkout actions.
+      const occupiedT1InPos = tableBoard
+        .getByTestId('pos-table-card')
+        .filter({ hasText: t1Num })
+        .first();
       await expect(occupiedT1InPos).toBeVisible();
       await occupiedT1InPos.click();
 
@@ -325,7 +323,7 @@ test.describe('Table Move UI Live Validation', () => {
       await expect(posCheckoutMoveBtn).toBeVisible();
 
       // Take screenshot 5: TableCheckoutModal with Move Table button
-      await captureScreenshot(page, '05-pos-checkout-modal.png', testInfo);
+      await captureScreenshot(page, '05-pos-table-board-checkout.png', testInfo);
 
       // Click "Move Table" button in POS checkout modal
       await posCheckoutMoveBtn.click();
