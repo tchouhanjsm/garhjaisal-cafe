@@ -239,8 +239,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
 
     // 2. Place prepaid scheduled takeaway order -> pay without early release!
     const createOrderPromise = page.waitForResponse(
-      (res) =>
-        res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
+      (res) => res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/orders',
       { timeout: 30_000 },
     );
 
