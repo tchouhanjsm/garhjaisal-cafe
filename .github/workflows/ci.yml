@@ -122,6 +122,12 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Diagnose formatter output for scheduled orders spec
+        run: |
+          cp frontend/e2e/scheduled-orders.spec.ts "$RUNNER_TEMP/scheduled-orders.before.ts"
+          (cd frontend && npx oxfmt --write e2e/scheduled-orders.spec.ts)
+          diff -u "$RUNNER_TEMP/scheduled-orders.before.ts" frontend/e2e/scheduled-orders.spec.ts || true
+
       # Authoritative formatting gate: the whole touched file, against the pull request base
       # (or the pushed range), so legacy formatting debt outside the change stays out of scope.
       - name: Frontend lint, formatting, and lint warning budget
