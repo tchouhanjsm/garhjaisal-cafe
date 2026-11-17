@@ -509,7 +509,11 @@ async function seedSyntheticMenu(
   for (let index = seededCategoryIds.length; index < categoryCount; index += 1) {
     const categoryName = `${SYNTHETIC_CATEGORY_PREFIX} ${String(index + 1).padStart(2, '0')}`;
     const response = await retryRateLimitedFixtureWrite(
-      () => api.post(`${BASE}/api/categories`, { headers, data: { name: categoryName } }),
+      () =>
+        api.post(`${BASE}/api/categories`, {
+          headers,
+          data: { name: categoryName },
+        }),
       201,
       `synthetic category ${index + 1} is created`,
     );
@@ -808,8 +812,8 @@ test.describe('checkout controls stay visible while catalog and cart content scr
     expect(deliveryCartScrollBox, 'delivery cart items container has bounds').not.toBeNull();
     expect(
       deliveryCartScrollBox!.height,
-      'cart items container remains usable with the compact Delivery header on 1024x600 display',
-    ).toBeGreaterThanOrEqual(250);
+      'delivery cart items container maintains at least 300px of usable height on a 1024x600 display',
+    ).toBeGreaterThanOrEqual(300);
 
     await cartShell.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
@@ -1042,15 +1046,16 @@ async function seedSyntheticAddonGroups(api: APIRequestContext): Promise<string[
   const ownedIds: string[] = [];
   for (let index = reusedCount; index < SYNTHETIC_ADDON_GROUP_COUNT; index += 1) {
     const created = await retryRateLimitedFixtureWrite(
-      () => api.post(`${BASE}/api/addon-groups`, {
-        headers,
-        data: {
-          name: `${SYNTHETIC_ADDON_GROUP_PREFIX} ${String(index + 1).padStart(2, '0')}`,
-          min_selection: 0,
-          max_selection: 1,
-          addons: [{ name: 'E2E Add-on', price: 5 }],
-        },
-      }),
+      () =>
+        api.post(`${BASE}/api/addon-groups`, {
+          headers,
+          data: {
+            name: `${SYNTHETIC_ADDON_GROUP_PREFIX} ${String(index + 1).padStart(2, '0')}`,
+            min_selection: 0,
+            max_selection: 1,
+            addons: [{ name: 'E2E Add-on', price: 5 }],
+          },
+        }),
       201,
       `synthetic add-on group ${index + 1} is created`,
     );
@@ -3683,7 +3688,10 @@ test.describe('POS collapse rows and cart table control', () => {
     } finally {
       for (const categoryId of createdIds) {
         await retryRateLimitedFixtureWrite(
-          () => request.delete(`${BASE}/api/categories/${categoryId}`, { headers: authHeaders }),
+          () =>
+            request.delete(`${BASE}/api/categories/${categoryId}`, {
+              headers: authHeaders,
+            }),
           200,
           `synthetic category ${categoryId} is removed`,
         );
@@ -3699,10 +3707,15 @@ test.describe('POS collapse rows and cart table control', () => {
     const authHeaders = { Authorization: `Bearer ${token}` };
     const createdIds: string[] = [];
     const tailCategoryRunId = Date.now().toString(36);
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
     try {
       for (let index = 0; index < 10; index += 1) {
-        const categoryName = `E2E Tail ${tailCategoryRunId} ${String(index).padStart(2, '0')} Wide Label`;
+        const categoryName = [
+          'E2E Tail',
+          tailCategoryRunId,
+          String(index).padStart(2, '0'),
+          'Wide Label',
+        ].join(' ');
         const response = await retryRateLimitedFixtureWrite(
           () =>
             request.post(`${BASE}/api/categories`, {
