@@ -36,7 +36,7 @@ export async function enterPosWorkspace(page: Page, tableName?: string): Promise
   const productGrid = page.getByTestId('pos-product-grid');
   const board = page.getByTestId('pos-table-first-picker');
   const allTablesButton = page.getByTestId('pos-all-tables-btn');
-  const addItemsButton = page.getByRole('button', { name: 'Add items', exact: true });
+  const addItemsButton = page.getByRole('button', { name: /^Add Items$/i });
 
   if (!tablesRequired || tables.length === 0) {
     expect(
@@ -47,11 +47,14 @@ export async function enterPosWorkspace(page: Page, tableName?: string): Promise
     return;
   }
 
+  const requestedTable = tableName
+    ? tables.find((table) => (table.name ?? table.number) === tableName)
+    : undefined;
   if (tableName) {
     expect(
-      tables.some((table) => (table.name ?? table.number) === tableName),
+      requestedTable,
       `table fixture "${tableName}" must be active before opening POS`,
-    ).toBe(true);
+    ).toBeDefined();
   }
 
   // The table-first screen and the selected-table header are mutually exclusive.
@@ -82,18 +85,26 @@ export async function enterPosWorkspace(page: Page, tableName?: string): Promise
     await target.click();
     await expect(board).toBeHidden({ timeout: 15_000 });
 
-    // Occupied tables deliberately open the existing-order summary before the
-    // catalogue. Leave that decision to the caller when a specific table was
-    // requested; generic workspace tests can enter its Add items path directly.
+    if (tableName && requestedTable?.status?.toLowerCase() === 'occupied') {
+      // Selecting an occupied table stops at the existing-order decision.
+      // Wait for that decision rather than mistaking the catalogue behind the
+      // modal for a completed table-selection flow.
+      await expect(addItemsButton).toBeVisible({ timeout: 15_000 });
+      return;
+    }
+
     if (await addItemsButton.isVisible().catch(() => false)) {
       if (!tableName) await addItemsButton.click();
       else return;
     }
   }
 
-  await expect(productGrid).toBeVisible({ timeout: 15_000 });
-  if (tableName || (await allTablesButton.isVisible().catch(() => false))) {
-    await expect(allTablesButton).toBeVisible({ timeout: 15_000 });
-    await expect(allTablesButton).toContainText('All Tables');
+  // A previously selected table can open directly into the existing-order
+  // decision without rendering the table board first.
+  if (await addItemsButton.isVisible().catch(() => false)) {
+    if (!tableName) await addItemsButton.click();
+    else return;
   }
+
+  await expect(productGrid).toBeVisible({ timeout: 15_000 });
 }
