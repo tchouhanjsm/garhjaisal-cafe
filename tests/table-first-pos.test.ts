@@ -157,7 +157,8 @@ function testResizableCart(): void {
   assert.ok(posPage.includes('aria-valuemin={280}'));
   assert.ok(posPage.includes('aria-valuemax={480}'));
   assert.ok(posPage.includes('data-testid="pos-cart-resize-handle"'));
-  assert.ok(posPage.includes('data-testid="pos-collapse-cart"'));
+  assert.ok(posPage.includes('onCollapse={() => setCartCollapsed(true)}'));
+  assert.ok(cartPanel.includes('data-testid="pos-collapse-cart"'));
   assert.ok(posPage.includes('data-testid="pos-expand-cart"'));
   assert.ok(cartPanel.includes('data-testid="cart-items-scroll"'));
   assert.ok(cartPanel.includes('pos-cart-items flex-1 min-h-0 overflow-y-auto'));
