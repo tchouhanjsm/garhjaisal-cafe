@@ -184,7 +184,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await expect(page.getByTestId('cart-item')).toHaveCount(1);
     const shortDeliveryCartBox = await page.getByTestId('cart-items-scroll').boundingBox();
     expect(shortDeliveryCartBox).not.toBeNull();
-    expect(shortDeliveryCartBox!.height).toBeGreaterThanOrEqual(250);
+    expect(shortDeliveryCartBox!.height).toBeGreaterThanOrEqual(300);
     await captureScreenshot(page, '00c-pos-short-screen-1024x600-delivery-cart.png');
     await page.setViewportSize({ width: 1280, height: 720 });
 
@@ -199,6 +199,12 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await expect(page.getByTestId('cart-item')).toHaveCount(0);
     await expect(cartShell.getByTestId('pos-schedule-section')).toBeVisible();
     await expect(cartShell.getByText('Send to kitchen at')).toBeVisible();
+
+    // Discarding the Delivery draft leaves a clean Takeaway cart. Build a new
+    // order explicitly; never attempt checkout with the discarded cart's items.
+    await page.getByTestId('pos-product-card').first().click();
+    await expect(page.getByTestId('cart-item')).toHaveCount(1);
+    await expect(cartShell.getByRole('button', { name: 'Place Order' })).toBeEnabled();
 
     // Past time triggers inline error and disables Place Order
     await cartShell.getByTestId('pos-order-details-summary').click();
@@ -227,23 +233,36 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     await detailsDrawer.getByTestId('pos-order-details-done-btn').click();
     await expect(detailsDrawer).toHaveCount(0);
     await captureScreenshot(page, '01-pos-send-to-kitchen-at.png');
+    await expect(page.getByTestId('cart-item')).toHaveCount(1);
+    const placeScheduledOrderButton = cartShell.getByRole('button', { name: 'Place Order' });
+    await expect(
+      placeScheduledOrderButton,
+      'valid scheduled order is eligible for checkout',
+    ).toBeEnabled();
 
     // 2. Place prepaid scheduled takeaway order -> pay without early release!
-    const createOrderPromise = page.waitForResponse((res) => {
-      const url = new URL(res.url());
-      return res.request().method() === 'POST' && url.pathname === '/api/orders';
-    });
-    const paymentPromise = page.waitForResponse((res) => {
-      const url = new URL(res.url());
-      return (
-        res.request().method() === 'POST' && /^\/api\/bills\/[^/]+\/payments$/.test(url.pathname)
-      );
-    });
+    const createOrderPromise = page.waitForResponse(
+      (res) => {
+        const url = new URL(res.url());
+        return res.request().method() === 'POST' && url.pathname === '/api/orders';
+      },
+      { timeout: 30_000 },
+    );
 
-    await cartShell.getByRole('button', { name: 'Place Order' }).click();
+    await placeScheduledOrderButton.click({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: /Confirm Payment/ })).toBeVisible();
     await page.getByRole('button', { name: 'Cash', exact: true }).click();
     await expect(page.getByRole('button', { name: /Confirm Payment/ })).toBeEnabled();
+    const paymentPromise = page.waitForResponse(
+      (res) => {
+        const url = new URL(res.url());
+        return (
+          res.request().method() === 'POST' &&
+          /^\/api\/bills\/[^/]+\/payments$/.test(url.pathname)
+        );
+      },
+      { timeout: 30_000 },
+    );
     await page.getByRole('button', { name: /Confirm Payment/ }).click();
 
     const createOrderRes = await createOrderPromise;
