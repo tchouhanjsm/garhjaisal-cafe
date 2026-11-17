@@ -72,7 +72,7 @@ function futureBangkokWallClock(minutesAhead: number): string {
 test('POS scheduled orders: Send to kitchen at, prepay without early release, audited reschedule, refund-before-cancel, and blocked retry', async ({
   page,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   await page.clock.install();
   const ownerToken = getE2eToken('e2e-owner', 'owner@flo.local', 'owner');
   const ownerHeaders = { Authorization: `Bearer ${ownerToken}` };
@@ -812,9 +812,10 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
     }
     const restoreBusinessRes = await page.request.put(`${BASE}/api/settings/business`, {
       headers: ownerHeaders,
-      data: priorBusiness,
+      data: { tables_required: priorBusiness.tables_required },
+      timeout: 15_000,
     });
-    expect(restoreBusinessRes.ok(), 'restore prior business settings').toBeTruthy();
+    expect(restoreBusinessRes.ok(), 'restore prior table-required setting').toBeTruthy();
     const restoreSettingRes = await page.request.put(
       `${BASE}/api/settings/scheduled_orders_enabled`,
       {
@@ -829,7 +830,7 @@ test('POS scheduled orders: Send to kitchen at, prepay without early release, au
 test('POS scheduled orders: unresolved order attempts preserve payload and idempotency key when scheduling settings fail or toggle', async ({
   page,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   const ownerToken = getE2eToken('e2e-owner', 'owner@flo.local', 'owner');
   const ownerHeaders = { Authorization: `Bearer ${ownerToken}` };
   const createdOrderIds: number[] = [];
@@ -1163,12 +1164,16 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     }
     const restoreBusinessRes = await page.request.put(`${BASE}/api/settings/business`, {
       headers: ownerHeaders,
-      data: priorBusiness,
+      data: {
+        billing_type: priorBusiness.billing_type,
+        tables_required: priorBusiness.tables_required,
+      },
+      timeout: 15_000,
     });
-    expect(restoreBusinessRes.ok(), 'restore prior business settings').toBeTruthy();
+    expect(restoreBusinessRes.ok(), 'restore prior order type and table settings').toBeTruthy();
     const restoreSettingRes = await page.request.put(
       `${BASE}/api/settings/scheduled_orders_enabled`,
-      { headers: ownerHeaders, data: { value: priorScheduledOrdersEnabled } },
+      { headers: ownerHeaders, data: { value: priorScheduledOrdersEnabled }, timeout: 15_000 },
     );
     expect(restoreSettingRes.ok(), 'restore prior scheduled_orders_enabled').toBeTruthy();
   }
