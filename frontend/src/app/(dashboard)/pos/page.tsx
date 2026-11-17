@@ -4462,10 +4462,7 @@ export default function POSPage() {
                     aria-label="Order cart"
                   >
                     <div className="min-h-0 flex-1">
-                      <CartPanel
-                        {...cartPanelProps}
-                        onCollapse={() => setCartCollapsed(true)}
-                      />
+                      <CartPanel {...cartPanelProps} onCollapse={() => setCartCollapsed(true)} />
                     </div>
                   </div>
                 </div>
