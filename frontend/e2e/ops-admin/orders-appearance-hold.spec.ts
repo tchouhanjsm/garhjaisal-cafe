@@ -147,7 +147,9 @@ test.describe('@ci-tier2 operations admin - orders appearance and hold', () => {
     await targetTable.click();
     await expect(tableBoard).toBeHidden();
 
-    const selectedTable = page.getByTestId('pos-all-tables-btn');
+    // The back button keeps its fixed "All Tables" label; the top-bar control
+    // is the POS surface that displays the currently selected table name.
+    const selectedTable = page.getByTestId('cart-table-button');
     await expect(selectedTable).toBeVisible();
     await expect(selectedTable).toContainText(number);
 
