@@ -148,16 +148,19 @@ test('adding an item to an occupied table only prints the newly appended item on
     // workflow explicitly before touching the catalogue beneath that modal.
     await enterPosWorkspace(page, tableNumber);
     await page.getByRole('button', { name: /^Add Items$/i }).click();
-    await expect(page.getByTestId('pos-append-existing-order-btn')).toBeVisible();
+    const appendOrderButton = page.getByTestId('pos-append-existing-order-btn');
+    await expect(appendOrderButton).toBeVisible();
+    await expect(appendOrderButton).toBeDisabled();
 
-    // Append one new item to the selected order.
+    // Append one new item to the selected order. The existing-order action
+    // remains "Place Order"; it becomes enabled when the append cart has work.
     await page.getByTestId('pos-product-card').first().click();
 
-    await expect(page.getByRole('button', { name: /Add 1 item to order/i })).toBeVisible();
+    await expect(appendOrderButton).toBeEnabled();
     const kotResponse = page.waitForResponse((response) =>
       response.url().includes('/api/printers/print-kot'),
     );
-    await page.getByRole('button', { name: /Add 1 item to order/i }).click();
+    await appendOrderButton.click();
     await kotResponse;
 
     await expect(page.getByText(/Items added to order/)).toBeVisible();
