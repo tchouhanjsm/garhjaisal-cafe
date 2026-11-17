@@ -980,8 +980,8 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
     await rebuildTakeawayCart(page);
 
     // Now let the scheduling-setting read recover (returns true)
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    // Leaving with a draft cart requires the same explicit discard decision as a cashier.
+    await navigateToOrdersAfterDiscardingUnsentCart(page);
     const recoveredSettingRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
@@ -1057,8 +1057,8 @@ test('POS scheduled orders: unresolved order attempts preserve payload and idemp
       },
     );
     expect(reenableToggleRes.ok()).toBeTruthy();
-    await navMenu.getByRole('link', { name: 'Orders', exact: true }).click();
-    await page.waitForURL('**/orders/**');
+    // Leaving with a draft cart requires the same explicit discard decision as a cashier.
+    await navigateToOrdersAfterDiscardingUnsentCart(page);
     const reenabledRead = page.waitForResponse(
       (res) =>
         res.request().method() === 'GET' &&
